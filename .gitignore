@@ -1,0 +1,18 @@
+node_modules/
+
+# Android local project (SDK, JDK, Gradle caches, keystore, APK)
+android/
+.release-repo/
+
+# Generated web assets
+market-prices.html
+market-prices-app-version.json
+car-prices.json
+dist/
+
+# Secrets
+*.jks
+*.keystore
+keystore.properties
+.env
+.env.*

@@ -1,0 +1,360 @@
+export const androidUpdateBridgeScript = `(function () {
+    const UPDATE_CHECK_INTERVAL_MS = 5 * 60 * 1000;
+    let audioCtx = null;
+    const UPDATE_SUCCESS_SOUND_KEY = "market-prices-play-update-success";
+
+    function updateArgs() {
+      return [
+        APP_UPDATE_CONFIG.repoOwner,
+        APP_UPDATE_CONFIG.repoName,
+        APP_UPDATE_CONFIG.branch,
+      ];
+    }
+
+    function getAudioContext() {
+      try {
+        if (!audioCtx) {
+          const Ctx = window.AudioContext || window.webkitAudioContext;
+          if (!Ctx) return null;
+          audioCtx = new Ctx();
+        }
+        if (audioCtx.state === "suspended") audioCtx.resume().catch(function () {});
+        return audioCtx;
+      } catch {
+        return null;
+      }
+    }
+
+    function playNotificationTone(sequence) {
+      const ctx = getAudioContext();
+      if (!ctx) return;
+      const master = ctx.createGain();
+      master.gain.value = 0.18;
+      master.connect(ctx.destination);
+      let t = ctx.currentTime + 0.02;
+      sequence.forEach(function (note) {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = note.type || "sine";
+        osc.frequency.value = note.freq;
+        osc.connect(gain);
+        gain.connect(master);
+        const dur = note.dur || 0.14;
+        gain.gain.setValueAtTime(0.0001, t);
+        gain.gain.exponentialRampToValueAtTime(0.85, t + 0.006);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+        osc.start(t);
+        osc.stop(t + dur + 0.03);
+        t += note.gap != null ? note.gap : dur * 0.62;
+      });
+    }
+
+    function playUpdateAvailableSound() {
+      playNotificationTone([
+        { freq: 880, dur: 0.1, gap: 0.08, type: "sine" },
+        { freq: 1174.66, dur: 0.14, gap: 0.06, type: "sine" },
+        { freq: 1567.98, dur: 0.18, type: "triangle" },
+      ]);
+    }
+
+    function playUpdateCompleteSound() {
+      playNotificationTone([
+        { freq: 523.25, dur: 0.08, gap: 0.06, type: "sine" },
+        { freq: 659.25, dur: 0.08, gap: 0.06, type: "sine" },
+        { freq: 783.99, dur: 0.1, gap: 0.06, type: "triangle" },
+        { freq: 1046.5, dur: 0.2, type: "sine" },
+      ]);
+    }
+
+    function markUpdateSuccessSound() {
+      try { sessionStorage.setItem(UPDATE_SUCCESS_SOUND_KEY, "1"); } catch {}
+    }
+
+    function playUpdateSuccessSoundIfPending() {
+      try {
+        if (sessionStorage.getItem(UPDATE_SUCCESS_SOUND_KEY) !== "1") return;
+        sessionStorage.removeItem(UPDATE_SUCCESS_SOUND_KEY);
+      } catch {
+        return;
+      }
+      window.setTimeout(playUpdateCompleteSound, 350);
+    }
+
+    function initAppVersionDisplay() {
+      if (typeof AndroidApp === "undefined") {
+        const section = document.getElementById("appUpdateSection");
+        if (section) section.style.display = "none";
+        return;
+      }
+      const versionEl = document.getElementById("appContentVersion");
+      if (!versionEl || typeof APP_UPDATE_CONFIG === "undefined") return;
+      try {
+        versionEl.textContent = AndroidApp.getContentVersion();
+      } catch {
+        versionEl.textContent = APP_UPDATE_CONFIG.currentVersion || "—";
+      }
+    }
+
+    function initUpdatePrompt() {
+      if (typeof AndroidApp === "undefined" || typeof APP_UPDATE_CONFIG === "undefined") return;
+
+      const overlay = document.getElementById("updateSheetOverlay");
+      const sheet = document.getElementById("updateSheet");
+      const titleEl = document.getElementById("updateSheetTitle");
+      const messageEl = document.getElementById("updateSheetMessage");
+      const confirmBtn = document.getElementById("updateSheetConfirmBtn");
+      const progressWrap = document.getElementById("updateSheetProgress");
+      const progressFill = document.getElementById("updateSheetProgressFill");
+      const progressLabel = document.getElementById("updateSheetProgressLabel");
+      const progressPercent = document.getElementById("updateSheetProgressPercent");
+      const versionEl = document.getElementById("appContentVersion");
+      if (!overlay || !sheet || !messageEl || !confirmBtn) return;
+
+      let isDownloading = false;
+      let fakeProgressTimer = null;
+      const persianDigitsMap = "۰۱۲۳۴۵۶۷۸۹";
+      const toFa = function (n) {
+        return String(n).replace(/\\d/g, function (d) { return persianDigitsMap[+d]; });
+      };
+
+      function notifySheetOpen(open) {
+        try { AndroidApp.setUpdateSheetOpen(open); } catch {}
+      }
+
+      function stopFakeProgress() {
+        if (fakeProgressTimer) {
+          window.clearInterval(fakeProgressTimer);
+          fakeProgressTimer = null;
+        }
+      }
+
+      function startFakeProgress() {
+        stopFakeProgress();
+        let value = 4;
+        fakeProgressTimer = window.setInterval(function () {
+          if (!isDownloading) {
+            stopFakeProgress();
+            return;
+          }
+          value = Math.min(90, value + Math.max(1, Math.round((90 - value) * 0.08)));
+          setProgress(value, "در حال دریافت بروزرسانی...");
+        }, 450);
+      }
+
+      function setProgress(percent, label) {
+        const value = Math.max(0, Math.min(100, Math.round(percent || 0)));
+        if (progressFill) progressFill.style.width = value + "%";
+        if (progressPercent) progressPercent.textContent = toFa(value) + "٪";
+        if (progressLabel && label) progressLabel.textContent = label;
+      }
+
+      function enterDownloadingState() {
+        isDownloading = true;
+        sheet.classList.add("downloading");
+        if (progressWrap) progressWrap.classList.remove("hidden");
+        if (titleEl) titleEl.textContent = "در حال بروزرسانی";
+        messageEl.textContent = "لطفاً صبر کنید تا دریافت نسخه جدید کامل شود.";
+        setProgress(0, "شروع دریافت فایل‌ها...");
+        startFakeProgress();
+        confirmBtn.disabled = true;
+      }
+
+      function exitDownloadingState() {
+        isDownloading = false;
+        stopFakeProgress();
+        sheet.classList.remove("downloading");
+        confirmBtn.disabled = false;
+      }
+
+      function ensureUpdateSheetVisible() {
+        overlay.classList.remove("hidden");
+        requestAnimationFrame(function () {
+          overlay.classList.add("open");
+          notifySheetOpen(true);
+          overlay.setAttribute("aria-hidden", "false");
+        });
+      }
+
+      function showUpdateSheet(latestVersion, currentVersion, updateKind) {
+        if (isDownloading) return;
+        if (overlay.classList.contains("open") && sheet.classList.contains("downloading")) return;
+
+        overlay.dataset.latestVersion = latestVersion;
+        overlay.dataset.updateKind = updateKind || "content";
+        if (titleEl) {
+          titleEl.textContent = updateKind === "apk"
+            ? "نسخه جدید اپلیکیشن موجود است"
+            : "بروزرسانی محتوا موجود است";
+        }
+        messageEl.textContent = updateKind === "apk"
+          ? ("نسخه " + latestVersion + " منتشر شده است. نسخه فعلی شما " + currentVersion + " است. برای ادامه باید کل اپلیکیشن را بروزرسانی کنید (بدون حذف دستی).")
+          : ("نسخه " + latestVersion + " منتشر شده است. نسخه فعلی شما " + currentVersion + " است. برای ادامه باید اپلیکیشن را بروزرسانی کنید.");
+        if (progressWrap) progressWrap.classList.add("hidden");
+        sheet.classList.remove("downloading");
+        confirmBtn.textContent = "دریافت نسخه جدید";
+        confirmBtn.disabled = false;
+        ensureUpdateSheetVisible();
+        playUpdateAvailableSound();
+      }
+
+      function startUpdateDownload() {
+        if (isDownloading) return;
+        ensureUpdateSheetVisible();
+        enterDownloadingState();
+        try {
+          AndroidApp.startAppUpdate.apply(AndroidApp, updateArgs());
+        } catch (err) {
+          exitDownloadingState();
+          if (progressWrap) progressWrap.classList.remove("hidden");
+          if (titleEl) titleEl.textContent = "خطا در بروزرسانی";
+          messageEl.textContent = "شروع دریافت ممکن نشد. دوباره تلاش کنید.";
+          confirmBtn.textContent = "تلاش مجدد";
+          confirmBtn.disabled = false;
+        }
+      }
+
+      window.__startAppUpdateFromSheet = startUpdateDownload;
+
+      window.__onAppUpdateProgress = function (progress) {
+        if (!progress) return;
+        stopFakeProgress();
+        const percent = Number(progress.percent) || 0;
+        const done = Number(progress.done) || 0;
+        const total = Number(progress.total) || 0;
+        const label = progress.label
+          || (total > 0
+            ? ("دریافت فایل " + toFa(Math.min(Math.max(done, 1), total)) + " از " + toFa(total))
+            : "در حال دریافت بروزرسانی...");
+        if (!sheet.classList.contains("downloading")) enterDownloadingState();
+        setProgress(percent, label);
+      };
+
+      window.__onAppUpdateComplete = function (result) {
+        stopFakeProgress();
+
+        if (!result || !result.success) {
+          exitDownloadingState();
+          if (progressWrap) progressWrap.classList.remove("hidden");
+          if (titleEl) titleEl.textContent = "خطا در بروزرسانی";
+          messageEl.textContent = (result && result.message) || "دریافت نسخه جدید ناموفق بود.";
+          setProgress(0, "لطفاً دوباره تلاش کنید");
+          confirmBtn.textContent = "تلاش مجدد";
+          confirmBtn.disabled = false;
+          return;
+        }
+
+        if (result.awaitingInstall) {
+          isDownloading = true;
+          sheet.classList.add("downloading");
+          if (progressWrap) progressWrap.classList.remove("hidden");
+          if (titleEl) titleEl.textContent = "تأیید نصب";
+          messageEl.textContent = result.message || "صفحه نصب سیستم باز شد. نصب را تأیید کنید.";
+          setProgress(100, "در انتظار تأیید نصب...");
+          return;
+        }
+
+        setProgress(100, "بروزرسانی کامل شد");
+        if (titleEl) titleEl.textContent = "بروزرسانی موفق";
+        messageEl.textContent = result.message || "نسخه جدید با موفقیت دریافت شد.";
+        if (result.latestVersion && versionEl) versionEl.textContent = result.latestVersion;
+        if (result.success && result.reloaded) {
+          messageEl.textContent = "نسخه جدید نصب شد. در حال بارگذاری مجدد...";
+          markUpdateSuccessSound();
+          playUpdateCompleteSound();
+        }
+        if (result.updateKind === "apk" && result.success && !result.awaitingInstall) {
+          exitDownloadingState();
+          confirmBtn.textContent = "تلاش مجدد";
+        }
+      };
+
+      window.__onAppUpdateCheckComplete = function (result) {
+        if (isDownloading) return;
+        if (!result || !result.success || !result.hasUpdate) return;
+        showUpdateSheet(result.latestVersion, result.currentVersion, result.updateKind);
+      };
+
+      confirmBtn.addEventListener("click", function () {
+        startUpdateDownload();
+      });
+
+      function runUpdateCheck() {
+        if (isDownloading) return;
+        try {
+          AndroidApp.checkForAppUpdate.apply(AndroidApp, updateArgs());
+        } catch {}
+      }
+
+      window.setTimeout(runUpdateCheck, 12000);
+      window.setInterval(runUpdateCheck, UPDATE_CHECK_INTERVAL_MS);
+    }
+
+    try { localStorage.removeItem("market-prices-update-dismissed"); } catch {}
+
+    playUpdateSuccessSoundIfPending();
+    initAppVersionDisplay();
+    initUpdatePrompt();
+  })();`;
+
+export const updateSheetExtraStyles = `
+    .update-sheet-progress {
+      width: 100%;
+      margin-top: 4px;
+      margin-bottom: 4px;
+    }
+
+    .update-sheet-progress.hidden {
+      display: none !important;
+    }
+
+    .update-sheet-progress-track {
+      width: 100%;
+      height: 10px;
+      border-radius: 999px;
+      background: var(--bg);
+      border: 1px solid var(--border-strong);
+      overflow: hidden;
+    }
+
+    .update-sheet-progress-fill {
+      display: block;
+      height: 100%;
+      width: 0%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 65%, #06b6d4));
+      transition: width 0.2s ease;
+    }
+
+    .update-sheet-progress-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-top: 8px;
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    #updateSheetProgressPercent {
+      font-weight: 700;
+      color: var(--accent);
+      font-variant-numeric: tabular-nums;
+      flex-shrink: 0;
+    }
+
+    .update-sheet.downloading .update-sheet-actions {
+      display: none;
+    }
+
+    .update-sheet.downloading .update-sheet-handle {
+      opacity: 0.35;
+    }
+
+    .update-sheet-overlay.mandatory .update-sheet-backdrop {
+      pointer-events: none;
+    }
+
+    body:has(.update-sheet-overlay.open) .market-bottom-nav {
+      pointer-events: none;
+      opacity: 0.35;
+    }`;

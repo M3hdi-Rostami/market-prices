@@ -1,0 +1,17 @@
+{
+  "name": "market-prices",
+  "private": true,
+  "version": "1.2.0",
+  "description": "Market Prices Android app (gold, currency, car prices)",
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build-market-prices-page.mjs",
+    "build:apk": "node scripts/build-market-prices-apk.mjs",
+    "setup:apk-signing": "bash scripts/setup-android-release-keystore.sh",
+    "release:apk": "node scripts/publish-market-prices-apk.mjs",
+    "bootstrap:apk": "bash scripts/bootstrap-android-deps.sh"
+  },
+  "devDependencies": {
+    "javascript-obfuscator": "^4.1.1"
+  }
+}
