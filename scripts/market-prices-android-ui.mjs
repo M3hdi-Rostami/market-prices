@@ -863,6 +863,12 @@ export const androidExtraStyles = `
       font-variant-numeric: tabular-nums;
     }
 
+    .divar-estimate-chip-unit {
+      font-size: 10px;
+      color: var(--muted);
+      font-weight: 500;
+    }
+
     .divar-estimate-verdict {
       font-size: 12px;
       font-weight: 600;

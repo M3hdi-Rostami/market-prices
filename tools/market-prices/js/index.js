@@ -159,48 +159,18 @@ function isAndroidStandalone() {
   return typeof AndroidApp !== "undefined";
 }
 
-/** Pending async httpGetAsync callbacks keyed by request id. */
-const androidHttpPending = new Map();
-let androidHttpSeq = 0;
-
-if (typeof window !== "undefined") {
-  window.__onAndroidHttpGet = function (requestId, body) {
-    const entry = androidHttpPending.get(String(requestId));
-    if (!entry) return;
-    androidHttpPending.delete(String(requestId));
-    entry.resolve(body);
-  };
-}
-
 /**
- * Prefer non-blocking httpGetAsync so the WebView UI (loading spinner) stays responsive.
+ * Prefer the non-obfuscated bridge (window.__androidHttpGet) so callbacks survive build.
  * Falls back to synchronous httpGet on older APKs.
  */
 function androidHttpGet(url) {
-  if (typeof AndroidApp.httpGetAsync === "function") {
-    return new Promise((resolve, reject) => {
-      const requestId = `http_${Date.now()}_${++androidHttpSeq}`;
-      const timer = setTimeout(() => {
-        if (!androidHttpPending.has(requestId)) return;
-        androidHttpPending.delete(requestId);
-        reject(new Error("اتصال به سرور زمان‌بر شد. لطفاً دوباره تلاش کنید"));
-      }, 120_000);
-      androidHttpPending.set(requestId, {
-        resolve: (body) => {
-          clearTimeout(timer);
-          resolve(body);
-        },
-      });
-      try {
-        AndroidApp.httpGetAsync(url, requestId);
-      } catch (error) {
-        clearTimeout(timer);
-        androidHttpPending.delete(requestId);
-        reject(error);
-      }
-    });
+  if (typeof window !== "undefined" && typeof window.__androidHttpGet === "function") {
+    return window.__androidHttpGet(url);
   }
-  return Promise.resolve(AndroidApp.httpGet(url));
+  if (typeof AndroidApp !== "undefined" && typeof AndroidApp.httpGet === "function") {
+    return Promise.resolve(AndroidApp.httpGet(url));
+  }
+  return Promise.reject(new Error("پل اندروید در دسترس نیست"));
 }
 
 async function fetchBamaViaAllOrigins(url) {
@@ -297,26 +267,48 @@ function pathGet(obj, keys, fallback = null) {
   return cur == null ? fallback : cur;
 }
 
-/** Same recursive search as telegram-bot pricing service. */
+/** Read top-level Karnameh estimate fields (same values their website displays). */
 function findMinMaxPrice(obj) {
-  let min = null;
-  let max = null;
-
-  function search(value) {
-    if (!value || typeof value !== "object") return;
-    for (const key of Object.keys(value)) {
-      if (key === "min_price") min = value[key];
-      if (key === "max_price") max = value[key];
-      if (min != null && max != null) return;
-      if (value[key] && typeof value[key] === "object") search(value[key]);
-    }
+  if (!obj || typeof obj !== "object") {
+    return { minPrice: 0, maxPrice: 0, indicator: null, similarCount: 0 };
   }
 
-  search(obj);
+  const min = Number(obj.min_price);
+  const max = Number(obj.max_price);
+  const indicator =
+    typeof obj.indicator === "number"
+      ? obj.indicator
+      : typeof obj.indicator_percentage === "number"
+        ? obj.indicator_percentage
+        : null;
+
+  let similarCount = 0;
+  if (typeof obj.output === "number") {
+    similarCount = obj.output;
+  } else if (obj.output && typeof obj.output === "object") {
+    similarCount =
+      Number(obj.output.divar || 0) +
+      Number(obj.output.inspection || 0) +
+      Number(obj.output.deal || 0);
+  }
+
   return {
-    minPrice: Number(min) || 0,
-    maxPrice: Number(max) || 0,
+    minPrice: Number.isFinite(min) ? min : 0,
+    maxPrice: Number.isFinite(max) ? max : 0,
+    indicator,
+    similarCount: Number.isFinite(similarCount) ? similarCount : 0,
   };
+}
+
+function verdictFromKarnameh(adPrice, minPrice, maxPrice, indicator) {
+  if (typeof indicator === "number") {
+    if (indicator < 0) return "ارزان";
+    if (indicator > 100) return "گران";
+    return "معقول";
+  }
+  if (adPrice && minPrice && adPrice < minPrice) return "ارزان";
+  if (adPrice && maxPrice && adPrice > maxPrice) return "گران";
+  return "معقول";
 }
 
 function toEnglishNumber(input) {
@@ -385,8 +377,25 @@ function mapBodyStatusForKarnameh(bodyStatus) {
   return "intact";
 }
 
+function getDivarListWidgets(payload) {
+  const sections = Array.isArray(payload?.sections) ? payload.sections : [];
+  for (const section of sections) {
+    const name = String(section?.section_name || section?.title || "").toUpperCase();
+    if (name.includes("LIST") || name === "LIST_DATA") {
+      return Array.isArray(section.widgets) ? section.widgets : [];
+    }
+  }
+  // Fallback: largest widget list among sections
+  let best = [];
+  for (const section of sections) {
+    const widgets = Array.isArray(section?.widgets) ? section.widgets : [];
+    if (widgets.length > best.length) best = widgets;
+  }
+  return best;
+}
+
 function findDivarGroupInfoValue(payload, title) {
-  const widgets = pathGet(payload, ["sections", "4", "widgets"], []) || [];
+  const widgets = getDivarListWidgets(payload);
   for (const widget of widgets) {
     const items = pathGet(widget, ["data", "items"], []) || [];
     if (!Array.isArray(items)) continue;
@@ -398,7 +407,7 @@ function findDivarGroupInfoValue(payload, title) {
 }
 
 function findDivarRowValue(payload, title) {
-  const widgets = pathGet(payload, ["sections", "4", "widgets"], []) || [];
+  const widgets = getDivarListWidgets(payload);
   for (const widget of widgets) {
     if (pathGet(widget, ["data", "title"]) === title) {
       return (
@@ -412,7 +421,7 @@ function findDivarRowValue(payload, title) {
 }
 
 function findDivarBodyStatus(payload) {
-  const widgets = pathGet(payload, ["sections", "4", "widgets"], []) || [];
+  const widgets = getDivarListWidgets(payload);
   for (const widget of widgets) {
     if (pathGet(widget, ["data", "title"]) !== "بدنه") continue;
     const tags = pathGet(widget, ["data", "tags"], []) || [];
@@ -509,29 +518,44 @@ async function estimateKarnamehPrice(ad) {
   if (!ad?.brandModel) throw new Error("مدل خودرو از آگهی استخراج نشد");
   if (!ad?.price) throw new Error("قیمت آگهی برای تخمین لازم است");
 
+  const year = extractCarYear(ad.model);
+  const usage = extractMileage(ad.mileage);
+  if (!year || !/^\d{4}$/.test(year)) {
+    throw new Error("سال ساخت خودرو از آگهی استخراج نشد");
+  }
+
   const params = new URLSearchParams({
     brand_model: String(ad.brandModel),
-    year: extractCarYear(ad.model),
-    usage: extractMileage(ad.mileage),
+    year: String(year),
+    usage: String(usage),
     color: String(ad.color || ""),
     body_status: mapBodyStatusForKarnameh(ad.bodyStatus),
     price: String(ad.price),
   });
 
-  // Public Karnama estimate endpoint used by their current web app (no login).
+  // Public Karnameh estimate endpoint used by their current web app (no login).
   const url = `${KARNAMEH_ESTIMATE_API}?${params.toString()}`;
   const payload = await fetchHttpJson(url);
-  const { minPrice, maxPrice } = findMinMaxPrice(payload);
+  if (payload?.error) {
+    throw new Error(String(payload.error));
+  }
+  if (payload?.detail) {
+    throw new Error(String(payload.detail));
+  }
+
+  const { minPrice, maxPrice, indicator, similarCount } = findMinMaxPrice(payload);
 
   if (!minPrice && !maxPrice) {
     throw new Error("تخمین قیمت از کارنامه دریافت نشد");
   }
 
-  let verdict = "معقول";
-  if (ad.price && ad.price < minPrice) verdict = "ارزان";
-  else if (ad.price && ad.price > maxPrice) verdict = "گران";
-
-  return { minPrice, maxPrice, verdict };
+  return {
+    minPrice,
+    maxPrice,
+    verdict: verdictFromKarnameh(ad.price, minPrice, maxPrice, indicator),
+    indicator,
+    similarCount,
+  };
 }
 
 async function estimateFromDivarUrl(divarUrl) {
@@ -565,6 +589,12 @@ function renderDivarEstimateResult(result) {
   const location = [ad.city, ad.neighborhood].filter(Boolean).join(" - ") || "—";
   const title = escapeHtml(ad.title || ad.brandModelFa || "آگهی خودرو");
   const subtitle = escapeHtml(`${location} · مدل ${ad.model || "—"} · ${ad.mileage || "—"} کیلومتر`);
+  const similarHint =
+    estimate.similarCount > 0
+      ? `<p class="divar-estimate-hint">${escapeHtml(
+          `${Number(estimate.similarCount).toLocaleString("fa-IR")} خودرو مشابه در کارنامه برای این تخمین بررسی شده‌اند`,
+        )}</p>`
+      : `<p class="divar-estimate-hint">بر اساس مشخصات آگهی دیوار و تخمین قیمت کارنامه (تومان)</p>`;
   return `
     <article class="divar-estimate-card">
       <div class="divar-estimate-card-header">
@@ -575,20 +605,23 @@ function renderDivarEstimateResult(result) {
         <div class="divar-estimate-chip">
           <span class="divar-estimate-chip-label">قیمت آگهی</span>
           <span class="divar-estimate-chip-value">${formatCarPrice(ad.price)}</span>
+          <span class="divar-estimate-chip-unit">تومان</span>
         </div>
         <div class="divar-estimate-chip">
-          <span class="divar-estimate-chip-label">حداقل منصفانه</span>
+          <span class="divar-estimate-chip-label">حداقل کارنامه</span>
           <span class="divar-estimate-chip-value">${formatCarPrice(estimate.minPrice)}</span>
+          <span class="divar-estimate-chip-unit">تومان</span>
         </div>
         <div class="divar-estimate-chip">
-          <span class="divar-estimate-chip-label">حداکثر منصفانه</span>
+          <span class="divar-estimate-chip-label">حداکثر کارنامه</span>
           <span class="divar-estimate-chip-value">${formatCarPrice(estimate.maxPrice)}</span>
+          <span class="divar-estimate-chip-unit">تومان</span>
         </div>
       </div>
       <div class="divar-estimate-verdict ${verdictToneClass(estimate.verdict)}">
-        نتیجه تخمین: <strong>${escapeHtml(estimate.verdict)}</strong>
+        نتیجه تخمین کارنامه: <strong>${escapeHtml(estimate.verdict)}</strong>
       </div>
-      <p class="divar-estimate-hint">بر اساس مشخصات آگهی دیوار و تخمین قیمت کارنامه</p>
+      ${similarHint}
     </article>
   `;
 }

@@ -97,6 +97,8 @@ const OBFUSCATOR_OPTIONS = {
     "is-loading",
     "httpGetAsync",
     "__onAndroidHttpGet",
+    "__androidHttpGet",
+    "__androidHttpPending",
     "estimateFromDivarUrl",
     "renderDivarEstimateResult",
     "getDivarAdData",

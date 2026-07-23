@@ -1,4 +1,89 @@
 export const androidUpdateBridgeScript = `(function () {
+    // Non-obfuscated Android HTTP bridge (must stay outside the obfuscated main script
+    // so Kotlin can reliably call window.__onAndroidHttpGet).
+    window.__androidHttpPending = window.__androidHttpPending || {};
+
+    function decodeAndroidHttpBody(payload) {
+      if (payload == null) return "";
+      var text = String(payload);
+      if (text.indexOf("b64:") !== 0) return text;
+      var b64 = text.slice(4);
+      var bin = atob(b64);
+      if (typeof TextDecoder !== "undefined") {
+        var bytes = new Uint8Array(bin.length);
+        for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        return new TextDecoder("utf-8").decode(bytes);
+      }
+      try {
+        return decodeURIComponent(escape(bin));
+      } catch (_e) {
+        return bin;
+      }
+    }
+
+    window.__onAndroidHttpGet = function (requestId, payload) {
+      var entry = window.__androidHttpPending[String(requestId)];
+      if (!entry) return;
+      delete window.__androidHttpPending[String(requestId)];
+      try {
+        entry.resolve(decodeAndroidHttpBody(payload));
+      } catch (error) {
+        if (entry.reject) entry.reject(error);
+        else entry.resolve("");
+      }
+    };
+
+    window.__androidHttpGet = function (url) {
+      return new Promise(function (resolve, reject) {
+        if (typeof AndroidApp === "undefined") {
+          reject(new Error("پل اندروید در دسترس نیست"));
+          return;
+        }
+
+        if (typeof AndroidApp.httpGetAsync === "function") {
+          var requestId = "http_" + Date.now() + "_" + Math.random().toString(16).slice(2);
+          var settled = false;
+          var timer = setTimeout(function () {
+            if (settled) return;
+            settled = true;
+            delete window.__androidHttpPending[requestId];
+            reject(new Error("اتصال به سرور زمان‌بر شد. لطفاً دوباره تلاش کنید"));
+          }, 60000);
+
+          window.__androidHttpPending[requestId] = {
+            resolve: function (body) {
+              if (settled) return;
+              settled = true;
+              clearTimeout(timer);
+              resolve(body);
+            },
+            reject: function (error) {
+              if (settled) return;
+              settled = true;
+              clearTimeout(timer);
+              reject(error);
+            },
+          };
+
+          try {
+            AndroidApp.httpGetAsync(String(url), requestId);
+          } catch (error) {
+            settled = true;
+            clearTimeout(timer);
+            delete window.__androidHttpPending[requestId];
+            reject(error);
+          }
+          return;
+        }
+
+        try {
+          resolve(AndroidApp.httpGet(String(url)));
+        } catch (error) {
+          reject(error);
+        }
+      });
+    };
+
     const UPDATE_CHECK_INTERVAL_MS = 5 * 60 * 1000;
     let audioCtx = null;
     const UPDATE_SUCCESS_SOUND_KEY = "market-prices-play-update-success";

@@ -389,8 +389,13 @@ class MainActivity : Activity() {
                 } catch (error: Exception) {
                     httpErrorJson(error)
                 }
+                // Base64 avoids evaluateJavascript breakage on large/Unicode JSON (e.g. Divar ads).
+                val encoded = "b64:" + Base64.encodeToString(
+                    body.toByteArray(Charsets.UTF_8),
+                    Base64.NO_WRAP,
+                )
                 runOnUiThread {
-                    val payload = JSONObject.quote(body)
+                    val payload = JSONObject.quote(encoded)
                     val id = JSONObject.quote(requestId)
                     webView.evaluateJavascript(
                         "window.__onAndroidHttpGet && window.__onAndroidHttpGet($id, $payload);",
