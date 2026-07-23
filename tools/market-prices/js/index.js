@@ -159,6 +159,50 @@ function isAndroidStandalone() {
   return typeof AndroidApp !== "undefined";
 }
 
+/** Pending async httpGetAsync callbacks keyed by request id. */
+const androidHttpPending = new Map();
+let androidHttpSeq = 0;
+
+if (typeof window !== "undefined") {
+  window.__onAndroidHttpGet = function (requestId, body) {
+    const entry = androidHttpPending.get(String(requestId));
+    if (!entry) return;
+    androidHttpPending.delete(String(requestId));
+    entry.resolve(body);
+  };
+}
+
+/**
+ * Prefer non-blocking httpGetAsync so the WebView UI (loading spinner) stays responsive.
+ * Falls back to synchronous httpGet on older APKs.
+ */
+function androidHttpGet(url) {
+  if (typeof AndroidApp.httpGetAsync === "function") {
+    return new Promise((resolve, reject) => {
+      const requestId = `http_${Date.now()}_${++androidHttpSeq}`;
+      const timer = setTimeout(() => {
+        if (!androidHttpPending.has(requestId)) return;
+        androidHttpPending.delete(requestId);
+        reject(new Error("اتصال به سرور زمان‌بر شد. لطفاً دوباره تلاش کنید"));
+      }, 120_000);
+      androidHttpPending.set(requestId, {
+        resolve: (body) => {
+          clearTimeout(timer);
+          resolve(body);
+        },
+      });
+      try {
+        AndroidApp.httpGetAsync(url, requestId);
+      } catch (error) {
+        clearTimeout(timer);
+        androidHttpPending.delete(requestId);
+        reject(error);
+      }
+    });
+  }
+  return Promise.resolve(AndroidApp.httpGet(url));
+}
+
 async function fetchBamaViaAllOrigins(url) {
   const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
   const response = await fetch(proxyUrl, { cache: "no-store" });
@@ -170,7 +214,7 @@ async function fetchBamaViaAllOrigins(url) {
 }
 
 async function fetchBamaPricePageFromBridge(url) {
-  const raw = AndroidApp.httpGet(url);
+  const raw = await androidHttpGet(url);
   if (!raw) throw new Error("پاسخ سرور باما نامعتبر بود");
 
   const payload = JSON.parse(raw);
@@ -387,7 +431,7 @@ async function fetchHttpText(url) {
   }
 
   if (isAndroidStandalone() && AndroidApp && typeof AndroidApp.httpGet !== "undefined") {
-    const raw = AndroidApp.httpGet(target);
+    const raw = await androidHttpGet(target);
     if (!raw) throw new Error("پاسخ سرور خالی بود");
     const trimmed = raw.trimStart();
     if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
@@ -880,6 +924,8 @@ function initMarketPrices() {
     if (divarEstimateBtnEl) {
       divarEstimateBtnEl.disabled = loading;
       divarEstimateBtnEl.classList.toggle("is-loading", loading);
+      const label = divarEstimateBtnEl.querySelector(".divar-estimate-btn-label");
+      if (label) label.textContent = loading ? "صبر کنید..." : "تخمین";
     }
     if (divarUrlInputEl) divarUrlInputEl.disabled = loading;
   }
@@ -898,6 +944,10 @@ function initMarketPrices() {
       divarEstimateResultEl.innerHTML = "";
     }
     setDivarEstimateStatus("در حال خواندن آگهی و تخمین قیمت...", false, true);
+
+    // AndroidApp.httpGet is synchronous and blocks the JS thread.
+    // Yield so the loading spinner can paint before the network call starts.
+    await new Promise((resolve) => setTimeout(resolve, 80));
 
     try {
       const result = await estimateFromDivarUrl(url);

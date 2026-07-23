@@ -44,7 +44,7 @@ export const androidPageBody = `<div class="app market-root">
         <label class="divar-estimate-label" for="divarUrlInput">تخمین قیمت از آگهی دیوار</label>
         <div class="divar-estimate-row">
           <input id="divarUrlInput" type="url" inputmode="url" autocomplete="off" placeholder="لینک آگهی خودرو در دیوار را بچسبانید..." class="divar-estimate-input" />
-          <button id="divarEstimateBtn" type="button" class="divar-estimate-btn"><span class="divar-estimate-btn-spinner" aria-hidden="true"></span><span>تخمین</span></button>
+          <button id="divarEstimateBtn" type="button" class="divar-estimate-btn"><span class="divar-estimate-btn-spinner" aria-hidden="true"></span><span class="divar-estimate-btn-label">تخمین</span></button>
         </div>
         <p id="divarEstimateStatus" class="divar-estimate-status hidden"></p>
         <div id="divarEstimateResult" class="divar-estimate-result hidden"></div>
@@ -757,17 +757,21 @@ export const androidExtraStyles = `
 
     .divar-estimate-btn-spinner {
       display: none;
-      width: 12px;
-      height: 12px;
+      width: 14px;
+      height: 14px;
       border: 2px solid color-mix(in srgb, var(--accent-fg) 35%, transparent);
       border-top-color: var(--accent-fg);
       border-radius: 50%;
-      animation: spin 0.8s linear infinite;
+      animation: spin 0.75s linear infinite;
       flex-shrink: 0;
     }
 
     .divar-estimate-btn.is-loading .divar-estimate-btn-spinner {
       display: inline-block;
+    }
+
+    .divar-estimate-btn.is-loading {
+      min-width: 7.5rem;
     }
 
     .divar-estimate-status {
@@ -779,18 +783,23 @@ export const androidExtraStyles = `
     .divar-estimate-status.is-loading {
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 8px;
       color: var(--accent);
+      font-weight: 600;
+      padding: 8px 10px;
+      border-radius: 10px;
+      background: color-mix(in srgb, var(--accent) 12%, transparent);
+      border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
     }
 
     .divar-estimate-status.is-loading::before {
       content: "";
-      width: 12px;
-      height: 12px;
+      width: 14px;
+      height: 14px;
       border: 2px solid color-mix(in srgb, var(--accent) 30%, transparent);
       border-top-color: var(--accent);
       border-radius: 50%;
-      animation: spin 0.8s linear infinite;
+      animation: spin 0.75s linear infinite;
       flex-shrink: 0;
     }
 
@@ -1118,6 +1127,8 @@ export const androidStandaloneUiPatch = `
       if (divarEstimateBtnEl) {
         divarEstimateBtnEl.disabled = loading;
         divarEstimateBtnEl.classList.toggle("is-loading", loading);
+        const label = divarEstimateBtnEl.querySelector(".divar-estimate-btn-label");
+        if (label) label.textContent = loading ? "صبر کنید..." : "تخمین";
       }
       if (divarUrlInputEl) divarUrlInputEl.disabled = loading;
     }
@@ -1137,22 +1148,26 @@ export const androidStandaloneUiPatch = `
       }
       setDivarEstimateStatus("در حال خواندن آگهی و تخمین قیمت...", false, true);
 
-      Promise.resolve(estimateFromDivarUrl(url))
-        .then(function (result) {
-          if (divarEstimateResultEl) {
-            divarEstimateResultEl.innerHTML = renderDivarEstimateResult(result);
-            divarEstimateResultEl.classList.remove("hidden");
-          }
-          setDivarEstimateStatus("", false);
-          if (divarUrlInputEl) divarUrlInputEl.value = "";
-        })
-        .catch(function (error) {
-          console.error("Divar estimate error:", error);
-          setDivarEstimateStatus((error && error.message) || "تخمین قیمت ممکن نشد", true);
-        })
-        .finally(function () {
-          setDivarEstimateLoading(false);
-        });
+      // AndroidApp.httpGet is synchronous and blocks the JS thread.
+      // Yield so the loading spinner can paint before the network call starts.
+      setTimeout(function () {
+        Promise.resolve(estimateFromDivarUrl(url))
+          .then(function (result) {
+            if (divarEstimateResultEl) {
+              divarEstimateResultEl.innerHTML = renderDivarEstimateResult(result);
+              divarEstimateResultEl.classList.remove("hidden");
+            }
+            setDivarEstimateStatus("", false);
+            if (divarUrlInputEl) divarUrlInputEl.value = "";
+          })
+          .catch(function (error) {
+            console.error("Divar estimate error:", error);
+            setDivarEstimateStatus((error && error.message) || "تخمین قیمت ممکن نشد", true);
+          })
+          .finally(function () {
+            setDivarEstimateLoading(false);
+          });
+      }, 80);
     }
 
     function handleSharePricesClick() {

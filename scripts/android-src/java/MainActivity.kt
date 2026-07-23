@@ -372,11 +372,47 @@ class MainActivity : Activity() {
             return try {
                 BamaNetwork.fetchText(url)
             } catch (error: Exception) {
-                JSONObject().apply {
-                    put("__error", true)
-                    put("message", error.message ?: "خطا در دریافت")
-                }.toString()
+                httpErrorJson(error)
             }
+        }
+
+        /**
+         * Non-blocking HTTP GET for WebView: runs on a background thread and
+         * delivers the result via window.__onAndroidHttpGet(requestId, body).
+         * Keeps the JS thread free so loading spinners can animate.
+         */
+        @JavascriptInterface
+        fun httpGetAsync(url: String, requestId: String) {
+            Thread {
+                val body = try {
+                    BamaNetwork.fetchText(url)
+                } catch (error: Exception) {
+                    httpErrorJson(error)
+                }
+                runOnUiThread {
+                    val payload = JSONObject.quote(body)
+                    val id = JSONObject.quote(requestId)
+                    webView.evaluateJavascript(
+                        "window.__onAndroidHttpGet && window.__onAndroidHttpGet($id, $payload);",
+                        null,
+                    )
+                }
+            }.start()
+        }
+
+        private fun httpErrorJson(error: Exception): String {
+            val raw = error.message ?: "خطا در دریافت"
+            val message = when {
+                raw.contains("timeout", ignoreCase = true) ||
+                    raw.contains("timed out", ignoreCase = true) ||
+                    error is java.net.SocketTimeoutException ->
+                    "اتصال به سرور زمان‌بر شد. لطفاً دوباره تلاش کنید"
+                else -> raw
+            }
+            return JSONObject().apply {
+                put("__error", true)
+                put("message", message)
+            }.toString()
         }
 
         @JavascriptInterface
@@ -583,8 +619,9 @@ class MainActivity : Activity() {
 
             return (URL(url).openConnection() as HttpURLConnection).apply {
                 requestMethod = "GET"
-                connectTimeout = 15_000
-                readTimeout = 30_000
+                // Divar/Karnameh can be slow on mobile networks in Iran
+                connectTimeout = 45_000
+                readTimeout = 90_000
                 instanceFollowRedirects = true
                 setRequestProperty("Accept", accept)
                 setRequestProperty("User-Agent", USER_AGENT)
