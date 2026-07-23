@@ -49,6 +49,17 @@
         </div>
 
         <div id="market-view-cars" class="market-view hidden flex flex-col flex-1 min-h-0 gap-2">
+            <div class="divar-estimate-wrap">
+                <label class="divar-estimate-label" for="divar-url-input">تخمین قیمت از آگهی دیوار</label>
+                <div class="divar-estimate-row">
+                    <input id="divar-url-input" type="url" inputmode="url" autocomplete="off"
+                        placeholder="لینک آگهی خودرو در دیوار را بچسبانید..." class="divar-estimate-input" />
+                    <button id="divar-estimate-btn" type="button" class="divar-estimate-btn">تخمین</button>
+                </div>
+                <p id="divar-estimate-status" class="divar-estimate-status hidden"></p>
+                <div id="divar-estimate-result" class="divar-estimate-result hidden"></div>
+            </div>
+
             <div class="cars-search-wrap">
                 <input id="cars-search" type="search" inputmode="search" autocomplete="off"
                     placeholder="جستجو برند یا مدل..." class="cars-search-input" />

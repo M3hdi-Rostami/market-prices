@@ -40,6 +40,16 @@ export const androidPageBody = `<div class="app market-root">
     </div>
 
     <div id="view-cars" class="market-view hidden">
+      <div class="divar-estimate-wrap">
+        <label class="divar-estimate-label" for="divarUrlInput">تخمین قیمت از آگهی دیوار</label>
+        <div class="divar-estimate-row">
+          <input id="divarUrlInput" type="url" inputmode="url" autocomplete="off" placeholder="لینک آگهی خودرو در دیوار را بچسبانید..." class="divar-estimate-input" />
+          <button id="divarEstimateBtn" type="button" class="divar-estimate-btn">تخمین</button>
+        </div>
+        <p id="divarEstimateStatus" class="divar-estimate-status hidden"></p>
+        <div id="divarEstimateResult" class="divar-estimate-result hidden"></div>
+      </div>
+
       <div class="cars-search-wrap">
         <input id="carsSearch" type="search" inputmode="search" autocomplete="off" placeholder="جستجو برند یا مدل..." class="cars-search-input" />
       </div>
@@ -669,6 +679,168 @@ export const androidExtraStyles = `
       flex-shrink: 0;
     }
 
+    .divar-estimate-wrap {
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: color-mix(in srgb, var(--surface-2) 45%, var(--surface));
+    }
+
+    .divar-estimate-label {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .divar-estimate-row {
+      display: flex;
+      gap: 8px;
+      align-items: stretch;
+    }
+
+    .divar-estimate-input {
+      flex: 1;
+      min-width: 0;
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--surface);
+      color: var(--text);
+      font-family: inherit;
+      font-size: 12px;
+      outline: none;
+      direction: ltr;
+      text-align: left;
+    }
+
+    .divar-estimate-input::placeholder {
+      color: var(--muted-2);
+      direction: rtl;
+      text-align: right;
+    }
+
+    .divar-estimate-input:focus {
+      border-color: var(--accent);
+    }
+
+    .divar-estimate-btn {
+      flex-shrink: 0;
+      padding: 0 14px;
+      border: none;
+      border-radius: 10px;
+      background: var(--accent);
+      color: #fff;
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .divar-estimate-btn:disabled {
+      opacity: 0.6;
+      cursor: default;
+    }
+
+    .divar-estimate-status {
+      margin: 0;
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .divar-estimate-status.is-error {
+      color: #f87171;
+    }
+
+    .divar-estimate-result {
+      min-width: 0;
+    }
+
+    .divar-estimate-card {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--surface);
+    }
+
+    .divar-estimate-title {
+      margin: 0;
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1.4;
+      color: var(--text);
+    }
+
+    .divar-estimate-subtitle {
+      margin: 4px 0 0;
+      font-size: 11px;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+
+    .divar-estimate-prices {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    .divar-estimate-chip {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding: 8px;
+      border-radius: 10px;
+      background: color-mix(in srgb, var(--surface-2) 70%, transparent);
+    }
+
+    .divar-estimate-chip-label {
+      font-size: 10px;
+      color: var(--muted);
+    }
+
+    .divar-estimate-chip-value {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .divar-estimate-verdict {
+      font-size: 12px;
+      font-weight: 600;
+      text-align: center;
+      padding: 8px;
+      border-radius: 10px;
+    }
+
+    .divar-estimate-verdict.is-cheap {
+      background: color-mix(in srgb, #22c55e 18%, transparent);
+      color: #4ade80;
+    }
+
+    .divar-estimate-verdict.is-expensive {
+      background: color-mix(in srgb, #ef4444 18%, transparent);
+      color: #f87171;
+    }
+
+    .divar-estimate-verdict.is-fair {
+      background: color-mix(in srgb, #eab308 18%, transparent);
+      color: #facc15;
+    }
+
+    .divar-estimate-hint {
+      margin: 0;
+      font-size: 10px;
+      color: var(--muted-2);
+      text-align: center;
+    }
+
     .cars-search-input {
       width: 100%;
       padding: 8px 12px;
@@ -868,6 +1040,10 @@ export const androidStandaloneUiPatch = `
     const alertsThresholdEl = document.getElementById("alertsThreshold");
     const priceToastEl = document.getElementById("priceToast");
     const sharePricesBtn = document.getElementById("sharePricesBtn");
+    const divarUrlInputEl = document.getElementById("divarUrlInput");
+    const divarEstimateBtnEl = document.getElementById("divarEstimateBtn");
+    const divarEstimateStatusEl = document.getElementById("divarEstimateStatus");
+    const divarEstimateResultEl = document.getElementById("divarEstimateResult");
 
     let activeMarketTab = "currency";
     let carRows = [];
@@ -877,6 +1053,54 @@ export const androidStandaloneUiPatch = `
     let previousPricesSnapshot = null;
     let toastHideTimer = null;
     let shareCardBusy = false;
+    let divarEstimateBusy = false;
+
+    function setDivarEstimateStatus(message, isError) {
+      if (!divarEstimateStatusEl) return;
+      if (!message) {
+        divarEstimateStatusEl.classList.add("hidden");
+        divarEstimateStatusEl.textContent = "";
+        divarEstimateStatusEl.classList.remove("is-error");
+        return;
+      }
+      divarEstimateStatusEl.textContent = message;
+      divarEstimateStatusEl.classList.toggle("is-error", !!isError);
+      divarEstimateStatusEl.classList.remove("hidden");
+    }
+
+    function handleDivarEstimateClick() {
+      if (divarEstimateBusy) return;
+      const url = divarUrlInputEl ? divarUrlInputEl.value.trim() : "";
+      if (!url) {
+        setDivarEstimateStatus("لینک آگهی دیوار را وارد کنید", true);
+        return;
+      }
+
+      divarEstimateBusy = true;
+      if (divarEstimateBtnEl) divarEstimateBtnEl.disabled = true;
+      if (divarEstimateResultEl) {
+        divarEstimateResultEl.classList.add("hidden");
+        divarEstimateResultEl.innerHTML = "";
+      }
+      setDivarEstimateStatus("در حال خواندن آگهی و تخمین قیمت...", false);
+
+      Promise.resolve(estimateFromDivarUrl(url))
+        .then(function (result) {
+          if (divarEstimateResultEl) {
+            divarEstimateResultEl.innerHTML = renderDivarEstimateResult(result);
+            divarEstimateResultEl.classList.remove("hidden");
+          }
+          setDivarEstimateStatus("", false);
+        })
+        .catch(function (error) {
+          console.error("Divar estimate error:", error);
+          setDivarEstimateStatus((error && error.message) || "تخمین قیمت ممکن نشد", true);
+        })
+        .finally(function () {
+          divarEstimateBusy = false;
+          if (divarEstimateBtnEl) divarEstimateBtnEl.disabled = false;
+        });
+    }
 
     function handleSharePricesClick() {
       if (shareCardBusy) return;
@@ -1238,6 +1462,18 @@ export const androidStandaloneUiPatch = `
 
     if (sharePricesBtn) {
       sharePricesBtn.addEventListener("click", handleSharePricesClick);
+    }
+
+    if (divarEstimateBtnEl) {
+      divarEstimateBtnEl.addEventListener("click", handleDivarEstimateClick);
+    }
+    if (divarUrlInputEl) {
+      divarUrlInputEl.addEventListener("keydown", function (event) {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          handleDivarEstimateClick();
+        }
+      });
     }
 
     navButtons.forEach(function (button) {

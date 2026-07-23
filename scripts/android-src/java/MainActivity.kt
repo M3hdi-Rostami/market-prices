@@ -463,19 +463,43 @@ class MainActivity : Activity() {
             "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/120.0.0.0 Mobile Safari/537.36"
 
         fun isAllowedUrl(url: String): Boolean {
-            val parsed = Uri.parse(url)
-            val host = parsed.host.orEmpty()
-            return parsed.scheme == "https" &&
-                (host == "bama.ir" || host.endsWith(".bama.ir")) &&
-                parsed.path?.startsWith("/cad/api/") == true
+            val normalized = url.trim()
+            val parsed = Uri.parse(normalized)
+            if (parsed.scheme != "https") return false
+
+            val host = parsed.host.orEmpty().lowercase()
+            val path = parsed.path.orEmpty()
+
+            if (host == "bama.ir" || host.endsWith(".bama.ir")) {
+                return path.startsWith("/cad/api/")
+            }
+
+            // Divar listing API (+ any future divar CDN/API hosts used by the bridge)
+            if (host == "divar.ir" || host == "api.divar.ir" || host.endsWith(".divar.ir")) {
+                return true
+            }
+
+            // Karnama estimate pages and Next.js data endpoints
+            if (host == "karnameh.com" || host.endsWith(".karnameh.com")) {
+                return true
+            }
+
+            if (host == "api-gw.karnameh.com") {
+                return path.startsWith("/priceestimator/")
+            }
+
+            return false
         }
 
         fun fetchText(url: String): String {
-            if (!isAllowedUrl(url)) {
-                throw IllegalArgumentException("آدرس مجاز نیست")
+            val normalized = url.trim()
+            if (!isAllowedUrl(normalized)) {
+                val host = Uri.parse(normalized).host.orEmpty().ifBlank { "?" }
+                val preview = if (normalized.length > 120) normalized.take(120) + "…" else normalized
+                throw IllegalArgumentException("آدرس مجاز نیست [$host] $preview")
             }
 
-            val connection = openConnection(url)
+            val connection = openConnection(normalized)
             try {
                 val code = connection.responseCode
                 val body = readBody(connection, code)
@@ -507,8 +531,18 @@ class MainActivity : Activity() {
                     val code = connection.responseCode
                     val body = readBody(connection, code).toByteArray(Charsets.UTF_8)
                     val headers = corsHeaders()
+                    val mime = if (
+                        url.contains("/_next/data/") ||
+                        url.contains("api.divar.ir") ||
+                        url.contains("api-gw.karnameh.com") ||
+                        url.contains("/cad/api/")
+                    ) {
+                        "application/json"
+                    } else {
+                        "text/html"
+                    }
                     WebResourceResponse(
-                        "application/json",
+                        mime,
                         "UTF-8",
                         if (code in 200..299) 200 else code,
                         if (code in 200..299) "OK" else "Error",
@@ -527,19 +561,38 @@ class MainActivity : Activity() {
             return HashMap<String, String>().apply {
                 put("Access-Control-Allow-Origin", "*")
                 put("Access-Control-Allow-Methods", "GET, OPTIONS")
-                put("Access-Control-Allow-Headers", "Accept, Content-Type")
+                put("Access-Control-Allow-Headers", "Accept, Content-Type, Accept-Language")
             }
         }
 
         private fun openConnection(url: String): HttpURLConnection {
+            val host = Uri.parse(url).host.orEmpty().lowercase()
+            val accept = when {
+                host == "api-gw.karnameh.com" -> "application/json"
+                host == "karnameh.com" || host.endsWith(".karnameh.com") -> {
+                    if (url.contains("/_next/data/")) "application/json" else "text/html,application/xhtml+xml"
+                }
+                else -> "application/json"
+            }
+            val referer = when {
+                host == "divar.ir" || host == "api.divar.ir" || host.endsWith(".divar.ir") -> "https://divar.ir/"
+                host == "api-gw.karnameh.com" || host == "karnameh.com" || host.endsWith(".karnameh.com") ->
+                    "https://karnameh.com/car-price/used-car"
+                else -> "https://bama.ir/price"
+            }
+
             return (URL(url).openConnection() as HttpURLConnection).apply {
                 requestMethod = "GET"
                 connectTimeout = 15_000
                 readTimeout = 30_000
                 instanceFollowRedirects = true
-                setRequestProperty("Accept", "application/json")
+                setRequestProperty("Accept", accept)
                 setRequestProperty("User-Agent", USER_AGENT)
-                setRequestProperty("Referer", "https://bama.ir/price")
+                setRequestProperty("Accept-Language", "fa-IR,fa;q=0.9,en-US;q=0.8,en;q=0.7")
+                setRequestProperty("Referer", referer)
+                if (host == "api-gw.karnameh.com") {
+                    setRequestProperty("Origin", "https://karnameh.com")
+                }
             }
         }
 
