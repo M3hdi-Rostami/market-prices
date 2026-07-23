@@ -119,7 +119,27 @@ function publishApkMetadata(version, sha256) {
     console.warn(`No git remote in ${RELEASE_DIR_NAME}/ — metadata committed locally only.`);
   }
 
-  runGit(["add", "market-prices-app-version.json", "market-prices.html", "fonts/Vazir-FD.ttf"]);
+  // Force-add: these generated assets are gitignored in the source tree but must
+  // be published on main for in-app update checks (raw.githubusercontent.com).
+  runGit([
+    "add",
+    "-f",
+    "market-prices-app-version.json",
+    "market-prices.html",
+    "fonts/Vazir-FD.ttf",
+  ]);
+
+  // Remove legacy offline car-prices cache if it was previously published.
+  const releaseCarPrices = path.join(releaseDir, "car-prices.json");
+  if (fs.existsSync(releaseCarPrices)) {
+    fs.unlinkSync(releaseCarPrices);
+    try {
+      runGit(["rm", "-f", "car-prices.json"], { quiet: true });
+    } catch {
+      // File may already be untracked.
+    }
+  }
+
   const pending = runGit(["status", "--porcelain"], { quiet: true });
   if (!pending) {
     console.log("No metadata/content changes to commit in release repo.");

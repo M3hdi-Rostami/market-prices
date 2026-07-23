@@ -6,7 +6,7 @@ Previously lived inside `super-extension`; this repo owns the WebView UI, Kotlin
 
 ## Requirements
 
-- Node.js 18+
+- Node.js 24.16+
 - First-time Android deps (cached under `android/.tools/`):
 
 ```bash
@@ -17,7 +17,7 @@ npm run bootstrap:apk   # use VPN if Google Maven is blocked
 ## Common commands
 
 ```bash
-# Build obfuscated market-prices.html (+ car-prices.json)
+# Build obfuscated market-prices.html
 npm run build
 
 # Build signed/debug APK → android/market-prices.apk

@@ -10,7 +10,7 @@ const packageJsonPath = path.join(rootDir, "package.json");
 /** GitHub repo that hosts raw market-prices-app-version.json for in-app updates. */
 export const APP_UPDATE_REPO = {
   repoOwner: "M3hdi-Rostami",
-  repoName: "chrome-extension-tools",
+  repoName: "market-prices",
   branch: "main",
 };
 

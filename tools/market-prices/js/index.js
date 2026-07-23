@@ -159,21 +159,6 @@ function isAndroidStandalone() {
   return typeof AndroidApp !== "undefined";
 }
 
-function getCarPricesReleaseUrl() {
-  if (typeof APP_UPDATE_CONFIG === "undefined" || !APP_UPDATE_CONFIG.repoOwner) {
-    return null;
-  }
-
-  const branch = APP_UPDATE_CONFIG.branch || "main";
-  return `https://raw.githubusercontent.com/${APP_UPDATE_CONFIG.repoOwner}/${APP_UPDATE_CONFIG.repoName}/${branch}/car-prices.json`;
-}
-
-async function fetchJsonNoCache(url) {
-  const response = await fetch(url, { cache: "no-store" });
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
-  return response.json();
-}
-
 async function fetchBamaViaAllOrigins(url) {
   const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
   const response = await fetch(proxyUrl, { cache: "no-store" });
@@ -250,38 +235,8 @@ async function fetchBamaCarPricesLive() {
   };
 }
 
-async function fetchAndroidCarPricesCache() {
-  const releaseUrl = getCarPricesReleaseUrl();
-  if (releaseUrl) {
-    try {
-      const data = await fetchJsonNoCache(`${releaseUrl}?t=${Date.now()}`);
-      if (data?.rows?.length) {
-        return {
-          rows: data.rows,
-          lastUpdate: data.lastUpdate || data.fetchedAt || "—",
-        };
-      }
-    } catch (error) {
-      console.warn("Release car-prices.json fetch failed:", error);
-    }
-  }
-
-  if (
-    typeof ANDROID_CAR_PRICES_CACHE !== "undefined" &&
-    ANDROID_CAR_PRICES_CACHE?.rows?.length
-  ) {
-    return ANDROID_CAR_PRICES_CACHE;
-  }
-
-  return null;
-}
-
 async function fetchBamaCarPrices() {
-  if (isAndroidStandalone()) {
-    const cached = await fetchAndroidCarPricesCache();
-    if (cached) return cached;
-  }
-
+  // Always fetch live from bama.ir (Android uses native httpGet bridge).
   return fetchBamaCarPricesLive();
 }
 
@@ -389,7 +344,7 @@ async function buildMarketPricesShareCard(current) {
   }).filter(Boolean);
 
   if (!rows.length) {
-    throw new Error("قیمتی برای اشتراک موجود نیست");
+    throw new Error("قیمتی برای ساخت تصویر اشتراک موجود نیست");
   }
 
   try {
@@ -601,10 +556,10 @@ function initMarketPrices() {
     if (sharePricesBtn) sharePricesBtn.disabled = true;
     try {
       await shareMarketPricesCard(latestMarketPrices);
-      showPriceToast("کارت قیمت آماده اشتراک شد");
+      showPriceToast("تصویر قیمت آماده اشتراک شد");
     } catch (error) {
       console.error("Share card error:", error);
-      showPriceToast(error?.message || "اشتراک کارت قیمت ممکن نشد");
+      showPriceToast(error?.message || "اشتراک‌گذاری تصویر قیمت ممکن نشد");
     } finally {
       shareCardBusy = false;
       if (sharePricesBtn) sharePricesBtn.disabled = false;

@@ -442,7 +442,7 @@ class MainActivity : Activity() {
             putExtra(Intent.EXTRA_TEXT, "قیمت لحظه‌ای دلار و طلا")
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
-        startActivity(Intent.createChooser(shareIntent, "اشتراک کارت قیمت"))
+        startActivity(Intent.createChooser(shareIntent, "اشتراک‌گذاری تصویر قیمت"))
     }
 
     @Deprecated("Deprecated in Java")

@@ -9,7 +9,7 @@ const versionFilePath = path.join(__dirname, "android-apk-version.json");
 
 const DEFAULT_REPO = {
   repoOwner: "M3hdi-Rostami",
-  repoName: "chrome-extension-tools",
+  repoName: "market-prices",
 };
 
 export function getAndroidApkVersion() {

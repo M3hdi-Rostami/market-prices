@@ -118,7 +118,6 @@ async function copyHtmlToAssets() {
   await buildMarketPricesPage();
   fs.mkdirSync(assetsDir, { recursive: true });
   fs.copyFileSync(path.join(rootDir, "market-prices.html"), assetHtmlPath);
-  fs.copyFileSync(path.join(rootDir, "car-prices.json"), path.join(assetsDir, "car-prices.json"));
   writeMarketPricesAppVersion([assetVersionPath]);
 
   if (!fs.existsSync(sourceFontPath)) {

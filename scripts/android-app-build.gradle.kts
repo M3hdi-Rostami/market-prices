@@ -23,8 +23,8 @@ android {
         applicationId = "ir.superextension.marketprices"
         minSdk = 24
         targetSdk = 34
-        versionCode = 3
-        versionName = "1.1.0"
+        versionCode = 1
+        versionName = "1.0.0"
     }
 
     signingConfigs {
