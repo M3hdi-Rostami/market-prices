@@ -300,6 +300,14 @@ export const androidExtraStyles = `
       gap: 8px;
     }
 
+    #view-cars.market-view {
+      overflow-y: auto;
+      overflow-x: hidden;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+      padding-bottom: 8px;
+    }
+
     .market-view.hidden {
       display: none !important;
     }
@@ -814,59 +822,400 @@ export const androidExtraStyles = `
     .divar-estimate-card {
       display: flex;
       flex-direction: column;
-      gap: 10px;
-      padding: 12px;
+      gap: 14px;
+      padding: 14px 12px 12px;
       border: 1px solid var(--border);
-      border-radius: 12px;
+      border-radius: 14px;
       background: var(--surface);
+      position: relative;
     }
 
-    .divar-estimate-title {
-      margin: 0;
+    .estimate-dismiss-btn {
+      position: absolute;
+      top: 8px;
+      left: 8px;
+      z-index: 2;
+      width: 32px;
+      height: 32px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: color-mix(in srgb, var(--surface-2) 80%, transparent);
+      color: var(--muted);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      cursor: pointer;
+    }
+
+    .estimate-dismiss-btn svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .estimate-dismiss-btn:hover {
+      color: var(--text);
+      border-color: var(--border-strong);
+    }
+
+    .estimate-dismiss-btn:active {
+      transform: scale(0.96);
+    }
+
+    .estimate-vehicle {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .estimate-car-image {
+      width: min(72%, 220px);
+      height: auto;
+      max-height: 110px;
+      object-fit: contain;
+      display: block;
+    }
+
+    .estimate-car-image-fallback {
+      width: 120px;
+      height: 72px;
+      border-radius: 10px;
+      background:
+        linear-gradient(135deg, color-mix(in srgb, var(--surface-2) 80%, transparent), var(--surface-2));
+    }
+
+    .estimate-specs {
+      width: 100%;
+      display: grid;
+      grid-template-columns: 1fr auto 1fr auto 1fr;
+      align-items: center;
+      gap: 0;
+    }
+
+    .estimate-spec-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      text-align: center;
+      min-width: 0;
+      padding: 0 4px;
+    }
+
+    .estimate-spec-primary {
       font-size: 13px;
       font-weight: 700;
-      line-height: 1.4;
+      color: var(--text);
+      line-height: 1.35;
+    }
+
+    .estimate-spec-secondary {
+      font-size: 11px;
+      color: var(--muted);
+      line-height: 1.35;
+    }
+
+    .estimate-spec-divider {
+      width: 1px;
+      height: 28px;
+      background: var(--border);
+      opacity: 0.9;
+    }
+
+    .estimate-location {
+      margin: 0;
+      font-size: 11px;
+      color: var(--muted-2);
+      text-align: center;
+    }
+
+    .estimate-range {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding-top: 4px;
+    }
+
+    .estimate-range-prices {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: end;
+      gap: 6px;
+      min-height: 44px;
+    }
+
+    .estimate-range-side {
+      font-size: 11px;
+      color: var(--muted);
+      line-height: 1.35;
+      white-space: nowrap;
+    }
+
+    .estimate-range-prices > .estimate-range-side:first-child {
+      justify-self: start;
+      text-align: left;
+    }
+
+    .estimate-range-prices > .estimate-range-side:last-child {
+      justify-self: end;
+      text-align: right;
+    }
+
+    .estimate-range-bubble {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 8px 12px;
+      border-radius: 12px;
+      background: color-mix(in srgb, var(--surface-2) 85%, #94a3b8 15%);
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 800;
+      line-height: 1.3;
+      white-space: nowrap;
+      box-shadow: 0 1px 0 color-mix(in srgb, var(--border) 70%, transparent);
+    }
+
+    .estimate-range-bubble::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      bottom: -6px;
+      width: 12px;
+      height: 12px;
+      transform: translateX(-50%) rotate(45deg);
+      background: inherit;
+      border-radius: 2px;
+    }
+
+    .estimate-range-bar {
+      display: flex;
+      width: 100%;
+      height: 14px;
+      border-radius: 999px;
+      overflow: hidden;
+      margin-top: 2px;
+    }
+
+    .estimate-range-seg {
+      display: block;
+      height: 100%;
+    }
+
+    .estimate-range-seg.is-min {
+      flex: 0 0 18%;
+      background: #b7e4c7;
+    }
+
+    .estimate-range-seg.is-mid {
+      flex: 1 1 auto;
+      background: #2f9e44;
+    }
+
+    .estimate-range-seg.is-max {
+      flex: 0 0 22%;
+      background: #74c69d;
+    }
+
+    .estimate-range-labels {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: #4c6ef5;
+    }
+
+    [data-theme="dark"] .estimate-range-labels {
+      color: #91a7ff;
+    }
+
+    [data-theme="light"] .market-bottom-nav {
+      background: rgba(255, 255, 255, 0.94);
+      border: 1px solid var(--border);
+      box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12);
+    }
+
+    [data-theme="light"] .market-nav-item {
+      color: var(--muted);
+    }
+
+    [data-theme="light"] .market-nav-item.active {
+      color: var(--accent);
+    }
+
+    [data-theme="light"] .price-hero-card,
+    [data-theme="light"] .divar-estimate-card,
+    [data-theme="light"] .car-price-card,
+    [data-theme="light"] .market-more-section,
+    [data-theme="light"] .divar-estimate-wrap {
+      box-shadow: var(--card-shadow, 0 1px 2px rgba(15, 23, 42, 0.05), 0 4px 14px rgba(15, 23, 42, 0.06));
+      border-color: var(--border);
+    }
+
+    [data-theme="light"] .price-hero-card {
+      background: linear-gradient(
+        160deg,
+        color-mix(in srgb, var(--accent) 10%, #ffffff) 0%,
+        #ffffff 48%,
+        var(--surface-2) 100%
+      );
+      border-color: color-mix(in srgb, var(--accent) 22%, var(--border));
+    }
+
+    [data-theme="light"] .price-hero-card-change.is-up {
+      background: #d1fae5;
+      color: #047857;
+    }
+
+    [data-theme="light"] .price-hero-card-change.is-down {
+      background: #fee2e2;
+      color: #b91c1c;
+    }
+
+    [data-theme="light"] .price-hero-card-change.is-flat {
+      background: #e2e8f0;
+      color: #475569;
+    }
+
+    [data-theme="light"] .cars-search-input,
+    [data-theme="light"] .divar-estimate-input,
+    [data-theme="light"] .market-more-input {
+      background: var(--input-bg);
+      border-color: var(--border-strong);
       color: var(--text);
     }
 
-    .divar-estimate-subtitle {
-      margin: 4px 0 0;
+    [data-theme="light"] .cars-search-input::placeholder,
+    [data-theme="light"] .divar-estimate-input::placeholder {
+      color: var(--muted-2);
+    }
+
+    [data-theme="light"] .estimate-range-bubble {
+      background: #e2e8f0;
+      color: #0f172a;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+    }
+
+    [data-theme="light"] .estimate-range-labels {
+      color: #334155;
+    }
+
+    [data-theme="light"] .estimate-range-seg.is-min {
+      background: #86efac;
+    }
+
+    [data-theme="light"] .estimate-range-seg.is-mid {
+      background: #16a34a;
+    }
+
+    [data-theme="light"] .estimate-range-seg.is-max {
+      background: #4ade80;
+    }
+
+    [data-theme="light"] .divar-estimate-verdict.is-cheap {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    [data-theme="light"] .divar-estimate-verdict.is-expensive {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    [data-theme="light"] .divar-estimate-verdict.is-fair {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    [data-theme="light"] .estimate-dismiss-btn {
+      background: #ffffff;
+      border-color: var(--border-strong);
+      color: var(--muted);
+    }
+
+    [data-theme="light"] .market-more-row {
+      border-color: var(--border);
+      background: var(--surface);
+    }
+
+    [data-theme="light"] .market-header-compact,
+    [data-theme="light"] .market-share-btn {
+      border-color: var(--border);
+    }
+
+    [data-theme="light"] .divar-estimate-btn {
+      background: var(--accent);
+      color: var(--accent-fg);
+    }
+
+    [data-theme="light"] .car-price-chip-change.is-up {
+      background: #d1fae5;
+      color: #047857;
+    }
+
+    [data-theme="light"] .car-price-chip-change.is-down {
+      background: #fee2e2;
+      color: #b91c1c;
+    }
+
+    [data-theme="light"] .car-price-chip-change.is-flat {
+      background: #e2e8f0;
+      color: #475569;
+    }
+
+    [data-theme="light"] .car-price-chip {
+      background: var(--surface-2);
+      border-color: var(--border);
+    }
+
+    [data-theme="light"] .estimate-ad-row {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+    }
+
+    .estimate-range-labels > span:first-child {
+      justify-self: start;
+      text-align: left;
+    }
+
+    .estimate-range-labels > span:last-child {
+      justify-self: end;
+      text-align: right;
+    }
+
+    .estimate-range-center-label {
+      justify-self: center;
+      text-align: center;
+      font-weight: 700;
+      color: var(--text) !important;
+      font-size: 12px;
+    }
+
+    .estimate-ad-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: color-mix(in srgb, var(--surface-2) 75%, transparent);
+    }
+
+    .estimate-ad-label {
       font-size: 11px;
       color: var(--muted);
-      line-height: 1.4;
     }
 
-    .divar-estimate-prices {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 6px;
-    }
-
-    .divar-estimate-chip {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      padding: 8px;
-      border-radius: 10px;
-      background: color-mix(in srgb, var(--surface-2) 70%, transparent);
-    }
-
-    .divar-estimate-chip-label {
-      font-size: 10px;
-      color: var(--muted);
-    }
-
-    .divar-estimate-chip-value {
+    .estimate-ad-value {
       font-size: 12px;
       font-weight: 700;
       color: var(--text);
       font-variant-numeric: tabular-nums;
-    }
-
-    .divar-estimate-chip-unit {
-      font-size: 10px;
-      color: var(--muted);
-      font-weight: 500;
     }
 
     .divar-estimate-verdict {
@@ -892,13 +1241,6 @@ export const androidExtraStyles = `
       color: #facc15;
     }
 
-    .divar-estimate-hint {
-      margin: 0;
-      font-size: 10px;
-      color: var(--muted-2);
-      text-align: center;
-    }
-
     .cars-search-input {
       width: 100%;
       padding: 8px 12px;
@@ -920,10 +1262,9 @@ export const androidExtraStyles = `
     }
 
     .cars-list-wrap {
-      flex: 1;
+      flex: 0 0 auto;
       min-height: 0;
-      overflow-y: auto;
-      overflow-x: hidden;
+      overflow: visible;
       padding-bottom: 4px;
     }
 
@@ -1139,6 +1480,14 @@ export const androidStandaloneUiPatch = `
       if (divarUrlInputEl) divarUrlInputEl.disabled = loading;
     }
 
+    function clearDivarEstimateResult() {
+      if (divarEstimateResultEl) {
+        divarEstimateResultEl.classList.add("hidden");
+        divarEstimateResultEl.innerHTML = "";
+      }
+      setDivarEstimateStatus("", false);
+    }
+
     function handleDivarEstimateClick() {
       if (divarEstimateBusy) return;
       const url = divarUrlInputEl ? divarUrlInputEl.value.trim() : "";
@@ -1148,10 +1497,7 @@ export const androidStandaloneUiPatch = `
       }
 
       setDivarEstimateLoading(true);
-      if (divarEstimateResultEl) {
-        divarEstimateResultEl.classList.add("hidden");
-        divarEstimateResultEl.innerHTML = "";
-      }
+      clearDivarEstimateResult();
       setDivarEstimateStatus("در حال خواندن آگهی و تخمین قیمت...", false, true);
 
       // AndroidApp.httpGet is synchronous and blocks the JS thread.
@@ -1540,6 +1886,20 @@ export const androidStandaloneUiPatch = `
 
     if (divarEstimateBtnEl) {
       divarEstimateBtnEl.addEventListener("click", handleDivarEstimateClick);
+    }
+    if (divarEstimateResultEl) {
+      divarEstimateResultEl.addEventListener("click", function (event) {
+        const target = event.target;
+        if (!target) return;
+        const dismissBtn =
+          typeof target.closest === "function"
+            ? target.closest("#divarEstimateDismissBtn, .estimate-dismiss-btn")
+            : null;
+        if (dismissBtn) {
+          event.preventDefault();
+          clearDivarEstimateResult();
+        }
+      });
     }
     if (divarUrlInputEl) {
       divarUrlInputEl.addEventListener("keydown", function (event) {

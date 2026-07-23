@@ -28,6 +28,8 @@ object MarketPricesUpdater {
     private const val KEY_CONTENT_VERSION = "content_version"
     private const val KEY_CONTENT_BUILT_AT = "content_built_at"
     private const val KEY_LAST_APK_VERSION_CODE = "last_apk_version_code"
+    private const val KEY_PENDING_CONTENT_VERSION = "pending_content_version"
+    private const val KEY_PENDING_CONTENT_BUILT_AT = "pending_content_built_at"
 
     fun updateDir(context: Context): File = File(context.filesDir, "market-prices")
 
@@ -48,6 +50,19 @@ object MarketPricesUpdater {
     }
 
     /**
+     * Remember the remote content stamp that belonged to the APK we are about to install.
+     * After install, [clearUpdatedContentIfApkUpgraded] adopts this stamp so the user is not
+     * prompted again for a content-only update that was already shipped inside that APK.
+     */
+    fun markPendingContentAfterApkInstall(context: Context, version: String, builtAt: String?) {
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putString(KEY_PENDING_CONTENT_VERSION, version)
+            .putString(KEY_PENDING_CONTENT_BUILT_AT, builtAt)
+            .apply()
+    }
+
+    /**
      * When the native APK is upgraded, discard previously downloaded web content
      * so the fresh assets bundled in the new APK are loaded (not an old cache).
      * Also mark bundled content as current so an older remote HTML is not re-applied.
@@ -64,10 +79,15 @@ object MarketPricesUpdater {
         }
 
         val bundled = readBundledMeta(context)
+        val pendingVersion = prefs.getString(KEY_PENDING_CONTENT_VERSION, null)?.ifBlank { null }
+        val pendingBuiltAt = prefs.getString(KEY_PENDING_CONTENT_BUILT_AT, null)?.ifBlank { null }
+
         prefs.edit()
             .putInt(KEY_LAST_APK_VERSION_CODE, currentCode)
-            .putString(KEY_CONTENT_VERSION, bundled.version)
-            .putString(KEY_CONTENT_BUILT_AT, bundled.builtAt)
+            .putString(KEY_CONTENT_VERSION, pendingVersion ?: bundled.version)
+            .putString(KEY_CONTENT_BUILT_AT, pendingBuiltAt ?: bundled.builtAt)
+            .remove(KEY_PENDING_CONTENT_VERSION)
+            .remove(KEY_PENDING_CONTENT_BUILT_AT)
             .apply()
     }
 
@@ -161,6 +181,11 @@ object MarketPricesUpdater {
             }
 
             onProgress?.invoke(100, 1, 1, "آماده‌سازی نصب...")
+            markPendingContentAfterApkInstall(
+                context,
+                remoteMeta.optString("version", remoteApkName).ifBlank { remoteApkName },
+                remoteMeta.optString("builtAt", "").ifBlank { null },
+            )
             ApkUpdater.startInstall(context, apkFile)
 
             return UpdateResult(

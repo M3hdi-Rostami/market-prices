@@ -9,7 +9,11 @@ import {
   getAndroidApkVersion,
   sha256File,
 } from "./android-apk-version.mjs";
-import { APP_UPDATE_REPO, writeMarketPricesAppVersion } from "./market-prices-app-version.mjs";
+import {
+  APP_UPDATE_REPO,
+  readMarketPricesAppVersion,
+  writeAppVersionPayload,
+} from "./market-prices-app-version.mjs";
 import {
   RELEASE_DIR_NAME,
   ensureReleaseRepo,
@@ -88,19 +92,52 @@ function uploadApkRelease(apkFile, version) {
 function publishApkMetadata(version, sha256) {
   ensureReleaseRepo();
 
+  const sealedAssetHtml = path.join(rootDir, "android/app/src/main/assets/market-prices.html");
+  const sealedAssetVersion = path.join(
+    rootDir,
+    "android/app/src/main/assets/market-prices-app-version.json",
+  );
+  const sealedAssetFont = path.join(rootDir, "android/app/src/main/assets/fonts/Vazir-FD.ttf");
   const rootHtml = path.join(rootDir, "market-prices.html");
   const rootFont = path.join(rootDir, "assets/fonts/Vazir-FD.ttf");
+  const rootVersion = path.join(rootDir, "market-prices-app-version.json");
   const releaseHtml = path.join(releaseDir, "market-prices.html");
   const releaseFontDir = path.join(releaseDir, "fonts");
   const releaseFont = path.join(releaseFontDir, "Vazir-FD.ttf");
 
-  if (fs.existsSync(rootHtml)) {
-    fs.copyFileSync(rootHtml, releaseHtml);
+  // Prefer the exact HTML/version sealed into the APK so remote content stamp
+  // matches what the new APK already ships (avoids a second "content update" popup).
+  const htmlSource = fs.existsSync(sealedAssetHtml) ? sealedAssetHtml : rootHtml;
+  const fontSource = fs.existsSync(sealedAssetFont) ? sealedAssetFont : rootFont;
+  const sealedVersionSource = fs.existsSync(sealedAssetVersion)
+    ? sealedAssetVersion
+    : rootVersion;
+
+  if (!fs.existsSync(sealedVersionSource)) {
+    throw new Error(
+      `Sealed app version JSON not found. Build the APK first (${sealedAssetVersion}).`,
+    );
   }
-  if (fs.existsSync(rootFont)) {
+
+  if (fs.existsSync(htmlSource)) {
+    fs.copyFileSync(htmlSource, releaseHtml);
+    if (htmlSource !== rootHtml) {
+      fs.copyFileSync(htmlSource, rootHtml);
+    }
+  }
+  if (fs.existsSync(fontSource)) {
     fs.mkdirSync(releaseFontDir, { recursive: true });
-    fs.copyFileSync(rootFont, releaseFont);
+    fs.copyFileSync(fontSource, releaseFont);
   }
+
+  const sealed = readMarketPricesAppVersion(sealedVersionSource);
+  const payload = {
+    ...sealed,
+    apkVersionCode: version.versionCode,
+    apkVersionName: version.versionName,
+    apkUrl: getAndroidApkDownloadUrl(version),
+    apkSha256: sha256,
+  };
 
   const versionJsonPaths = [
     path.join(rootDir, "market-prices-app-version.json"),
@@ -108,12 +145,8 @@ function publishApkMetadata(version, sha256) {
     path.join(releaseDir, "market-prices-app-version.json"),
   ];
 
-  writeMarketPricesAppVersion(versionJsonPaths, {
-    apkVersionCode: version.versionCode,
-    apkVersionName: version.versionName,
-    apkUrl: getAndroidApkDownloadUrl(version),
-    apkSha256: sha256,
-  });
+  writeAppVersionPayload(versionJsonPaths, payload);
+  console.log(`  published version stamp builtAt=${payload.builtAt} (preserved from APK assets)`);
 
   if (!getReleaseRemoteUrl() && !process.argv.includes("--no-push")) {
     console.warn(`No git remote in ${RELEASE_DIR_NAME}/ — metadata committed locally only.`);

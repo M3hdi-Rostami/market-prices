@@ -31,6 +31,9 @@ class MainActivity : Activity() {
     @Volatile
     private var updateSheetOpen = false
     private var pendingInstallPermission = false
+    private var pendingUpdateRepoOwner: String? = null
+    private var pendingUpdateRepoName: String? = null
+    private var pendingUpdateBranch: String? = null
 
     companion object {
         private var activityRef: WeakReference<MainActivity>? = null
@@ -123,11 +126,31 @@ class MainActivity : Activity() {
         activityRef = WeakReference(this)
         if (pendingInstallPermission && canInstallPackages()) {
             pendingInstallPermission = false
-            notifyApkInstallComplete(
-                success = false,
-                message = "مجوز نصب فعال شد. دوباره «دریافت نسخه جدید» را بزنید.",
-                retryable = true,
-            )
+            val owner = pendingUpdateRepoOwner
+            val name = pendingUpdateRepoName
+            val branch = pendingUpdateBranch
+            pendingUpdateRepoOwner = null
+            pendingUpdateRepoName = null
+            pendingUpdateBranch = null
+
+            if (!owner.isNullOrBlank() && !name.isNullOrBlank() && !branch.isNullOrBlank()) {
+                notifyApkInstallProgress(
+                    JSONObject().apply {
+                        put("percent", 0)
+                        put("done", 0)
+                        put("total", 1)
+                        put("label", "مجوز نصب فعال شد. ادامه بروزرسانی...")
+                    },
+                )
+                // Continue the APK update automatically — user should not tap twice.
+                beginAppUpdate(owner, name, branch)
+            } else {
+                notifyApkInstallComplete(
+                    success = false,
+                    message = "مجوز نصب فعال شد. دوباره «دریافت نسخه جدید» را بزنید.",
+                    retryable = true,
+                )
+            }
         }
     }
 
@@ -140,7 +163,7 @@ class MainActivity : Activity() {
 
     private fun applySystemBars(theme: String) {
         val isLight = theme == "light"
-        val bg = if (isLight) "#f1f5f9" else "#111621"
+        val bg = if (isLight) "#e8edf5" else "#111621"
         val color = Color.parseColor(bg)
 
         window.apply {
@@ -215,6 +238,96 @@ class MainActivity : Activity() {
         }
     }
 
+    private fun beginAppUpdate(repoOwner: String, repoName: String, branch: String) {
+        Thread {
+            try {
+                val check = MarketPricesUpdater.checkForUpdate(
+                    this,
+                    repoOwner,
+                    repoName,
+                    branch,
+                )
+
+                if (check.updateKind == "apk" && !canInstallPackages()) {
+                    pendingUpdateRepoOwner = repoOwner
+                    pendingUpdateRepoName = repoName
+                    pendingUpdateBranch = branch
+                    runOnUiThread { requestInstallPermission() }
+                    val payload = JSONObject().apply {
+                        put("success", false)
+                        put("message", "برای بروزرسانی، یک‌بار اجازه نصب از این اپ را در تنظیمات اندروید فعال کنید. پس از بازگشت، نصب به‌صورت خودکار ادامه می‌یابد.")
+                        put("updateKind", "apk")
+                        put("currentVersion", check.currentVersion)
+                        put("latestVersion", check.latestVersion)
+                        put("reloaded", false)
+                        put("awaitingInstall", false)
+                        put("needsInstallPermission", true)
+                    }
+                    runOnUiThread {
+                        webView.evaluateJavascript(
+                            "window.__onAppUpdateComplete && window.__onAppUpdateComplete($payload);",
+                            null,
+                        )
+                    }
+                    return@Thread
+                }
+
+                val result = MarketPricesUpdater.fetchAndApply(
+                    this,
+                    repoOwner,
+                    repoName,
+                    branch,
+                ) { percent, done, total, label ->
+                    notifyApkInstallProgress(
+                        JSONObject().apply {
+                            put("percent", percent)
+                            put("done", done)
+                            put("total", total)
+                            put("label", label)
+                        },
+                    )
+                }
+
+                val payload = JSONObject().apply {
+                    put("success", result.success)
+                    put("message", result.message)
+                    put("currentVersion", result.currentVersion)
+                    put("latestVersion", result.latestVersion)
+                    put("updateKind", result.updateKind)
+                    put("reloaded", result.reloaded)
+                    put("awaitingInstall", result.awaitingInstall)
+                }
+
+                runOnUiThread {
+                    val jsPayload = payload.toString()
+                    webView.evaluateJavascript(
+                        "window.__onAppUpdateComplete && window.__onAppUpdateComplete($jsPayload);",
+                        null,
+                    )
+                    if (result.reloaded) {
+                        webView.postDelayed({ loadMarketPrices() }, 650L)
+                    }
+                }
+            } catch (error: Exception) {
+                val payload = JSONObject().apply {
+                    put("success", false)
+                    put("message", error.message ?: "خطا در بروزرسانی")
+                    put("currentVersion", ApkUpdater.localVersionName(this@MainActivity))
+                    put("latestVersion", ApkUpdater.localVersionName(this@MainActivity))
+                    put("updateKind", "apk")
+                    put("reloaded", false)
+                    put("awaitingInstall", false)
+                }
+                runOnUiThread {
+                    webView.evaluateJavascript(
+                        "window.__onAppUpdateComplete && window.__onAppUpdateComplete($payload);",
+                        null,
+                    )
+                }
+            }
+        }.start()
+    }
+
     private inner class ThemeBridge {
         @JavascriptInterface
         fun onThemeChanged(theme: String) {
@@ -281,90 +394,7 @@ class MainActivity : Activity() {
 
         @JavascriptInterface
         fun startAppUpdate(repoOwner: String, repoName: String, branch: String) {
-            Thread {
-                try {
-                    val check = MarketPricesUpdater.checkForUpdate(
-                        this@MainActivity,
-                        repoOwner,
-                        repoName,
-                        branch,
-                    )
-
-                    if (check.updateKind == "apk" && !canInstallPackages()) {
-                        runOnUiThread { requestInstallPermission() }
-                        val payload = JSONObject().apply {
-                            put("success", false)
-                            put("message", "لطفاً اجازه نصب از این منبع را فعال کنید و دوباره تلاش کنید.")
-                            put("updateKind", "apk")
-                            put("currentVersion", check.currentVersion)
-                            put("latestVersion", check.latestVersion)
-                            put("reloaded", false)
-                            put("awaitingInstall", false)
-                            put("needsInstallPermission", true)
-                        }
-                        runOnUiThread {
-                            webView.evaluateJavascript(
-                                "window.__onAppUpdateComplete && window.__onAppUpdateComplete($payload);",
-                                null,
-                            )
-                        }
-                        return@Thread
-                    }
-
-                    val result = MarketPricesUpdater.fetchAndApply(
-                        this@MainActivity,
-                        repoOwner,
-                        repoName,
-                        branch,
-                    ) { percent, done, total, label ->
-                        notifyApkInstallProgress(
-                            JSONObject().apply {
-                                put("percent", percent)
-                                put("done", done)
-                                put("total", total)
-                                put("label", label)
-                            },
-                        )
-                    }
-
-                    val payload = JSONObject().apply {
-                        put("success", result.success)
-                        put("message", result.message)
-                        put("currentVersion", result.currentVersion)
-                        put("latestVersion", result.latestVersion)
-                        put("updateKind", result.updateKind)
-                        put("reloaded", result.reloaded)
-                        put("awaitingInstall", result.awaitingInstall)
-                    }
-
-                    runOnUiThread {
-                        val jsPayload = payload.toString()
-                        webView.evaluateJavascript(
-                            "window.__onAppUpdateComplete && window.__onAppUpdateComplete($jsPayload);",
-                            null,
-                        )
-                        if (result.reloaded) {
-                            webView.postDelayed({ loadMarketPrices() }, 650L)
-                        }
-                    }
-                } catch (error: Exception) {
-                    val payload = JSONObject().apply {
-                        put("success", false)
-                        put("message", error.message ?: "خطا در بروزرسانی")
-                        put("currentVersion", ApkUpdater.localVersionName(this@MainActivity))
-                        put("latestVersion", ApkUpdater.localVersionName(this@MainActivity))
-                        put("updateKind", "apk")
-                        put("reloaded", false)
-                        put("awaitingInstall", false)
-                    }
-                    runOnUiThread {
-                        webView.evaluateJavascript(
-                            "window.__onAppUpdateComplete && window.__onAppUpdateComplete($payload);",
-                            null,
-                        )
-                    }
-                }
-            }.start()
+            beginAppUpdate(repoOwner, repoName, branch)
         }
 
         @JavascriptInterface
@@ -383,13 +413,30 @@ class MainActivity : Activity() {
          */
         @JavascriptInterface
         fun httpGetAsync(url: String, requestId: String) {
+            deliverHttpAsync(requestId) {
+                BamaNetwork.fetchText(url)
+            }
+        }
+
+        /**
+         * Flexible HTTP for Karnameh auth/estimate: method + headers + optional body.
+         * specJson: {"method":"GET|POST","url":"...","headers":{...},"body":"..."}
+         */
+        @JavascriptInterface
+        fun httpRequestAsync(requestId: String, specJson: String) {
+            deliverHttpAsync(requestId) {
+                BamaNetwork.fetchRequest(specJson)
+            }
+        }
+
+        private fun deliverHttpAsync(requestId: String, loader: () -> String) {
             Thread {
                 val body = try {
-                    BamaNetwork.fetchText(url)
+                    loader()
                 } catch (error: Exception) {
                     httpErrorJson(error)
                 }
-                // Base64 avoids evaluateJavascript breakage on large/Unicode JSON (e.g. Divar ads).
+                // Base64 avoids evaluateJavascript breakage on large/Unicode JSON.
                 val encoded = "b64:" + Base64.encodeToString(
                     body.toByteArray(Charsets.UTF_8),
                     Base64.NO_WRAP,
@@ -520,31 +567,67 @@ class MainActivity : Activity() {
                 return true
             }
 
-            // Karnama estimate pages and Next.js data endpoints
-            if (host == "karnameh.com" || host.endsWith(".karnameh.com")) {
-                return true
-            }
-
-            if (host == "api-gw.karnameh.com") {
-                return path.startsWith("/priceestimator/")
-            }
-
             return false
         }
 
         fun fetchText(url: String): String {
-            val normalized = url.trim()
+            return fetchRequest(
+                JSONObject()
+                    .put("method", "GET")
+                    .put("url", url.trim())
+                    .toString(),
+            )
+        }
+
+        fun fetchRequest(specJson: String): String {
+            val spec = JSONObject(specJson)
+            val method = spec.optString("method", "GET").uppercase()
+            val normalized = spec.optString("url", "").trim()
             if (!isAllowedUrl(normalized)) {
                 val host = Uri.parse(normalized).host.orEmpty().ifBlank { "?" }
                 val preview = if (normalized.length > 120) normalized.take(120) + "…" else normalized
                 throw IllegalArgumentException("آدرس مجاز نیست [$host] $preview")
             }
 
-            val connection = openConnection(normalized)
+            val extraHeaders = linkedMapOf<String, String>()
+            val headersObj = spec.optJSONObject("headers")
+            if (headersObj != null) {
+                val keys = headersObj.keys()
+                while (keys.hasNext()) {
+                    val key = keys.next()
+                    extraHeaders[key] = headersObj.optString(key, "")
+                }
+            }
+            val requestBody = if (spec.isNull("body")) null else spec.optString("body", null)
+
+            val connection = openConnection(normalized, method, extraHeaders, requestBody)
             try {
                 val code = connection.responseCode
                 val body = readBody(connection, code)
                 if (code !in 200..299) {
+                    // Return JSON body to JS (401/400 detail, is_paid, etc.) instead of throwing.
+                    val trimmed = body.trimStart()
+                    if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+                        return try {
+                            val parsed = JSONObject(body)
+                            parsed.put("__error", true)
+                            parsed.put("__httpStatus", code)
+                            if (!parsed.has("message")) {
+                                parsed.put(
+                                    "message",
+                                    parsed.optString("detail", parsed.optString("error", "HTTP $code")),
+                                )
+                            }
+                            parsed.toString()
+                        } catch (_: Exception) {
+                            JSONObject().apply {
+                                put("__error", true)
+                                put("__httpStatus", code)
+                                put("message", "HTTP $code")
+                                put("raw", body)
+                            }.toString()
+                        }
+                    }
                     throw IOException("HTTP $code")
                 }
                 return body
@@ -573,9 +656,7 @@ class MainActivity : Activity() {
                     val body = readBody(connection, code).toByteArray(Charsets.UTF_8)
                     val headers = corsHeaders()
                     val mime = if (
-                        url.contains("/_next/data/") ||
                         url.contains("api.divar.ir") ||
-                        url.contains("api-gw.karnameh.com") ||
                         url.contains("/cad/api/")
                     ) {
                         "application/json"
@@ -601,39 +682,62 @@ class MainActivity : Activity() {
         private fun corsHeaders(): HashMap<String, String> {
             return HashMap<String, String>().apply {
                 put("Access-Control-Allow-Origin", "*")
-                put("Access-Control-Allow-Methods", "GET, OPTIONS")
-                put("Access-Control-Allow-Headers", "Accept, Content-Type, Accept-Language")
+                put("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+                put(
+                    "Access-Control-Allow-Headers",
+                    "Accept, Content-Type, Accept-Language, Authorization, Origin, Referer",
+                )
             }
         }
 
-        private fun openConnection(url: String): HttpURLConnection {
+        private fun openConnection(
+            url: String,
+            method: String = "GET",
+            extraHeaders: Map<String, String> = emptyMap(),
+            body: String? = null,
+        ): HttpURLConnection {
             val host = Uri.parse(url).host.orEmpty().lowercase()
-            val accept = when {
-                host == "api-gw.karnameh.com" -> "application/json"
-                host == "karnameh.com" || host.endsWith(".karnameh.com") -> {
-                    if (url.contains("/_next/data/")) "application/json" else "text/html,application/xhtml+xml"
-                }
-                else -> "application/json"
-            }
+            val accept = "application/json"
             val referer = when {
                 host == "divar.ir" || host == "api.divar.ir" || host.endsWith(".divar.ir") -> "https://divar.ir/"
-                host == "api-gw.karnameh.com" || host == "karnameh.com" || host.endsWith(".karnameh.com") ->
-                    "https://karnameh.com/car-price/used-car"
+                host == "bama.ir" || host.endsWith(".bama.ir") -> {
+                    if (url.contains("/PriceCalculator/") || url.contains("/calculator")) {
+                        "https://bama.ir/calculator"
+                    } else {
+                        "https://bama.ir/price"
+                    }
+                }
                 else -> "https://bama.ir/price"
             }
 
             return (URL(url).openConnection() as HttpURLConnection).apply {
-                requestMethod = "GET"
-                // Divar/Karnameh can be slow on mobile networks in Iran
+                requestMethod = method
+                // Divar/Bama can be slow on mobile networks in Iran
                 connectTimeout = 45_000
                 readTimeout = 90_000
                 instanceFollowRedirects = true
+                doInput = true
                 setRequestProperty("Accept", accept)
                 setRequestProperty("User-Agent", USER_AGENT)
                 setRequestProperty("Accept-Language", "fa-IR,fa;q=0.9,en-US;q=0.8,en;q=0.7")
                 setRequestProperty("Referer", referer)
-                if (host == "api-gw.karnameh.com") {
-                    setRequestProperty("Origin", "https://karnameh.com")
+                if (host == "bama.ir" || host.endsWith(".bama.ir")) {
+                    setRequestProperty("Origin", "https://bama.ir")
+                }
+                for ((key, value) in extraHeaders) {
+                    if (key.isNotBlank() && value.isNotBlank()) {
+                        setRequestProperty(key, value)
+                    }
+                }
+                if (body != null && method != "GET" && method != "HEAD") {
+                    doOutput = true
+                    if (extraHeaders.keys.none { it.equals("Content-Type", ignoreCase = true) }) {
+                        setRequestProperty("Content-Type", "application/json; charset=utf-8")
+                    }
+                    outputStream.use { stream ->
+                        stream.write(body.toByteArray(Charsets.UTF_8))
+                        stream.flush()
+                    }
                 }
             }
         }

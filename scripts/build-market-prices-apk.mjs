@@ -118,7 +118,12 @@ async function copyHtmlToAssets() {
   await buildMarketPricesPage();
   fs.mkdirSync(assetsDir, { recursive: true });
   fs.copyFileSync(path.join(rootDir, "market-prices.html"), assetHtmlPath);
-  writeMarketPricesAppVersion([assetVersionPath]);
+  // Keep the exact same version stamp as the HTML build — do not regenerate builtAt.
+  const rootVersionPath = path.join(rootDir, "market-prices-app-version.json");
+  if (!fs.existsSync(rootVersionPath)) {
+    writeMarketPricesAppVersion([rootVersionPath]);
+  }
+  fs.copyFileSync(rootVersionPath, assetVersionPath);
 
   if (!fs.existsSync(sourceFontPath)) {
     throw new Error(`Missing Vazir font for Android assets: ${sourceFontPath}`);

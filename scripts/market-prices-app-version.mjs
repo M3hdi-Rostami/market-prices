@@ -32,21 +32,40 @@ export function getMarketPricesAppVersion() {
 
 export function buildMarketPricesAppVersionPayload(extra = {}) {
   const apk = getAndroidApkVersion();
+  const rootVersionPath = path.join(rootDir, "market-prices-app-version.json");
+  let previousSha = null;
+  if (fs.existsSync(rootVersionPath)) {
+    try {
+      previousSha = JSON.parse(fs.readFileSync(rootVersionPath, "utf8")).apkSha256 || null;
+    } catch {
+      previousSha = null;
+    }
+  }
   return {
     version: getMarketPricesAppVersion(),
     builtAt: new Date().toISOString(),
     apkVersionCode: apk.versionCode,
     apkVersionName: apk.versionName,
     apkUrl: getAndroidApkDownloadUrl(apk),
+    ...(previousSha ? { apkSha256: previousSha } : {}),
     ...extra,
   };
 }
 
-export function writeMarketPricesAppVersion(outputPaths, extra = {}) {
-  const json = `${JSON.stringify(buildMarketPricesAppVersionPayload(extra), null, 2)}\n`;
+export function writeAppVersionPayload(outputPaths, payload) {
+  const json = `${JSON.stringify(payload, null, 2)}\n`;
   for (const outputPath of outputPaths) {
     fs.mkdirSync(path.dirname(outputPath), { recursive: true });
     fs.writeFileSync(outputPath, json, "utf8");
   }
   return json;
+}
+
+export function writeMarketPricesAppVersion(outputPaths, extra = {}) {
+  return writeAppVersionPayload(outputPaths, buildMarketPricesAppVersionPayload(extra));
+}
+
+/** Read a previously sealed version manifest (e.g. embedded in the APK assets). */
+export function readMarketPricesAppVersion(filePath) {
+  return JSON.parse(fs.readFileSync(filePath, "utf8"));
 }

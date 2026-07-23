@@ -160,7 +160,7 @@ function isAndroidStandalone() {
 }
 
 /**
- * Prefer the non-obfuscated bridge (window.__androidHttpGet) so callbacks survive build.
+ * Prefer the non-obfuscated bridge so callbacks survive build.
  * Falls back to synchronous httpGet on older APKs.
  */
 function androidHttpGet(url) {
@@ -171,6 +171,20 @@ function androidHttpGet(url) {
     return Promise.resolve(AndroidApp.httpGet(url));
   }
   return Promise.reject(new Error("پل اندروید در دسترس نیست"));
+}
+
+/** Flexible Android HTTP (GET/POST + headers) via non-obfuscated bridge. */
+function androidHttpRequest(spec) {
+  if (typeof window !== "undefined" && typeof window.__androidHttpRequest === "function") {
+    return window.__androidHttpRequest(spec);
+  }
+  // Older APKs: GET-only fallback (no custom headers / POST).
+  if (String(spec?.method || "GET").toUpperCase() === "GET" && !spec?.headers) {
+    return androidHttpGet(spec.url);
+  }
+  return Promise.reject(
+    new Error("نسخه اپلیکیشن قدیمی است؛ برای تخمین قیمت اپ را به‌روز کنید"),
+  );
 }
 
 async function fetchBamaViaAllOrigins(url) {
@@ -185,7 +199,7 @@ async function fetchBamaViaAllOrigins(url) {
 
 async function fetchBamaPricePageFromBridge(url) {
   const raw = await androidHttpGet(url);
-  if (!raw) throw new Error("پاسخ سرور باما نامعتبر بود");
+  if (!raw) throw new Error("پاسخ سرور قیمت خودرو نامعتبر بود");
 
   const payload = JSON.parse(raw);
   if (payload?.__error) {
@@ -199,7 +213,7 @@ async function fetchBamaPricePageDirect(url) {
   const response = await fetch(url, {
     headers: { Accept: "application/json" },
   });
-  if (!response.ok) throw new Error("پاسخ سرور باما نامعتبر بود");
+  if (!response.ok) throw new Error("پاسخ سرور قیمت خودرو نامعتبر بود");
   return response.json();
 }
 
@@ -255,8 +269,10 @@ async function fetchBamaCarPrices() {
 }
 
 const DIVAR_POST_API_BASE = "https://api.divar.ir/v8/posts-v2/web/";
-const KARNAMEH_ESTIMATE_API =
-  "https://api-gw.karnameh.com/priceestimator/api/estimate/detailed/data-driven/";
+const BAMA_CALCULATOR_VEHICLES_API = "https://bama.ir/cad/api/PriceCalculator/vehicles";
+const BAMA_CALCULATOR_CALCULATE_API = "https://bama.ir/cad/api/PriceCalculator/calculate";
+
+let bamaCalculatorVehiclesCache = null;
 
 function pathGet(obj, keys, fallback = null) {
   let cur = obj;
@@ -265,50 +281,6 @@ function pathGet(obj, keys, fallback = null) {
     cur = cur[key];
   }
   return cur == null ? fallback : cur;
-}
-
-/** Read top-level Karnameh estimate fields (same values their website displays). */
-function findMinMaxPrice(obj) {
-  if (!obj || typeof obj !== "object") {
-    return { minPrice: 0, maxPrice: 0, indicator: null, similarCount: 0 };
-  }
-
-  const min = Number(obj.min_price);
-  const max = Number(obj.max_price);
-  const indicator =
-    typeof obj.indicator === "number"
-      ? obj.indicator
-      : typeof obj.indicator_percentage === "number"
-        ? obj.indicator_percentage
-        : null;
-
-  let similarCount = 0;
-  if (typeof obj.output === "number") {
-    similarCount = obj.output;
-  } else if (obj.output && typeof obj.output === "object") {
-    similarCount =
-      Number(obj.output.divar || 0) +
-      Number(obj.output.inspection || 0) +
-      Number(obj.output.deal || 0);
-  }
-
-  return {
-    minPrice: Number.isFinite(min) ? min : 0,
-    maxPrice: Number.isFinite(max) ? max : 0,
-    indicator,
-    similarCount: Number.isFinite(similarCount) ? similarCount : 0,
-  };
-}
-
-function verdictFromKarnameh(adPrice, minPrice, maxPrice, indicator) {
-  if (typeof indicator === "number") {
-    if (indicator < 0) return "ارزان";
-    if (indicator > 100) return "گران";
-    return "معقول";
-  }
-  if (adPrice && minPrice && adPrice < minPrice) return "ارزان";
-  if (adPrice && maxPrice && adPrice > maxPrice) return "گران";
-  return "معقول";
 }
 
 function toEnglishNumber(input) {
@@ -321,13 +293,16 @@ function toEnglishNumber(input) {
     .trim();
 }
 
-/** Divar year field is often like "۱۳۹۵ - ۲۰۱۶" — Karnama wants 1395. */
+/** Divar year field is often like "۱۳۹۵ - ۲۰۱۶" — Bama wants Jalali 1395. */
 function extractCarYear(model) {
   const normalized = toEnglishNumber(model);
   const persianYear = normalized.match(/13\d{2}/);
   if (persianYear) return persianYear[0];
   const gregorianYear = normalized.match(/20\d{2}/);
-  if (gregorianYear) return gregorianYear[0];
+  if (gregorianYear) {
+    const g = Number(gregorianYear[0]);
+    if (Number.isFinite(g) && g >= 2000) return String(g - 621);
+  }
   const anyYear = normalized.match(/\d{4}/);
   return anyYear ? anyYear[0] : normalized;
 }
@@ -358,25 +333,6 @@ function extractDivarToken(url) {
   }
 }
 
-function mapBodyStatusForKarnameh(bodyStatus) {
-  const value = String(bodyStatus || "");
-  if (value === "سالم و بی‌خط و خش") return "intact";
-  if (value === "خط و خش جزیی") return "some-scratches";
-  if (value === "صافکاری بی‌رنگ") return "paintless-dent-removal";
-  if (value === "رنگ‌شدگی" || value === "رنگ‌شدگی در 1 ناحیه") return "one-spot-paint";
-  if (value === "دوررنگ" || value === "رنگ‌شدگی در 2 ناحیه") return "two-spot-paint";
-  if (
-    value === "تمام‌رنگ" ||
-    value === "تصادفی" ||
-    value === "اوراقی" ||
-    value.includes("رنگ‌شدگی در") ||
-    value === "رنگ‌شدگی، در چند ناحیه"
-  ) {
-    return "some-paint";
-  }
-  return "intact";
-}
-
 function getDivarListWidgets(payload) {
   const sections = Array.isArray(payload?.sections) ? payload.sections : [];
   for (const section of sections) {
@@ -385,7 +341,6 @@ function getDivarListWidgets(payload) {
       return Array.isArray(section.widgets) ? section.widgets : [];
     }
   }
-  // Fallback: largest widget list among sections
   let best = [];
   for (const section of sections) {
     const widgets = Array.isArray(section?.widgets) ? section.widgets : [];
@@ -433,45 +388,195 @@ function findDivarBodyStatus(payload) {
   return "";
 }
 
-async function fetchHttpText(url) {
-  const target = String(url || "").trim();
-  if (!/^https:\/\//i.test(target)) {
-    throw new Error(`آدرس نامعتبر برای دریافت: ${target.slice(0, 80)}`);
-  }
-
-  if (isAndroidStandalone() && AndroidApp && typeof AndroidApp.httpGet !== "undefined") {
-    const raw = await androidHttpGet(target);
-    if (!raw) throw new Error("پاسخ سرور خالی بود");
-    const trimmed = raw.trimStart();
-    if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
-      try {
-        const parsed = JSON.parse(raw);
-        if (parsed && parsed.__error === true) {
-          throw new Error(parsed.message || "خطا در دریافت اطلاعات");
-        }
-      } catch (error) {
-        if (!(error instanceof SyntaxError)) throw error;
-      }
+/** Prefer human-readable widget price over webengage float32-corrupted values. */
+function findDivarAdPrice(payload) {
+  const widgetTitles = ["قیمت پایه", "قیمت", "قیمت کل"];
+  for (const title of widgetTitles) {
+    const raw =
+      findDivarRowValue(payload, title) || findDivarGroupInfoValue(payload, title);
+    if (!raw) continue;
+    const digits = toEnglishNumber(raw).replace(/[^\d]/g, "");
+    if (digits) {
+      const n = Number(digits);
+      if (Number.isFinite(n) && n > 0) return Math.round(n);
     }
-    return raw;
   }
-
-  const response = await fetch(target, {
-    cache: "no-store",
-    headers: {
-      Accept: "application/json,text/html;q=0.9,*/*;q=0.8",
-      "Accept-Language": "fa-IR,fa;q=0.9,en-US;q=0.8,en;q=0.7",
-      Origin: "https://karnameh.com",
-      Referer: "https://karnameh.com/car-price/used-car",
-    },
-  });
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
-  return response.text();
+  const we = Number(pathGet(payload, ["webengage", "price"], 0)) || 0;
+  return we > 0 ? Math.round(we) : 0;
 }
 
-async function fetchHttpJson(url) {
-  const text = await fetchHttpText(url);
-  return JSON.parse(text);
+function emptyBamaBodyParts() {
+  return {
+    mudguard_left_front: 0,
+    mudguard_left_rear: 0,
+    mudguard_right_front: 0,
+    mudguard_right_rear: 0,
+    door_right_front: 0,
+    door_right_rear: 0,
+    door_left_front: 0,
+    door_left_rear: 0,
+    hood: 0,
+    trunc: 0,
+    roof: 0,
+  };
+}
+
+/**
+ * Map Divar body text to Bama calculator body_status.
+ * Part codes: 0 سالم، 1 صافکاری، 2 رنگ، 3 تعویض
+ */
+function mapBodyStatusForBama(bodyStatus) {
+  const value = String(bodyStatus || "");
+  const parts = emptyBamaBodyParts();
+
+  if (!value || value === "سالم و بی‌خط و خش" || value === "سالم") {
+    return { body_status: "Healthy", parts };
+  }
+  if (value === "دوررنگ" || value === "رنگ‌شدگی در 2 ناحیه") {
+    return { body_status: "Painted", parts };
+  }
+  if (value === "تمام‌رنگ" || value === "اوراقی" || value === "تصادفی") {
+    return { body_status: "Repainted", parts };
+  }
+
+  // Damaged / partial paint — mark N panels as painted when Divar reports N areas.
+  const areaMatch = value.match(/(\d+)\s*ناحیه/);
+  const areaCount = areaMatch ? Math.min(Number(areaMatch[1]) || 1, 5) : 1;
+  const panelKeys = ["hood", "door_right_front", "door_left_front", "mudguard_right_front", "mudguard_left_front"];
+  const partCode = value.includes("صافکاری") ? 1 : 2;
+  for (let i = 0; i < areaCount; i++) parts[panelKeys[i]] = partCode;
+  return { body_status: "Damaged", parts };
+}
+
+function normalizeMatchText(input) {
+  return toEnglishNumber(String(input || ""))
+    .replace(/ي/g, "ی")
+    .replace(/ك/g, "ک")
+    .replace(/‌/g, "")
+    .replace(/[()[\]{}،,._\-]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+function flattenBamaVehicles(tree) {
+  const rows = [];
+  for (const brand of Array.isArray(tree) ? tree : []) {
+    for (const model of brand.models || []) {
+      const trims = Array.isArray(model.trims) && model.trims.length ? model.trims : [null];
+      for (const trim of trims) {
+        rows.push({ brand, model, trim });
+      }
+    }
+  }
+  return rows;
+}
+
+function scoreBamaVehicleRow(row, ad) {
+  const brandEn = normalizeMatchText(ad.brandModel);
+  const brandFa = normalizeMatchText(ad.brandModelFa);
+  const title = normalizeMatchText(ad.title);
+  const hay = `${brandEn} ${brandFa} ${title}`.trim();
+
+  const bEn = normalizeMatchText(row.brand.brand_name);
+  const bFa = normalizeMatchText(row.brand.brand_name_fa);
+  const mEn = normalizeMatchText(row.model.model_name);
+  const mFa = normalizeMatchText(row.model.model_name_fa);
+  const tEn = normalizeMatchText(row.trim?.trim_name);
+  const tFa = normalizeMatchText(row.trim?.trim_name_fa);
+
+  let score = 0;
+  if (bEn && hay.includes(bEn)) score += 60;
+  if (bFa && hay.includes(bFa)) score += 60;
+  if (mFa && hay.includes(mFa)) score += 40;
+  if (mEn && mEn.length > 1 && hay.includes(mEn)) score += 25;
+  if (tFa && hay.includes(tFa)) score += 30;
+  if (tEn && tEn.length > 1 && hay.includes(tEn)) score += 20;
+
+  // Divar "Dena basic 2" / معمولی تیپ → Bama dena / معمولی (1.7) without trim
+  if ((/\bbasic\b/.test(brandEn) || brandFa.includes("معمولی")) && (mEn === "1.7" || mFa.includes("معمولی"))) {
+    score += 35;
+  }
+  if ((brandFa.includes("پلاس") || brandEn.includes("plus")) && (mFa.includes("پلاس") || mEn.includes("plus"))) {
+    score += 35;
+  }
+  if (!row.trim && (brandFa.includes("معمولی") || /\bbasic\b/.test(brandEn))) score += 8;
+  if (row.trim && !tFa && !tEn) score -= 5;
+
+  return score;
+}
+
+function pickBamaVehicle(tree, ad) {
+  const rows = flattenBamaVehicles(tree);
+  let best = null;
+  let bestScore = 0;
+  for (const row of rows) {
+    const score = scoreBamaVehicleRow(row, ad);
+    if (score > bestScore) {
+      best = row;
+      bestScore = score;
+    }
+  }
+  if (!best || bestScore < 60) return null;
+  return best;
+}
+
+async function androidHttpJson(spec) {
+  const raw = await androidHttpRequest(spec);
+  if (!raw) throw new Error("پاسخ سرور خالی بود");
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new Error("پاسخ سرور معتبر نبود");
+  }
+  if (parsed && parsed.__error === true) {
+    const err = new Error(parsed.message || parsed.detail || "خطا در دریافت اطلاعات");
+    err.status = Number(parsed.__httpStatus) || 0;
+    err.payload = parsed;
+    throw err;
+  }
+  return parsed;
+}
+
+async function fetchHttpJson(url, options = {}) {
+  const method = String(options.method || "GET").toUpperCase();
+  const body = options.body == null ? null : String(options.body);
+  const headers = {
+    Accept: "application/json",
+    "Accept-Language": "fa-IR,fa;q=0.9,en-US;q=0.8,en;q=0.7",
+    ...(options.headers || {}),
+  };
+  if (body != null && !headers["Content-Type"]) {
+    headers["Content-Type"] = "application/json";
+  }
+
+  if (isAndroidStandalone() && AndroidApp) {
+    return androidHttpJson({ method, url, headers, body });
+  }
+
+  const response = await fetch(url, {
+    method,
+    cache: "no-store",
+    headers,
+    body: body == null ? undefined : body,
+  });
+  const text = await response.text();
+  let parsed = null;
+  try {
+    parsed = text ? JSON.parse(text) : null;
+  } catch {
+    parsed = null;
+  }
+  if (!response.ok) {
+    const message =
+      (parsed && (parsed.detail || parsed.error || parsed.message)) || `HTTP ${response.status}`;
+    const err = new Error(String(message));
+    err.status = response.status;
+    err.payload = parsed;
+    throw err;
+  }
+  return parsed;
 }
 
 async function getDivarAdData(divarUrl) {
@@ -502,7 +607,7 @@ async function getDivarAdData(divarUrl) {
     url: pathGet(payload, ["share", "web_url"], divarUrl),
     city: pathGet(payload, ["seo", "web_info", "city_persian"], ""),
     neighborhood: pathGet(payload, ["seo", "web_info", "district_persian"], ""),
-    price: Number(pathGet(payload, ["webengage", "price"], 0)) || 0,
+    price: findDivarAdPrice(payload),
     title: pathGet(payload, ["share", "title"], ""),
     description: pathGet(payload, ["sections", "2", "widgets", "1", "data", "text"], ""),
     mileage,
@@ -514,47 +619,99 @@ async function getDivarAdData(divarUrl) {
   };
 }
 
-async function estimateKarnamehPrice(ad) {
-  if (!ad?.brandModel) throw new Error("مدل خودرو از آگهی استخراج نشد");
-  if (!ad?.price) throw new Error("قیمت آگهی برای تخمین لازم است");
+async function getBamaCalculatorVehicles() {
+  if (bamaCalculatorVehiclesCache) return bamaCalculatorVehiclesCache;
+  const payload = await fetchHttpJson(BAMA_CALCULATOR_VEHICLES_API, {
+    headers: {
+      Origin: "https://bama.ir",
+      Referer: "https://bama.ir/calculator",
+    },
+  });
+  const data = payload?.data;
+  if (!Array.isArray(data) || !data.length) {
+    throw new Error("لیست مدل‌های خودرو برای تخمین دریافت نشد");
+  }
+  bamaCalculatorVehiclesCache = data;
+  return data;
+}
 
+function verdictFromBama(adPrice, minPrice, maxPrice) {
+  if (adPrice && minPrice && adPrice < minPrice) return "ارزان";
+  if (adPrice && maxPrice && adPrice > maxPrice) return "گران";
+  return "معقول";
+}
+
+/** Extract tip text like «تیپ ۲» from Divar brand/model FA string. */
+function extractTipFromBrandModelFa(brandModelFa) {
+  const text = String(brandModelFa || "");
+  const tip = text.match(/تیپ\s*[۰-۹0-9]+(?:\s*دنده‌?ای)?/);
+  return tip ? tip[0].trim() : "";
+}
+
+/**
+ * Same API as https://bama.ir/calculator — POST /cad/api/PriceCalculator/calculate
+ */
+async function estimateBamaPrice(ad) {
   const year = extractCarYear(ad.model);
-  const usage = extractMileage(ad.mileage);
+  const mileage = Number(extractMileage(ad.mileage)) || 0;
   if (!year || !/^\d{4}$/.test(year)) {
     throw new Error("سال ساخت خودرو از آگهی استخراج نشد");
   }
 
-  const params = new URLSearchParams({
-    brand_model: String(ad.brandModel),
-    year: String(year),
-    usage: String(usage),
-    color: String(ad.color || ""),
-    body_status: mapBodyStatusForKarnameh(ad.bodyStatus),
-    price: String(ad.price),
+  const tree = await getBamaCalculatorVehicles();
+  const matched = pickBamaVehicle(tree, ad);
+  if (!matched) {
+    throw new Error("مدل این خودرو برای تخمین پیدا نشد");
+  }
+
+  const { body_status, parts } = mapBodyStatusForBama(ad.bodyStatus);
+  const requestBody = {
+    brand_id: matched.brand.brand_id,
+    model_id: matched.model.model_id,
+    trim_id: matched.trim?.trim_id || null,
+    mileage,
+    model_year: Number(year),
+    body_status,
+    ...parts,
+  };
+
+  const payload = await fetchHttpJson(BAMA_CALCULATOR_CALCULATE_API, {
+    method: "POST",
+    headers: {
+      Origin: "https://bama.ir",
+      Referer: "https://bama.ir/calculator",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(requestBody),
   });
 
-  // Public Karnameh estimate endpoint used by their current web app (no login).
-  const url = `${KARNAMEH_ESTIMATE_API}?${params.toString()}`;
-  const payload = await fetchHttpJson(url);
-  if (payload?.error) {
-    throw new Error(String(payload.error));
-  }
-  if (payload?.detail) {
-    throw new Error(String(payload.detail));
+  const data = payload?.data;
+  if (!data) throw new Error("تخمین قیمت دریافت نشد");
+
+  const minPrice = Number(data.min_price) || 0;
+  const maxPrice = Number(data.max_price) || 0;
+  const suggestedPrice = Number(data.price) || 0;
+  if (!minPrice && !maxPrice && !suggestedPrice) {
+    throw new Error("تخمین قیمت دریافت نشد");
   }
 
-  const { minPrice, maxPrice, indicator, similarCount } = findMinMaxPrice(payload);
-
-  if (!minPrice && !maxPrice) {
-    throw new Error("تخمین قیمت از کارنامه دریافت نشد");
-  }
+  const tipFromAd = extractTipFromBrandModelFa(ad.brandModelFa);
+  const trimFa = data.trim || tipFromAd || matched.trim?.trim_name_fa || "";
 
   return {
-    minPrice,
-    maxPrice,
-    verdict: verdictFromKarnameh(ad.price, minPrice, maxPrice, indicator),
-    indicator,
-    similarCount,
+    minPrice: minPrice || suggestedPrice,
+    maxPrice: maxPrice || suggestedPrice,
+    suggestedPrice,
+    verdict: verdictFromBama(ad.price, minPrice || suggestedPrice, maxPrice || suggestedPrice),
+    brandFa: data.brand || matched.brand.brand_name_fa || "",
+    modelFa: data.model || matched.model.model_name_fa || "",
+    trimFa,
+    modelYear: data.model_year || Number(year),
+    mileage: data.mileage != null ? Number(data.mileage) : mileage,
+    color: ad.color || data.default_color || "",
+    imageUrl: data.image_url || ad.imageUrl || "",
+    tags: Array.isArray(data.tags) ? data.tags : [],
+    calculateId: data.id || "",
   };
 }
 
@@ -565,7 +722,7 @@ async function estimateFromDivarUrl(divarUrl) {
   }
 
   const ad = await getDivarAdData(cleaned);
-  const estimate = await estimateKarnamehPrice(ad);
+  const estimate = await estimateBamaPrice(ad);
   return { ad, estimate };
 }
 
@@ -584,44 +741,96 @@ function verdictToneClass(verdict) {
   return "is-fair";
 }
 
+function formatEstimateToman(price) {
+  const n = Number(price);
+  if (!Number.isFinite(n) || n <= 0) return "—";
+  return `${Number(n).toLocaleString("fa-IR")} تومان`;
+}
+
+function formatEstimateMileage(mileage) {
+  const n = Number(mileage);
+  if (!Number.isFinite(n) || n < 0) return "—";
+  return `${Number(n).toLocaleString("fa-IR")} کیلومتر`;
+}
+
 function renderDivarEstimateResult(result) {
   const { ad, estimate } = result;
-  const location = [ad.city, ad.neighborhood].filter(Boolean).join(" - ") || "—";
-  const title = escapeHtml(ad.title || ad.brandModelFa || "آگهی خودرو");
-  const subtitle = escapeHtml(`${location} · مدل ${ad.model || "—"} · ${ad.mileage || "—"} کیلومتر`);
-  const similarHint =
-    estimate.similarCount > 0
-      ? `<p class="divar-estimate-hint">${escapeHtml(
-          `${Number(estimate.similarCount).toLocaleString("fa-IR")} خودرو مشابه در کارنامه برای این تخمین بررسی شده‌اند`,
-        )}</p>`
-      : `<p class="divar-estimate-hint">بر اساس مشخصات آگهی دیوار و تخمین قیمت کارنامه (تومان)</p>`;
+  const brand = escapeHtml(estimate.brandFa || ad.brandModelFa || "—");
+  const model = escapeHtml(estimate.modelFa || "—");
+  const trim = escapeHtml(estimate.trimFa || "—");
+  const color = escapeHtml(estimate.color || ad.color || "—");
+  const year = escapeHtml(
+    estimate.modelYear != null
+      ? String(estimate.modelYear)
+      : extractCarYear(ad.model) || "—",
+  );
+  const mileageText = escapeHtml(formatEstimateMileage(estimate.mileage ?? extractMileage(ad.mileage)));
+  const imageUrl = String(estimate.imageUrl || "").trim();
+  const imageHtml = imageUrl
+    ? `<img class="estimate-car-image" src="${escapeHtml(imageUrl)}" alt="" loading="lazy" />`
+    : `<div class="estimate-car-image estimate-car-image-fallback" aria-hidden="true"></div>`;
+
+  const minText = escapeHtml(formatEstimateToman(estimate.minPrice));
+  const maxText = escapeHtml(formatEstimateToman(estimate.maxPrice));
+  const midText = escapeHtml(
+    formatEstimateToman(estimate.suggestedPrice || estimate.minPrice),
+  );
+  const adPriceText = escapeHtml(formatEstimateToman(ad.price));
+  const location = [ad.city, ad.neighborhood].filter(Boolean).join(" - ");
+
   return `
     <article class="divar-estimate-card">
-      <div class="divar-estimate-card-header">
-        <h3 class="divar-estimate-title">${title}</h3>
-        <p class="divar-estimate-subtitle">${subtitle}</p>
+      <button type="button" class="estimate-dismiss-btn" id="divarEstimateDismissBtn" aria-label="بستن تخمین">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+      <div class="estimate-vehicle">
+        ${imageHtml}
+        <div class="estimate-specs" dir="rtl">
+          <div class="estimate-spec-col">
+            <span class="estimate-spec-primary">${brand}</span>
+            <span class="estimate-spec-secondary">${color}</span>
+          </div>
+          <div class="estimate-spec-divider" aria-hidden="true"></div>
+          <div class="estimate-spec-col">
+            <span class="estimate-spec-primary">${model}</span>
+            <span class="estimate-spec-secondary">${trim}</span>
+          </div>
+          <div class="estimate-spec-divider" aria-hidden="true"></div>
+          <div class="estimate-spec-col">
+            <span class="estimate-spec-primary">${year}</span>
+            <span class="estimate-spec-secondary">${mileageText}</span>
+          </div>
+        </div>
+        ${location ? `<p class="estimate-location">${escapeHtml(location)}</p>` : ""}
       </div>
-      <div class="divar-estimate-prices">
-        <div class="divar-estimate-chip">
-          <span class="divar-estimate-chip-label">قیمت آگهی</span>
-          <span class="divar-estimate-chip-value">${formatCarPrice(ad.price)}</span>
-          <span class="divar-estimate-chip-unit">تومان</span>
+
+      <div class="estimate-range" dir="ltr">
+        <div class="estimate-range-prices">
+          <span class="estimate-range-side">${minText}</span>
+          <span class="estimate-range-bubble">${midText}</span>
+          <span class="estimate-range-side">${maxText}</span>
         </div>
-        <div class="divar-estimate-chip">
-          <span class="divar-estimate-chip-label">حداقل کارنامه</span>
-          <span class="divar-estimate-chip-value">${formatCarPrice(estimate.minPrice)}</span>
-          <span class="divar-estimate-chip-unit">تومان</span>
+        <div class="estimate-range-bar" aria-hidden="true">
+          <span class="estimate-range-seg is-min"></span>
+          <span class="estimate-range-seg is-mid"></span>
+          <span class="estimate-range-seg is-max"></span>
         </div>
-        <div class="divar-estimate-chip">
-          <span class="divar-estimate-chip-label">حداکثر کارنامه</span>
-          <span class="divar-estimate-chip-value">${formatCarPrice(estimate.maxPrice)}</span>
-          <span class="divar-estimate-chip-unit">تومان</span>
+        <div class="estimate-range-labels">
+          <span>حداقل</span>
+          <span class="estimate-range-center-label">تخمین قیمت خودروی شما</span>
+          <span>حداکثر</span>
         </div>
+      </div>
+
+      <div class="estimate-ad-row">
+        <span class="estimate-ad-label">قیمت آگهی</span>
+        <span class="estimate-ad-value">${adPriceText}</span>
       </div>
       <div class="divar-estimate-verdict ${verdictToneClass(estimate.verdict)}">
-        نتیجه تخمین کارنامه: <strong>${escapeHtml(estimate.verdict)}</strong>
+        نتیجه: <strong>${escapeHtml(estimate.verdict)}</strong>
       </div>
-      ${similarHint}
     </article>
   `;
 }
@@ -963,6 +1172,14 @@ function initMarketPrices() {
     if (divarUrlInputEl) divarUrlInputEl.disabled = loading;
   }
 
+  function clearDivarEstimateResult() {
+    if (divarEstimateResultEl) {
+      divarEstimateResultEl.classList.add("hidden");
+      divarEstimateResultEl.innerHTML = "";
+    }
+    setDivarEstimateStatus("");
+  }
+
   async function handleDivarEstimateClick() {
     if (divarEstimateBusy) return;
     const url = divarUrlInputEl?.value.trim() || "";
@@ -972,10 +1189,7 @@ function initMarketPrices() {
     }
 
     setDivarEstimateLoading(true);
-    if (divarEstimateResultEl) {
-      divarEstimateResultEl.classList.add("hidden");
-      divarEstimateResultEl.innerHTML = "";
-    }
+    clearDivarEstimateResult();
     setDivarEstimateStatus("در حال خواندن آگهی و تخمین قیمت...", false, true);
 
     // AndroidApp.httpGet is synchronous and blocks the JS thread.
@@ -2089,6 +2303,17 @@ function initMarketPrices() {
     if (divarEstimateBtnEl) {
       divarEstimateBtnEl.addEventListener("click", () => {
         handleDivarEstimateClick();
+      });
+    }
+    if (divarEstimateResultEl) {
+      divarEstimateResultEl.addEventListener("click", (event) => {
+        const target = event.target;
+        if (!target || typeof target.closest !== "function") return;
+        const dismissBtn = target.closest("#divarEstimateDismissBtn, .estimate-dismiss-btn");
+        if (dismissBtn) {
+          event.preventDefault();
+          clearDivarEstimateResult();
+        }
       });
     }
     if (divarUrlInputEl) {

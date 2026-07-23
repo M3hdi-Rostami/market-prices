@@ -84,6 +84,57 @@ export const androidUpdateBridgeScript = `(function () {
       });
     };
 
+    window.__androidHttpRequest = function (spec) {
+      return new Promise(function (resolve, reject) {
+        if (typeof AndroidApp === "undefined") {
+          reject(new Error("پل اندروید در دسترس نیست"));
+          return;
+        }
+        if (typeof AndroidApp.httpRequestAsync !== "function") {
+          // Older APK: GET-only without custom headers.
+          if (spec && String(spec.method || "GET").toUpperCase() === "GET" && !spec.headers) {
+            window.__androidHttpGet(spec.url).then(resolve, reject);
+            return;
+          }
+          reject(new Error("نسخه اپلیکیشن قدیمی است؛ برای تخمین قیمت اپ را به‌روز کنید"));
+          return;
+        }
+
+        var requestId = "http_" + Date.now() + "_" + Math.random().toString(16).slice(2);
+        var settled = false;
+        var timer = setTimeout(function () {
+          if (settled) return;
+          settled = true;
+          delete window.__androidHttpPending[requestId];
+          reject(new Error("اتصال به سرور زمان‌بر شد. لطفاً دوباره تلاش کنید"));
+        }, 60000);
+
+        window.__androidHttpPending[requestId] = {
+          resolve: function (body) {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timer);
+            resolve(body);
+          },
+          reject: function (error) {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timer);
+            reject(error);
+          },
+        };
+
+        try {
+          AndroidApp.httpRequestAsync(requestId, JSON.stringify(spec || {}));
+        } catch (error) {
+          settled = true;
+          clearTimeout(timer);
+          delete window.__androidHttpPending[requestId];
+          reject(error);
+        }
+      });
+    };
+
     const UPDATE_CHECK_INTERVAL_MS = 5 * 60 * 1000;
     let audioCtx = null;
     const UPDATE_SUCCESS_SOUND_KEY = "market-prices-play-update-success";
@@ -272,11 +323,11 @@ export const androidUpdateBridgeScript = `(function () {
             : "بروزرسانی محتوا موجود است";
         }
         messageEl.textContent = updateKind === "apk"
-          ? ("نسخه " + latestVersion + " منتشر شده است. نسخه فعلی شما " + currentVersion + " است. برای ادامه باید کل اپلیکیشن را بروزرسانی کنید (بدون حذف دستی).")
-          : ("نسخه " + latestVersion + " منتشر شده است. نسخه فعلی شما " + currentVersion + " است. برای ادامه باید اپلیکیشن را بروزرسانی کنید.");
+          ? ("نسخه " + latestVersion + " منتشر شده است. نسخه فعلی شما " + currentVersion + " است. با تأیید، کل اپلیکیشن (همراه با محتوا) بروزرسانی می‌شود.")
+          : ("نسخه " + latestVersion + " منتشر شده است. نسخه فعلی شما " + currentVersion + " است. فقط محتوای داخل اپ بروزرسانی می‌شود.");
         if (progressWrap) progressWrap.classList.add("hidden");
         sheet.classList.remove("downloading");
-        confirmBtn.textContent = "دریافت نسخه جدید";
+        confirmBtn.textContent = updateKind === "apk" ? "بروزرسانی اپلیکیشن" : "بروزرسانی محتوا";
         confirmBtn.disabled = false;
         ensureUpdateSheetVisible();
         playUpdateAvailableSound();
@@ -317,6 +368,19 @@ export const androidUpdateBridgeScript = `(function () {
       window.__onAppUpdateComplete = function (result) {
         stopFakeProgress();
 
+        if (result && result.needsInstallPermission) {
+          isDownloading = true;
+          sheet.classList.add("downloading");
+          if (progressWrap) progressWrap.classList.remove("hidden");
+          if (titleEl) titleEl.textContent = "مجوز نصب اندروید";
+          messageEl.textContent = (result && result.message)
+            || "یک‌بار اجازه نصب را در تنظیمات فعال کنید. پس از بازگشت، بروزرسانی خودکار ادامه می‌یابد.";
+          setProgress(0, "در انتظار فعال‌سازی مجوز...");
+          confirmBtn.textContent = "باز کردن تنظیمات";
+          confirmBtn.disabled = false;
+          return;
+        }
+
         if (!result || !result.success) {
           exitDownloadingState();
           if (progressWrap) progressWrap.classList.remove("hidden");
@@ -333,8 +397,8 @@ export const androidUpdateBridgeScript = `(function () {
           sheet.classList.add("downloading");
           if (progressWrap) progressWrap.classList.remove("hidden");
           if (titleEl) titleEl.textContent = "تأیید نصب";
-          messageEl.textContent = result.message || "صفحه نصب سیستم باز شد. نصب را تأیید کنید.";
-          setProgress(100, "در انتظار تأیید نصب...");
+          messageEl.textContent = result.message || "در حال نصب نسخه جدید. در صورت نیاز، نصب را در صفحه سیستم تأیید کنید.";
+          setProgress(100, "در انتظار نصب...");
           return;
         }
 

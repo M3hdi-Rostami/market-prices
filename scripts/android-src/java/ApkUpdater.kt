@@ -99,8 +99,14 @@ object ApkUpdater {
 
         val installer = context.packageManager.packageInstaller
         val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL)
+        // Prefer silent self-update confirmation when Android allows it (API 31+).
+        // The system still falls back to STATUS_PENDING_USER_ACTION when required.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            params.setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_REQUIRED)
+            params.setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED)
+        }
+        params.setAppPackageName(context.packageName)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            params.setInstallerPackageName(context.packageName)
         }
 
         val sessionId = installer.createSession(params)
