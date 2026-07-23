@@ -860,17 +860,28 @@ function initMarketPrices() {
   let shareCardBusy = false;
   let divarEstimateBusy = false;
 
-  function setDivarEstimateStatus(message, isError = false) {
+  function setDivarEstimateStatus(message, isError = false, isLoading = false) {
     if (!divarEstimateStatusEl) return;
     if (!message) {
       divarEstimateStatusEl.classList.add("hidden");
       divarEstimateStatusEl.textContent = "";
       divarEstimateStatusEl.classList.remove("is-error");
+      divarEstimateStatusEl.classList.remove("is-loading");
       return;
     }
     divarEstimateStatusEl.textContent = message;
     divarEstimateStatusEl.classList.toggle("is-error", !!isError);
+    divarEstimateStatusEl.classList.toggle("is-loading", !!isLoading);
     divarEstimateStatusEl.classList.remove("hidden");
+  }
+
+  function setDivarEstimateLoading(loading) {
+    divarEstimateBusy = loading;
+    if (divarEstimateBtnEl) {
+      divarEstimateBtnEl.disabled = loading;
+      divarEstimateBtnEl.classList.toggle("is-loading", loading);
+    }
+    if (divarUrlInputEl) divarUrlInputEl.disabled = loading;
   }
 
   async function handleDivarEstimateClick() {
@@ -881,13 +892,12 @@ function initMarketPrices() {
       return;
     }
 
-    divarEstimateBusy = true;
-    if (divarEstimateBtnEl) divarEstimateBtnEl.disabled = true;
+    setDivarEstimateLoading(true);
     if (divarEstimateResultEl) {
       divarEstimateResultEl.classList.add("hidden");
       divarEstimateResultEl.innerHTML = "";
     }
-    setDivarEstimateStatus("در حال خواندن آگهی و تخمین قیمت...");
+    setDivarEstimateStatus("در حال خواندن آگهی و تخمین قیمت...", false, true);
 
     try {
       const result = await estimateFromDivarUrl(url);
@@ -896,12 +906,12 @@ function initMarketPrices() {
         divarEstimateResultEl.classList.remove("hidden");
       }
       setDivarEstimateStatus("");
+      if (divarUrlInputEl) divarUrlInputEl.value = "";
     } catch (error) {
       console.error("Divar estimate error:", error);
       setDivarEstimateStatus(error?.message || "تخمین قیمت ممکن نشد", true);
     } finally {
-      divarEstimateBusy = false;
-      if (divarEstimateBtnEl) divarEstimateBtnEl.disabled = false;
+      setDivarEstimateLoading(false);
     }
   }
 
