@@ -22,26 +22,41 @@ const globalGradleHome = path.join(process.env.HOME ?? "", ".gradle");
 const releaseApkPath = path.join(androidDir, "app/build/outputs/apk/release/app-release.apk");
 const outputApkPath = path.join(androidDir, "market-prices.apk");
 const gradleTemplatePath = path.join(rootDir, "scripts/android-app-build.gradle.kts");
+const gradlePropertiesTemplatePath = path.join(rootDir, "scripts/android-gradle.properties");
 const appGradlePath = path.join(androidDir, "app/build.gradle.kts");
+const gradlePropertiesPath = path.join(androidDir, "gradle.properties");
 const keystorePropsPath = path.join(androidDir, "keystore.properties");
 const androidSrcDir = path.join(rootDir, "scripts/android-src");
 const androidJavaDest = path.join(androidDir, "app/src/main/java/ir/superextension/marketprices");
 const androidManifestDest = path.join(androidDir, "app/src/main/AndroidManifest.xml");
 
 function syncAndroidGradleTemplate() {
-  if (!fs.existsSync(gradleTemplatePath)) return;
-  const template = injectApkVersionIntoGradle(fs.readFileSync(gradleTemplatePath, "utf8"));
-  const current = fs.existsSync(appGradlePath) ? fs.readFileSync(appGradlePath, "utf8") : "";
-  if (current !== template) {
-    fs.mkdirSync(path.dirname(appGradlePath), { recursive: true });
-    fs.writeFileSync(appGradlePath, template, "utf8");
-    console.log("  synced android/app/build.gradle.kts from scripts template");
+  if (fs.existsSync(gradleTemplatePath)) {
+    const template = injectApkVersionIntoGradle(fs.readFileSync(gradleTemplatePath, "utf8"));
+    const current = fs.existsSync(appGradlePath) ? fs.readFileSync(appGradlePath, "utf8") : "";
+    if (current !== template) {
+      fs.mkdirSync(path.dirname(appGradlePath), { recursive: true });
+      fs.writeFileSync(appGradlePath, template, "utf8");
+      console.log("  synced android/app/build.gradle.kts from scripts template");
+    }
+  }
+
+  if (fs.existsSync(gradlePropertiesTemplatePath)) {
+    const template = fs.readFileSync(gradlePropertiesTemplatePath, "utf8");
+    const current = fs.existsSync(gradlePropertiesPath)
+      ? fs.readFileSync(gradlePropertiesPath, "utf8")
+      : "";
+    if (current !== template) {
+      fs.writeFileSync(gradlePropertiesPath, template, "utf8");
+      console.log("  synced android/gradle.properties from scripts template");
+    }
   }
 }
 
 function syncAndroidSources() {
   const javaSrc = path.join(androidSrcDir, "java");
   const manifestSrc = path.join(androidSrcDir, "AndroidManifest.xml");
+  const resSrc = path.join(androidSrcDir, "res");
   if (!fs.existsSync(javaSrc) || !fs.existsSync(manifestSrc)) return;
 
   fs.mkdirSync(androidJavaDest, { recursive: true });
@@ -50,7 +65,21 @@ function syncAndroidSources() {
     fs.copyFileSync(path.join(javaSrc, name), path.join(androidJavaDest, name));
   }
   fs.copyFileSync(manifestSrc, androidManifestDest);
-  console.log("  synced Android Kotlin sources + manifest from scripts/android-src");
+
+  if (fs.existsSync(resSrc)) {
+    const resDest = path.join(androidDir, "app/src/main/res");
+    for (const entry of fs.readdirSync(resSrc, { withFileTypes: true })) {
+      if (!entry.isDirectory()) continue;
+      const fromDir = path.join(resSrc, entry.name);
+      const toDir = path.join(resDest, entry.name);
+      fs.mkdirSync(toDir, { recursive: true });
+      for (const file of fs.readdirSync(fromDir)) {
+        fs.copyFileSync(path.join(fromDir, file), path.join(toDir, file));
+      }
+    }
+  }
+
+  console.log("  synced Android Kotlin sources + manifest + res from scripts/android-src");
 }
 
 function resolveApksigner() {
@@ -188,11 +217,12 @@ function buildApkWithGradle() {
   if (onlineStatus !== 0) {
     throw new Error(
       "Gradle assembleRelease failed.\n" +
-        "Gradle could not download Android build tools (often blocked in Iran).\n" +
-        "Try one of these:\n" +
-        "  1. Turn on VPN and run: npm run build:apk\n" +
-        "  2. Run once: bash scripts/bootstrap-android-deps.sh\n" +
-        "After the first successful build, later builds work offline.",
+        "Check the Gradle output above for the real cause.\n" +
+        "Common fixes:\n" +
+        "  1. If AndroidX is required: ensure android/gradle.properties has android.useAndroidX=true\n" +
+        "  2. If dependency download fails (often blocked in Iran): turn on VPN, then npm run build:apk\n" +
+        "  3. Or run once: bash scripts/bootstrap-android-deps.sh\n" +
+        "After the first successful dependency download, later builds can work offline.",
     );
   }
 

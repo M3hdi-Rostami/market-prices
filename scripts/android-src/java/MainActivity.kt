@@ -18,6 +18,7 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.core.content.FileProvider
 import org.json.JSONObject
 import java.io.ByteArrayInputStream
 import java.io.File
@@ -25,7 +26,7 @@ import java.io.IOException
 import java.lang.ref.WeakReference
 import java.net.HttpURLConnection
 import java.net.URL
-
+import java.util.concurrent.atomic.AtomicBoolean
 class MainActivity : Activity() {
     private lateinit var webView: WebView
     @Volatile
@@ -34,7 +35,7 @@ class MainActivity : Activity() {
     private var pendingUpdateRepoOwner: String? = null
     private var pendingUpdateRepoName: String? = null
     private var pendingUpdateBranch: String? = null
-
+    private val shareApkBusy = AtomicBoolean(false)
     companion object {
         private var activityRef: WeakReference<MainActivity>? = null
 
@@ -76,7 +77,7 @@ class MainActivity : Activity() {
         webView.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                 val url = request?.url?.toString() ?: return false
-                if (url.startsWith("https://t.me/") || url.startsWith("http://t.me/")) {
+                if (shouldOpenExternally(url)) {
                     startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
                     return true
                 }
@@ -106,6 +107,17 @@ class MainActivity : Activity() {
 
         loadMarketPrices()
         setContentView(webView)
+    }
+
+    private fun shouldOpenExternally(url: String): Boolean {
+        val uri = Uri.parse(url)
+        val scheme = uri.scheme?.lowercase().orEmpty()
+        if (scheme != "https" && scheme != "http") return false
+        val host = uri.host?.lowercase().orEmpty()
+        return host == "t.me" ||
+            host.endsWith(".t.me") ||
+            host == "divar.ir" ||
+            host.endsWith(".divar.ir")
     }
 
     private fun loadMarketPrices() {
@@ -473,6 +485,18 @@ class MainActivity : Activity() {
         }
 
         @JavascriptInterface
+        fun openUrl(url: String) {
+            runOnUiThread {
+                try {
+                    if (!shouldOpenExternally(url)) return@runOnUiThread
+                    startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                } catch (_: Exception) {
+                    // Ignore invalid / blocked URLs from the WebView bridge.
+                }
+            }
+        }
+
+        @JavascriptInterface
         fun shareImage(base64Png: String, fileName: String) {
             runOnUiThread {
                 try {
@@ -485,6 +509,96 @@ class MainActivity : Activity() {
                 }
             }
         }
+
+        @JavascriptInterface
+        fun shareApk() {
+            if (!shareApkBusy.compareAndSet(false, true)) {
+                notifyShareApkResult(false, "در حال آماده‌سازی فایل نصب...")
+                return
+            }
+            Thread {
+                try {
+                    val apkFile = prepareShareableApk()
+                    runOnUiThread {
+                        try {
+                            shareApkFile(apkFile)
+                            notifyShareApkResult(true, "فایل نصب آماده ارسال شد")
+                        } catch (error: Exception) {
+                            notifyShareApkResult(false, error.message ?: "اشتراک فایل نصب ممکن نشد")
+                        } finally {
+                            shareApkBusy.set(false)
+                        }
+                    }
+                } catch (error: Exception) {
+                    runOnUiThread {
+                        notifyShareApkResult(false, error.message ?: "آماده‌سازی فایل نصب ممکن نشد")
+                        shareApkBusy.set(false)
+                    }
+                }
+            }.start()
+        }
+    }
+
+    private fun notifyShareApkResult(success: Boolean, message: String) {
+        val payload = JSONObject().apply {
+            put("success", success)
+            put("message", message)
+        }.toString()
+        webView.evaluateJavascript(
+            "window.__onShareApkComplete && window.__onShareApkComplete($payload);",
+            null,
+        )
+    }
+
+    private fun prepareShareableApk(): File {
+        val sourcePath = applicationInfo.sourceDir
+            ?: throw IllegalStateException("مسیر فایل نصب پیدا نشد")
+        val source = File(sourcePath)
+        if (!source.exists() || source.length() <= 0L) {
+            throw IllegalStateException("فایل نصب اپلیکیشن در دسترس نیست")
+        }
+
+        val shareDir = File(cacheDir, "share")
+        if (!shareDir.exists() && !shareDir.mkdirs()) {
+            throw IllegalStateException("ساخت پوشه موقت ممکن نشد")
+        }
+
+        val versionName = runCatching {
+            packageManager.getPackageInfo(packageName, 0).versionName
+        }.getOrNull().orEmpty().ifBlank { "app" }
+        val safeVersion = versionName.replace(Regex("[^A-Za-z0-9._-]"), "_")
+        val target = File(shareDir, "market-prices-$safeVersion.apk")
+
+        source.inputStream().use { input ->
+            target.outputStream().use { output ->
+                input.copyTo(output)
+                output.flush()
+            }
+        }
+
+        if (!target.exists() || target.length() <= 0L) {
+            throw IllegalStateException("کپی فایل نصب ناموفق بود")
+        }
+        return target
+    }
+
+    private fun shareApkFile(apkFile: File) {
+        val uri = FileProvider.getUriForFile(
+            this,
+            "$packageName.fileprovider",
+            apkFile,
+        )
+        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+            type = "application/vnd.android.package-archive"
+            putExtra(Intent.EXTRA_STREAM, uri)
+            putExtra(Intent.EXTRA_SUBJECT, "اپلیکیشن تصمیم")
+            putExtra(
+                Intent.EXTRA_TEXT,
+                "فایل نصب اپلیکیشن تصمیم را دریافت کنید و نصب کنید.",
+            )
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        startActivity(Intent.createChooser(shareIntent, "ارسال فایل نصب اپلیکیشن"))
     }
 
     private fun sharePngImage(base64Png: String, fileName: String) {
@@ -526,8 +640,8 @@ class MainActivity : Activity() {
         val shareIntent = Intent(Intent.ACTION_SEND).apply {
             type = "image/png"
             putExtra(Intent.EXTRA_STREAM, uri)
-            putExtra(Intent.EXTRA_SUBJECT, "قیمت طلا و دلار")
-            putExtra(Intent.EXTRA_TEXT, "قیمت لحظه‌ای دلار و طلا")
+            putExtra(Intent.EXTRA_SUBJECT, "تصمیم")
+            putExtra(Intent.EXTRA_TEXT, "قیمت لحظه‌ای ارز، طلا، خودرو و مسکن")
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
         startActivity(Intent.createChooser(shareIntent, "اشتراک‌گذاری تصویر قیمت"))
@@ -723,6 +837,9 @@ class MainActivity : Activity() {
                 setRequestProperty("Referer", referer)
                 if (host == "bama.ir" || host.endsWith(".bama.ir")) {
                     setRequestProperty("Origin", "https://bama.ir")
+                }
+                if (host == "divar.ir" || host == "api.divar.ir" || host.endsWith(".divar.ir")) {
+                    setRequestProperty("Origin", "https://divar.ir")
                 }
                 for ((key, value) in extraHeaders) {
                     if (key.isNotBlank() && value.isNotBlank()) {

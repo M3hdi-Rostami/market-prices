@@ -446,6 +446,20 @@ export const androidUpdateBridgeScript = `(function () {
   })();`;
 
 export const updateSheetExtraStyles = `
+    .update-sheet-icon-wrap {
+      background: color-mix(in srgb, var(--accent) 12%, transparent) !important;
+    }
+
+    .update-sheet-icon {
+      background: color-mix(in srgb, var(--accent) 18%, transparent) !important;
+      color: var(--accent) !important;
+    }
+
+    .update-sheet-icon svg {
+      color: inherit;
+      stroke: currentColor;
+    }
+
     .update-sheet-progress {
       width: 100%;
       margin-top: 4px;
@@ -470,7 +484,7 @@ export const updateSheetExtraStyles = `
       height: 100%;
       width: 0%;
       border-radius: inherit;
-      background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 65%, #06b6d4));
+      background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 65%, var(--accent-glow, #06b6d4)));
       transition: width 0.2s ease;
     }
 

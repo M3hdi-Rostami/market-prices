@@ -635,6 +635,132 @@ async function getBamaCalculatorVehicles() {
   return data;
 }
 
+const BAMA_BODY_STATUS_OPTIONS = [
+  { value: "Healthy", labelFa: "سالم و بدون رنگ" },
+  { value: "Painted", labelFa: "دوررنگ" },
+  { value: "Repainted", labelFa: "تمام‌رنگ" },
+  { value: "Damaged", labelFa: "آسیب‌دیده" },
+];
+
+function findBamaBrandModelTrim(tree, brandId, modelId, trimId) {
+  const brand = (Array.isArray(tree) ? tree : []).find(
+    (item) => Number(item.brand_id) === Number(brandId),
+  );
+  if (!brand) return null;
+  const model = (brand.models || []).find((item) => Number(item.model_id) === Number(modelId));
+  if (!model) return null;
+  const trims = Array.isArray(model.trims) ? model.trims : [];
+  const trim =
+    trimId == null || trimId === ""
+      ? null
+      : trims.find((item) => Number(item.trim_id) === Number(trimId)) || null;
+  return { brand, model, trim, trims };
+}
+
+function bodyPartsForManualStatus(bodyStatus) {
+  const parts = emptyBamaBodyParts();
+  if (bodyStatus === "Damaged") {
+    parts.hood = 2;
+    parts.door_right_front = 2;
+  }
+  return parts;
+}
+
+async function postBamaCalculate(requestBody) {
+  const payload = await fetchHttpJson(BAMA_CALCULATOR_CALCULATE_API, {
+    method: "POST",
+    headers: {
+      Origin: "https://bama.ir",
+      Referer: "https://bama.ir/calculator",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(requestBody),
+  });
+  const data = payload?.data;
+  if (!data) {
+    const message =
+      (Array.isArray(payload?.errors) && payload.errors[0]) || "تخمین قیمت دریافت نشد";
+    throw new Error(String(message));
+  }
+  return data;
+}
+
+function mapBamaCalculateToEstimate(data, extras = {}) {
+  const minPrice = Number(data.min_price) || 0;
+  const maxPrice = Number(data.max_price) || 0;
+  const suggestedPrice = Number(data.price) || 0;
+  if (!minPrice && !maxPrice && !suggestedPrice) {
+    throw new Error("تخمین قیمت دریافت نشد");
+  }
+  const adPrice = Number(extras.adPrice) || 0;
+  return {
+    minPrice: minPrice || suggestedPrice,
+    maxPrice: maxPrice || suggestedPrice,
+    suggestedPrice,
+    verdict: verdictFromBama(adPrice, minPrice || suggestedPrice, maxPrice || suggestedPrice),
+    brandFa: data.brand || extras.brandFa || "",
+    modelFa: data.model || extras.modelFa || "",
+    trimFa: data.trim || extras.trimFa || "",
+    modelYear: data.model_year || Number(extras.modelYear) || 0,
+    mileage: data.mileage != null ? Number(data.mileage) : Number(extras.mileage) || 0,
+    color: extras.color || data.default_color || "",
+    imageUrl: data.image_url || extras.imageUrl || "",
+    tags: Array.isArray(data.tags) ? data.tags : [],
+    calculateId: data.id || "",
+  };
+}
+
+/**
+ * Manual estimate from selected brand/model/trim IDs (Bama calculator).
+ * selection: { brandId, modelId, trimId?, modelYear, mileage, bodyStatus?, color?, adPrice? }
+ */
+async function estimateBamaPriceFromSelection(selection) {
+  const brandId = Number(selection?.brandId);
+  const modelId = Number(selection?.modelId);
+  const modelYear = Number(selection?.modelYear);
+  const mileage = Number(selection?.mileage);
+  if (!Number.isFinite(brandId) || brandId <= 0) throw new Error("برند خودرو را انتخاب کنید");
+  if (!Number.isFinite(modelId) || modelId <= 0) throw new Error("مدل خودرو را انتخاب کنید");
+  if (!Number.isFinite(modelYear) || modelYear < 1300 || modelYear > 1500) {
+    throw new Error("سال ساخت معتبر وارد کنید");
+  }
+  if (!Number.isFinite(mileage) || mileage < 0) throw new Error("کارکرد خودرو را وارد کنید");
+
+  const tree = await getBamaCalculatorVehicles();
+  const matched = findBamaBrandModelTrim(tree, brandId, modelId, selection?.trimId);
+  if (!matched) throw new Error("مدل انتخاب‌شده برای تخمین معتبر نیست");
+
+  const bodyStatus = selection?.bodyStatus || "Healthy";
+  const trimId =
+    selection?.trimId == null || selection?.trimId === ""
+      ? null
+      : Number(selection.trimId);
+  if ((matched.trims || []).length > 0 && (trimId == null || !Number.isFinite(trimId))) {
+    throw new Error("تیپ خودرو را انتخاب کنید");
+  }
+
+  const requestBody = {
+    brand_id: brandId,
+    model_id: modelId,
+    trim_id: trimId,
+    mileage: Math.round(mileage),
+    model_year: modelYear,
+    body_status: bodyStatus,
+    ...bodyPartsForManualStatus(bodyStatus),
+  };
+
+  const data = await postBamaCalculate(requestBody);
+  return mapBamaCalculateToEstimate(data, {
+    brandFa: matched.brand.brand_name_fa,
+    modelFa: matched.model.model_name_fa,
+    trimFa: matched.trim?.trim_name_fa || "",
+    modelYear,
+    mileage: Math.round(mileage),
+    color: selection?.color || "",
+    adPrice: selection?.adPrice || 0,
+  });
+}
+
 function verdictFromBama(adPrice, minPrice, maxPrice) {
   if (adPrice && minPrice && adPrice < minPrice) return "ارزان";
   if (adPrice && maxPrice && adPrice > maxPrice) return "گران";
@@ -675,44 +801,20 @@ async function estimateBamaPrice(ad) {
     ...parts,
   };
 
-  const payload = await fetchHttpJson(BAMA_CALCULATOR_CALCULATE_API, {
-    method: "POST",
-    headers: {
-      Origin: "https://bama.ir",
-      Referer: "https://bama.ir/calculator",
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(requestBody),
-  });
-
-  const data = payload?.data;
-  if (!data) throw new Error("تخمین قیمت دریافت نشد");
-
-  const minPrice = Number(data.min_price) || 0;
-  const maxPrice = Number(data.max_price) || 0;
-  const suggestedPrice = Number(data.price) || 0;
-  if (!minPrice && !maxPrice && !suggestedPrice) {
-    throw new Error("تخمین قیمت دریافت نشد");
-  }
-
+  const data = await postBamaCalculate(requestBody);
   const tipFromAd = extractTipFromBrandModelFa(ad.brandModelFa);
-  const trimFa = data.trim || tipFromAd || matched.trim?.trim_name_fa || "";
-
-  return {
-    minPrice: minPrice || suggestedPrice,
-    maxPrice: maxPrice || suggestedPrice,
-    suggestedPrice,
-    verdict: verdictFromBama(ad.price, minPrice || suggestedPrice, maxPrice || suggestedPrice),
-    brandFa: data.brand || matched.brand.brand_name_fa || "",
-    modelFa: data.model || matched.model.model_name_fa || "",
-    trimFa,
-    modelYear: data.model_year || Number(year),
-    mileage: data.mileage != null ? Number(data.mileage) : mileage,
-    color: ad.color || data.default_color || "",
-    imageUrl: data.image_url || ad.imageUrl || "",
-    tags: Array.isArray(data.tags) ? data.tags : [],
-    calculateId: data.id || "",
-  };
+  const estimate = mapBamaCalculateToEstimate(data, {
+    brandFa: matched.brand.brand_name_fa,
+    modelFa: matched.model.model_name_fa,
+    trimFa: tipFromAd || matched.trim?.trim_name_fa || "",
+    modelYear: Number(year),
+    mileage,
+    color: ad.color || "",
+    adPrice: ad.price || 0,
+    imageUrl: ad.imageUrl || "",
+  });
+  if (tipFromAd && !estimate.trimFa) estimate.trimFa = tipFromAd;
+  return estimate;
 }
 
 async function estimateFromDivarUrl(divarUrl) {
@@ -835,7 +937,461 @@ function renderDivarEstimateResult(result) {
   `;
 }
 
-const SHARE_CARD_BRAND = "قیمت طلا و دلار";
+const DIVAR_POSTLIST_SEARCH_API = "https://api.divar.ir/v8/postlist/w/search";
+
+/**
+ * City registry for housing search.
+ * Add a city object (Divar city id + slug) and set enabled:true to unlock it in UI.
+ */
+const HOUSING_CITIES = [
+  {
+    id: "1",
+    slug: "tehran",
+    nameFa: "تهران",
+    enabled: true,
+    deals: {
+      buy: {
+        key: "buy",
+        labelFa: "خرید",
+        categoryApi: "apartment-sell",
+        webPath: "buy-apartment",
+        budgetMode: "price",
+      },
+      rent: {
+        key: "rent",
+        labelFa: "رهن و اجاره",
+        categoryApi: "apartment-rent",
+        webPath: "rent-apartment",
+        budgetMode: "credit_rent",
+      },
+    },
+  },
+];
+
+const HOUSING_ROOM_OPTIONS = [
+  { value: "", label: "همه" },
+  { value: "بدون اتاق", label: "بدون اتاق" },
+  { value: "یک", label: "۱ خواب" },
+  { value: "دو", label: "۲ خواب" },
+  { value: "سه", label: "۳ خواب" },
+  { value: "چهار", label: "۴ خواب" },
+  { value: "پنج یا بیشتر", label: "۵+ خواب" },
+];
+
+function getEnabledHousingCities() {
+  return HOUSING_CITIES.filter((city) => city && city.enabled !== false);
+}
+
+function getHousingCityById(cityId) {
+  return HOUSING_CITIES.find((city) => String(city.id) === String(cityId)) || null;
+}
+
+function getHousingDeal(city, dealKey) {
+  if (!city?.deals) return null;
+  return city.deals[dealKey] || city.deals.buy || null;
+}
+
+function parseHousingMoneyInput(input) {
+  const cleaned = toEnglishNumber(String(input || ""))
+    .replace(/[^\d.]/g, "")
+    .trim();
+  if (!cleaned) return null;
+  const value = Number(cleaned);
+  if (!Number.isFinite(value) || value < 0) return null;
+  return Math.round(value);
+}
+
+function formatHousingMoneyInput(value) {
+  if (value == null || Number.isNaN(Number(value))) return "";
+  return Number(value).toLocaleString("en-US");
+}
+
+function formatCommaSeparatedDigits(input) {
+  const cleaned = toEnglishNumber(String(input || "")).replace(/[^\d]/g, "");
+  if (!cleaned) return "";
+  return Number(cleaned).toLocaleString("en-US");
+}
+
+function applyCommaSeparatedNumberInput(el) {
+  if (!el) return;
+  const selectionStart = el.selectionStart == null ? el.value.length : el.selectionStart;
+  const digitsBeforeCursor = toEnglishNumber(el.value.slice(0, selectionStart)).replace(/[^\d]/g, "").length;
+  const formatted = formatCommaSeparatedDigits(el.value);
+  if (el.value === formatted) return;
+  el.value = formatted;
+  let seen = 0;
+  let pos = formatted.length;
+  if (digitsBeforeCursor <= 0) {
+    pos = 0;
+  } else {
+    for (let i = 0; i < formatted.length; i += 1) {
+      if (/\d/.test(formatted[i])) {
+        seen += 1;
+        if (seen >= digitsBeforeCursor) {
+          pos = i + 1;
+          break;
+        }
+      }
+    }
+  }
+  try {
+    el.setSelectionRange(pos, pos);
+  } catch (e) {}
+}
+
+function bindCommaSeparatedNumberInput(el) {
+  if (!el) return;
+  el.addEventListener("input", function () {
+    applyCommaSeparatedNumberInput(el);
+  });
+  el.addEventListener("blur", function () {
+    const parsed = parseHousingMoneyInput(el.value);
+    el.value = parsed != null ? formatHousingMoneyInput(parsed) : "";
+  });
+}
+
+function extractDivarHousingImages(payload) {
+  const images = [];
+  const sections = Array.isArray(payload?.sections) ? payload.sections : [];
+  for (const section of sections) {
+    for (const widget of section?.widgets || []) {
+      if (widget?.widget_type !== "IMAGE_CAROUSEL") continue;
+      for (const item of widget?.data?.items || []) {
+        const url = item?.image?.url || item?.image?.thumbnail_url || "";
+        if (url) images.push(url);
+      }
+    }
+  }
+  return [...new Set(images)];
+}
+
+function extractDivarHousingSpecs(payload) {
+  const specs = {
+    size: null,
+    year: null,
+    rooms: null,
+    floor: null,
+    totalPriceText: "",
+    pricePerMeterText: "",
+    creditText: "",
+    rentText: "",
+    description: "",
+  };
+
+  specs.size = findDivarGroupInfoValue(payload, "متراژ") || null;
+  specs.year = findDivarGroupInfoValue(payload, "ساخت") || null;
+  specs.rooms = findDivarGroupInfoValue(payload, "اتاق") || null;
+  specs.floor = findDivarRowValue(payload, "طبقه") || null;
+  specs.totalPriceText = findDivarRowValue(payload, "قیمت کل") || "";
+  specs.pricePerMeterText = findDivarRowValue(payload, "قیمت هر متر") || "";
+  specs.creditText =
+    findDivarRowValue(payload, "ودیعه") ||
+    findDivarRowValue(payload, "رهن") ||
+    findDivarRowValue(payload, "مقدار ودیعه") ||
+    "";
+  specs.rentText =
+    findDivarRowValue(payload, "اجاره") ||
+    findDivarRowValue(payload, "اجارهٔ ماهانه") ||
+    findDivarRowValue(payload, "مقدار اجاره") ||
+    "";
+
+  const sections = Array.isArray(payload?.sections) ? payload.sections : [];
+  for (const section of sections) {
+    if (section?.section_name !== "DESCRIPTION") continue;
+    for (const widget of section?.widgets || []) {
+      const text = String(widget?.data?.text || "").trim();
+      if (text) {
+        specs.description = text;
+        break;
+      }
+    }
+  }
+
+  return specs;
+}
+
+function mapDivarHousingSearchRow(widget, dealKey) {
+  if (!widget || widget.widget_type !== "POST_ROW") return null;
+  const data = widget.data || {};
+  const token = data.token || pathGet(data, ["action", "payload", "token"], "");
+  if (!token) return null;
+  const webInfo = pathGet(data, ["action", "payload", "web_info"], {}) || {};
+  return {
+    token: String(token),
+    dealKey: dealKey || "buy",
+    title: String(data.title || webInfo.title || "آگهی ملک"),
+    thumbUrl: String(data.image_url || ""),
+    imageCount: Number(data.image_count) || 0,
+    priceText: String(data.middle_description_text || ""),
+    creditText: String(data.top_description_text || ""),
+    metaText: String(data.bottom_description_text || ""),
+    badgeText: String(data.red_text || ""),
+    district: String(webInfo.district_persian || ""),
+    city: String(webInfo.city_persian || ""),
+    url: `https://divar.ir/v/${encodeURIComponent(token)}`,
+    images: data.image_url ? [String(data.image_url)] : [],
+    size: null,
+    year: null,
+    rooms: null,
+    floor: null,
+    totalPriceText: "",
+    pricePerMeterText: "",
+    rentText: "",
+    description: "",
+    enriched: false,
+  };
+}
+
+function buildDivarHousingSearchBody(query, paginationData = null) {
+  const city = getHousingCityById(query.cityId) || getEnabledHousingCities()[0];
+  if (!city) throw new Error("شهری برای جستجو تنظیم نشده است");
+  const deal = getHousingDeal(city, query.dealKey || "buy");
+  if (!deal) throw new Error("نوع معامله نامعتبر است");
+
+  const formData = {
+    category: { str: { value: deal.categoryApi } },
+  };
+
+  if (deal.budgetMode === "price") {
+    const maxPrice = parseHousingMoneyInput(query.budgetMax);
+    if (maxPrice != null && maxPrice > 0) {
+      formData.price = { number_range: { maximum: String(maxPrice) } };
+    }
+  } else {
+    const maxCredit = parseHousingMoneyInput(query.creditMax);
+    const maxRent = parseHousingMoneyInput(query.rentMax);
+    if (maxCredit != null && maxCredit > 0) {
+      formData.credit = { number_range: { maximum: String(maxCredit) } };
+    }
+    if (maxRent != null && maxRent >= 0) {
+      formData.rent = { number_range: { maximum: String(maxRent) } };
+    }
+  }
+
+  const sizeMin = parseHousingMoneyInput(query.sizeMin);
+  const sizeMax = parseHousingMoneyInput(query.sizeMax);
+  if ((sizeMin != null && sizeMin > 0) || (sizeMax != null && sizeMax > 0)) {
+    formData.size = { number_range: {} };
+    if (sizeMin != null && sizeMin > 0) formData.size.number_range.minimum = String(sizeMin);
+    if (sizeMax != null && sizeMax > 0) formData.size.number_range.maximum = String(sizeMax);
+  }
+
+  if (query.rooms) {
+    formData.rooms = { repeated_string: { value: [String(query.rooms)] } };
+  }
+
+  const body = {
+    city_ids: [String(city.id)],
+    search_data: {
+      form_data: { data: formData },
+      server_payload: {
+        "@type": "type.googleapis.com/widgets.SearchData.ServerPayload",
+        additional_form_data: {
+          data: {
+            sort: { str: { value: "sort_date" } },
+          },
+        },
+      },
+    },
+  };
+
+  if (paginationData) {
+    body.pagination_data = paginationData;
+  }
+
+  return { city, deal, body };
+}
+
+async function searchDivarHousingListings(query, paginationData = null) {
+  const { city, deal, body } = buildDivarHousingSearchBody(query, paginationData);
+  const referer = `https://divar.ir/s/${city.slug}/${deal.webPath}`;
+  const payload = await fetchHttpJson(DIVAR_POSTLIST_SEARCH_API, {
+    method: "POST",
+    headers: {
+      Origin: "https://divar.ir",
+      Referer: referer,
+    },
+    body: JSON.stringify(body),
+  });
+
+  const rows = (payload?.list_widgets || [])
+    .map((widget) => mapDivarHousingSearchRow(widget, deal.key))
+    .filter(Boolean);
+
+  return {
+    city,
+    deal,
+    rows,
+    hasNextPage: payload?.pagination?.has_next_page === true,
+    paginationData: payload?.pagination?.data || null,
+    empty: rows.length === 0,
+  };
+}
+
+async function getDivarHousingAdByToken(token) {
+  const cleaned = String(token || "").trim();
+  if (!cleaned) throw new Error("شناسه آگهی نامعتبر است");
+  const payload = await fetchHttpJson(`${DIVAR_POST_API_BASE}${encodeURIComponent(cleaned)}`);
+  const cat1 = pathGet(payload, ["webengage", "cat_1"], "");
+  if (cat1 && cat1 !== "real-estate") {
+    throw new Error("این آگهی مربوط به ملک نیست");
+  }
+
+  const specs = extractDivarHousingSpecs(payload);
+  const images = extractDivarHousingImages(payload);
+  const webInfo = pathGet(payload, ["seo", "web_info"], {}) || {};
+
+  return {
+    token: cleaned,
+    title: pathGet(payload, ["share", "title"], "") || webInfo.title || "آگهی ملک",
+    url: pathGet(payload, ["share", "web_url"], `https://divar.ir/v/${encodeURIComponent(cleaned)}`),
+    city: webInfo.city_persian || pathGet(payload, ["webengage", "city"], "") || "",
+    district: webInfo.district_persian || "",
+    images,
+    ...specs,
+    enriched: true,
+  };
+}
+
+async function enrichDivarHousingListings(rows, { concurrency = 4, limit = 12 } = {}) {
+  const targets = (rows || []).slice(0, limit);
+  const enriched = new Array(targets.length);
+  let cursor = 0;
+
+  async function worker() {
+    while (cursor < targets.length) {
+      const index = cursor;
+      cursor += 1;
+      const row = targets[index];
+      try {
+        const detail = await getDivarHousingAdByToken(row.token);
+        enriched[index] = {
+          ...row,
+          ...detail,
+          dealKey: row.dealKey,
+          thumbUrl: detail.images?.[0] || row.thumbUrl,
+          images: detail.images?.length ? detail.images : row.images,
+          priceText: row.priceText || detail.totalPriceText || detail.rentText || "",
+          creditText: row.creditText || detail.creditText || "",
+          enriched: true,
+        };
+      } catch (error) {
+        console.warn("Housing detail enrich failed:", row.token, error);
+        enriched[index] = row;
+      }
+    }
+  }
+
+  const workers = Array.from({ length: Math.min(concurrency, targets.length || 1) }, () => worker());
+  await Promise.all(workers);
+  return enriched.concat((rows || []).slice(limit));
+}
+
+function openExternalUrl(url) {
+  const cleaned = String(url || "").trim();
+  if (!cleaned) return;
+  try {
+    if (typeof AndroidApp !== "undefined" && typeof AndroidApp["openUrl"] === "function") {
+      AndroidApp["openUrl"](cleaned);
+      return;
+    }
+  } catch {
+    // fall through
+  }
+  try {
+    window.open(cleaned, "_blank", "noopener,noreferrer");
+  } catch {
+    location.href = cleaned;
+  }
+}
+
+function formatHousingPriceLabel(text, kind) {
+  const value = String(text || "").trim();
+  if (!value || value === "—") return value;
+  if (kind === "credit" && !/ودیعه|رهن/.test(value)) return `ودیعه ${value}`;
+  if (kind === "rent" && !/اجاره/.test(value)) return `اجاره ${value}`;
+  return value;
+}
+
+function renderHousingListingCard(listing) {
+  const images = (listing.images && listing.images.length ? listing.images : [listing.thumbUrl]).filter(Boolean);
+  const gallery =
+    images.length > 0
+      ? `<div class="housing-gallery" data-housing-gallery>
+          <div class="housing-gallery-track">
+            ${images
+              .map(
+                (src, index) =>
+                  `<img class="housing-gallery-image" src="${escapeHtml(src)}" alt="" loading="lazy" decoding="async" data-gallery-index="${index}" />`,
+              )
+              .join("")}
+          </div>
+          ${
+            images.length > 1
+              ? `<div class="housing-gallery-dots" aria-hidden="true">${images
+                  .map((_, index) => `<span class="housing-gallery-dot${index === 0 ? " is-active" : ""}"></span>`)
+                  .join("")}</div>`
+              : ""
+          }
+          <span class="housing-gallery-count">${escapeHtml(String(images.length))} عکس</span>
+        </div>`
+      : `<div class="housing-gallery housing-gallery-empty">بدون تصویر</div>`;
+
+  const isRent = listing.dealKey === "rent";
+  const creditRaw = listing.creditText || "";
+  const rentRaw =
+    listing.rentText ||
+    (listing.priceText && listing.priceText !== creditRaw ? listing.priceText : "") ||
+    "";
+  const pricePrimary = isRent
+    ? formatHousingPriceLabel(creditRaw || "—", "credit")
+    : listing.totalPriceText || listing.priceText || "—";
+  const priceSecondary = isRent
+    ? formatHousingPriceLabel(rentRaw, "rent")
+    : listing.pricePerMeterText || "";
+
+  const chips = [
+    listing.size ? `${escapeHtml(String(listing.size))} متر` : "",
+    listing.rooms
+      ? /اتاق|خواب/.test(String(listing.rooms))
+        ? escapeHtml(String(listing.rooms))
+        : `${escapeHtml(String(listing.rooms))} خواب`
+      : "",
+    listing.year ? `ساخت ${escapeHtml(String(listing.year))}` : "",
+    listing.floor ? `طبقه ${escapeHtml(String(listing.floor))}` : "",
+  ].filter(Boolean);
+
+  const locationBits = [listing.city, listing.district].filter(Boolean).map((part) => escapeHtml(part));
+  const desc = String(listing.description || "").trim();
+
+  return `
+    <article class="housing-card" data-housing-token="${escapeHtml(listing.token)}">
+      ${gallery}
+      <div class="housing-card-body">
+        <div class="housing-price-block">
+          <p class="housing-price-primary">${escapeHtml(pricePrimary)}</p>
+          ${priceSecondary ? `<p class="housing-price-secondary">${escapeHtml(priceSecondary)}</p>` : ""}
+        </div>
+        <h3 class="housing-card-title">${escapeHtml(listing.title)}</h3>
+        ${locationBits.length ? `<p class="housing-card-location">${locationBits.join(" · ")}</p>` : ""}
+        ${
+          chips.length
+            ? `<div class="housing-chip-row">${chips.map((chip) => `<span class="housing-chip">${chip}</span>`).join("")}</div>`
+            : ""
+        }
+        ${listing.metaText ? `<p class="housing-card-meta">${escapeHtml(listing.metaText)}</p>` : ""}
+        ${
+          desc
+            ? `<p class="housing-card-desc">${escapeHtml(desc.slice(0, 180))}${desc.length > 180 ? "…" : ""}</p>`
+            : ""
+        }
+        <button type="button" class="housing-open-btn" data-housing-open="${escapeHtml(listing.url)}">مشاهده در دیوار</button>
+      </div>
+    </article>
+  `;
+}
+
+const SHARE_CARD_BRAND = "تصمیم";
 const SHARE_CARD_WIDTH = 1080;
 const SHARE_CARD_HEIGHT = 1680;
 const SHARE_CARD_ITEMS = [
@@ -1639,6 +2195,26 @@ function initMarketPrices() {
     return wholeGrams + sot / 1000;
   }
 
+  function parseGoldWeightInput(value, weightUnit) {
+    if (weightUnit === "sot") {
+      const sot = parseLocalizedNumber(value);
+      if (Number.isNaN(sot) || sot < 0) return NaN;
+      return sot / 1000;
+    }
+    return parseGoldGrams(value);
+  }
+
+  function formatWeightInputFromGrams(grams, weightUnit) {
+    if (Number.isNaN(grams) || grams < 0) return "";
+    if (weightUnit === "sot") {
+      return String(Math.round(grams * 1000));
+    }
+    const whole = Math.floor(grams + 1e-9);
+    const sot = Math.round((grams - whole) * 1000);
+    if (sot === 0) return String(whole);
+    return `${whole}.${String(sot).padStart(3, "0")}`;
+  }
+
   function formatGoldWeight(grams) {
     if (Number.isNaN(grams) || grams < 0) return "—";
     const whole = Math.floor(grams + 1e-9);
@@ -1648,7 +2224,7 @@ function initMarketPrices() {
   }
 
   function getDefaultGoldWageSettings() {
-    return { grams: "1", wageMode: "percent", wageValue: "", expanded: false };
+    return { grams: "1", weightUnit: "gram", wageMode: "percent", wageValue: "", expanded: false };
   }
 
   function getGoldWageSettings() {
@@ -1703,7 +2279,7 @@ function initMarketPrices() {
     if (!value) return "";
     if (mode !== "amount") return value;
     const num = parseLocalizedNumber(value);
-    return Number.isNaN(num) ? value : num.toLocaleString("fa-IR", { maximumFractionDigits: 0 });
+    return Number.isNaN(num) ? value : num.toLocaleString("en-US", { maximumFractionDigits: 0 });
   }
 
   function formatWageAmountInput(value) {
@@ -1712,7 +2288,7 @@ function initMarketPrices() {
       .replace(/[٠-٩]/g, (char) => String("٠١٢٣٤٥٦٧٨٩".indexOf(char)))
       .replace(/[^\d]/g, "");
     if (!digits) return "";
-    return Number(digits).toLocaleString("fa-IR", { maximumFractionDigits: 0 });
+    return Number(digits).toLocaleString("en-US");
   }
 
   function createCoinGoldAdviceCard(current) {
@@ -1829,16 +2405,28 @@ function initMarketPrices() {
       <div id="gold-wage-body" class="hidden mt-3 space-y-3 min-w-0">
         <div class="grid grid-cols-[4.75rem_minmax(0,1fr)] gap-2 items-center">
           <label class="shrink-0 text-[11px] text-[var(--mp-muted)] leading-tight" for="gold-wage-grams">وزن طلا</label>
-          <input
-            id="gold-wage-grams"
-            type="text"
-            inputmode="decimal"
-            dir="ltr"
-            value="${settings.grams}"
-            placeholder="1.600"
-            title="مثال: 1.600 یعنی ۱ گرم و ۶۰۰ سوت"
-            class="min-w-0 w-full rounded-lg border border-[var(--mp-border-2)] bg-[var(--mp-bg)] px-3 py-2 text-sm text-[var(--mp-text)] placeholder:text-gray-500 focus:outline-none focus:border-[var(--mp-accent)]"
-          />
+          <div class="flex min-w-0 items-stretch gap-1.5">
+            <div class="flex shrink-0 self-stretch overflow-hidden rounded-lg border border-[var(--mp-border-2)] divide-x divide-x-reverse divide-[var(--mp-border-2)]" role="group" aria-label="واحد وزن">
+              <button type="button" data-weight-unit="gram"
+                class="gold-weight-unit-btn flex h-full items-center justify-center px-2 text-[10px] font-semibold transition-colors whitespace-nowrap">
+                گرم
+              </button>
+              <button type="button" data-weight-unit="sot"
+                class="gold-weight-unit-btn flex h-full items-center justify-center px-2 text-[10px] font-semibold transition-colors whitespace-nowrap">
+                صوت
+              </button>
+            </div>
+            <input
+              id="gold-wage-grams"
+              type="text"
+              inputmode="decimal"
+              dir="ltr"
+              value="${settings.grams}"
+              placeholder="1.600"
+              title="مثال: 1.600 یعنی ۱ گرم و ۶۰۰ سوت"
+              class="min-w-0 flex-1 rounded-lg border border-[var(--mp-border-2)] bg-[var(--mp-bg)] px-2 py-2 text-sm text-[var(--mp-text)] placeholder:text-gray-500 focus:outline-none focus:border-[var(--mp-accent)] tabular-nums"
+            />
+          </div>
         </div>
 
         <div class="grid grid-cols-[4.75rem_minmax(0,1fr)] gap-2 items-center">
@@ -1905,11 +2493,14 @@ function initMarketPrices() {
     const wageValueInput = card.querySelector("#gold-wage-value");
     const wageValueLabel = card.querySelector("#gold-wage-value-label");
     const modeButtons = card.querySelectorAll(".gold-wage-mode-btn");
+    const weightUnitButtons = card.querySelectorAll(".gold-weight-unit-btn");
     let wageMode = settings.wageMode === "amount" ? "amount" : "percent";
+    let weightUnit = settings.weightUnit === "sot" ? "sot" : "gram";
 
     function getCurrentSettings() {
       return {
         grams: gramsInput.value,
+        weightUnit,
         wageMode,
         wageValue: wageValueInput.value,
         expanded: isExpanded,
@@ -1921,6 +2512,26 @@ function initMarketPrices() {
       bodyEl.classList.toggle("hidden", !expanded);
       chevronEl.classList.toggle("rotate-180", expanded);
       saveGoldWageSettings(getCurrentSettings());
+    }
+
+    function updateWeightUnitButtons() {
+      weightUnitButtons.forEach((button) => {
+        const active = button.dataset.weightUnit === weightUnit;
+        button.className = `gold-weight-unit-btn flex h-full items-center justify-center px-2 text-[10px] font-semibold transition-colors whitespace-nowrap ${
+          active
+            ? "bg-[var(--mp-accent)]/15 text-[var(--mp-accent)]"
+            : "bg-[var(--mp-bg)] text-[var(--mp-muted)] hover:text-[var(--mp-text)]"
+        }`;
+      });
+      if (weightUnit === "sot") {
+        gramsInput.placeholder = "۹۰۰";
+        gramsInput.title = "مثلاً ۹ یعنی ۹ صوت";
+        gramsInput.inputMode = "numeric";
+      } else {
+        gramsInput.placeholder = "1.600";
+        gramsInput.title = "مثال: 1.600 یعنی ۱ گرم و ۶۰۰ سوت";
+        gramsInput.inputMode = "decimal";
+      }
     }
 
     function updateModeButtons() {
@@ -1942,13 +2553,34 @@ function initMarketPrices() {
 
     function onWageValueInput() {
       if (wageMode === "amount") {
-        wageValueInput.value = formatWageAmountInput(wageValueInput.value);
+        const selectionStart = wageValueInput.selectionStart == null ? wageValueInput.value.length : wageValueInput.selectionStart;
+        const digitsBeforeCursor = toEnglishNumber(wageValueInput.value.slice(0, selectionStart)).replace(/[^\d]/g, "").length;
+        const formatted = formatWageAmountInput(wageValueInput.value);
+        wageValueInput.value = formatted;
+        let seen = 0;
+        let pos = formatted.length;
+        if (digitsBeforeCursor <= 0) {
+          pos = 0;
+        } else {
+          for (let i = 0; i < formatted.length; i += 1) {
+            if (/\d/.test(formatted[i])) {
+              seen += 1;
+              if (seen >= digitsBeforeCursor) {
+                pos = i + 1;
+                break;
+              }
+            }
+          }
+        }
+        try {
+          wageValueInput.setSelectionRange(pos, pos);
+        } catch (e) {}
       }
       persistAndUpdate();
     }
 
     function updateGoldWageDisplay() {
-      const grams = parseGoldGrams(gramsInput.value);
+      const grams = parseGoldWeightInput(gramsInput.value, weightUnit);
       const wageValue = parseLocalizedNumber(wageValueInput.value);
       const hasWageInput = wageValueInput.value.trim() !== "" && !Number.isNaN(wageValue);
       const breakdown = hasWageInput
@@ -2008,9 +2640,28 @@ function initMarketPrices() {
       });
     });
 
+    weightUnitButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        const nextUnit = button.dataset.weightUnit === "sot" ? "sot" : "gram";
+        if (nextUnit === weightUnit) {
+          gramsInput.focus();
+          return;
+        }
+        const currentGrams = parseGoldWeightInput(gramsInput.value, weightUnit);
+        weightUnit = nextUnit;
+        gramsInput.value = Number.isNaN(currentGrams)
+          ? ""
+          : formatWeightInputFromGrams(currentGrams, weightUnit);
+        updateWeightUnitButtons();
+        persistAndUpdate();
+        gramsInput.focus();
+      });
+    });
+
     gramsInput.addEventListener("input", persistAndUpdate);
     wageValueInput.addEventListener("input", onWageValueInput);
 
+    updateWeightUnitButtons();
     updateModeButtons();
     updateGoldWageDisplay();
     setExpanded(isExpanded);

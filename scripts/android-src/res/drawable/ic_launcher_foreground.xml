@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Soft panel behind mark -->
+    <path
+        android:fillColor="#162033"
+        android:pathData="M30,30h48v48h-48z" />
+    <path
+        android:fillColor="#1E2A44"
+        android:pathData="M34,34h40v40h-40z" />
+    <!-- Left option path -->
+    <path
+        android:fillColor="#334155"
+        android:pathData="M40,42 L48,50 L40,58 L37,55 L42,50 L37,45 Z" />
+    <!-- Right option path -->
+    <path
+        android:fillColor="#334155"
+        android:pathData="M68,42 L60,50 L68,58 L71,55 L66,50 L71,45 Z" />
+    <!-- Decision check -->
+    <path
+        android:fillColor="#00E5A0"
+        android:pathData="M46,51 L51,56 L63,42 L67,45.5 L51,63 L42,54.5 Z" />
+    <!-- Gold accent tip -->
+    <path
+        android:fillColor="#FBBF24"
+        android:pathData="M54,34 L56.5,39.5 L62,40 L58,44 L59.2,49.5 L54,46.8 L48.8,49.5 L50,44 L46,40 L51.5,39.5 Z" />
+</vector>
