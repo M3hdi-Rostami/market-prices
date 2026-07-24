@@ -1,8 +1,8 @@
 {
-  "version": "1.0.29",
-  "builtAt": "2026-07-24T08:59:02.035Z",
-  "apkVersionCode": 30,
-  "apkVersionName": "1.0.29",
+  "version": "1.0.30",
+  "builtAt": "2026-07-24T11:31:05.661Z",
+  "apkVersionCode": 31,
+  "apkVersionName": "1.0.30",
   "apkUrl": "https://github.com/M3hdi-Rostami/market-prices/releases/download/android-apk/market-prices.apk",
-  "apkSha256": "a517d124ddbdebb70de57128ef76b4f31c377b945f92b8ddd4e35bc8e3bc65a6"
+  "apkSha256": "dcb65ab84c82037e531e26ae5607bc374cff2b25003018617e69538329f34e4b"
 }
