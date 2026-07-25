@@ -58,14 +58,6 @@ export const androidPageBody = `<div class="app market-root">
       </div>
 
       <div id="view-currency" class="market-view">
-        <button type="button" id="currencyToolsShortcut" class="market-tools-shortcut" data-market-tab="tools">
-          <span class="market-tools-shortcut-icon" aria-hidden="true">🛠️</span>
-          <span class="market-tools-shortcut-copy">
-            <strong>ابزارها</strong>
-            <small>ساخت کارت بانکی برای اشتراک شماره کارت</small>
-          </span>
-          <span class="market-tools-shortcut-go" aria-hidden="true">‹</span>
-        </button>
         <div id="currencyList" class="grid price-stack hidden"></div>
       </div>
 
@@ -855,60 +847,6 @@ export const androidExtraStyles = `
       line-height: 1.55;
       font-weight: 600;
       color: var(--text);
-    }
-
-    .market-tools-shortcut {
-      flex-shrink: 0;
-      width: 100%;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 10px 12px;
-      border-radius: 14px;
-      border: 1px solid var(--border);
-      background: var(--surface);
-      color: inherit;
-      font-family: inherit;
-      text-align: right;
-      cursor: pointer;
-    }
-
-    .market-tools-shortcut-icon {
-      width: 36px;
-      height: 36px;
-      border-radius: 12px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      background: color-mix(in srgb, var(--accent) 14%, transparent);
-      font-size: 18px;
-      flex-shrink: 0;
-    }
-
-    .market-tools-shortcut-copy {
-      flex: 1;
-      min-width: 0;
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-    }
-
-    .market-tools-shortcut-copy strong {
-      font-size: 13px;
-      font-weight: 800;
-      color: var(--text);
-    }
-
-    .market-tools-shortcut-copy small {
-      font-size: 11px;
-      color: var(--muted);
-      line-height: 1.4;
-    }
-
-    .market-tools-shortcut-go {
-      color: var(--muted);
-      font-size: 18px;
-      font-weight: 700;
     }
 
     .market-about-scenarios {

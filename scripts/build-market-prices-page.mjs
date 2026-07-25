@@ -111,7 +111,6 @@ const OBFUSCATOR_OPTIONS = {
     "moreAboutPanel",
     "view-tools",
     "marketToolsBtn",
-    "currencyToolsShortcut",
     "settingsOpenToolsBtn",
     "headerTagline",
     "pricesOfflineBanner",
