@@ -328,20 +328,13 @@ export const androidUpdateBridgeScript = `(function () {
         }
         if (updateKind === "apk") {
           messageEl.textContent =
-            "نسخه " + latestVersion + " منتشر شده است (نسخه فعلی: " + currentVersion + ").\\n" +
-            "با تأیید، کل اپلیکیشن بروزرسانی می‌شود.\\n\\n" +
-            "چی عوض شده:\\n" +
-            "• تب ابزارها و ساخت کارت بانکی برای اشتراک\\n" +
-            "• جستجوهای من در مسکن و تجربه بهتر تخمین خودرو\\n" +
-            "• دینار عراق و اشتراک تصویر قیمت‌ها";
+            "نسخه " + latestVersion + " آماده نصب است (فعلی: " + currentVersion + ").\\n" +
+            "کل اپلیکیشن بروزرسانی می‌شود.";
         } else {
-          messageEl.textContent =
-            "نسخه " + latestVersion + " منتشر شده است (نسخه فعلی: " + currentVersion + ").\\n" +
-            "فقط محتوای داخل اپ بروزرسانی می‌شود.\\n\\n" +
-            "چی عوض شده:\\n" +
-            "• تب ابزارها · ساخت کارت بانکی\\n" +
-            "• جستجوهای من در مسکن\\n" +
-            "• دینار عراق و بهبود اشتراک قیمت";
+          var sameVersion = String(latestVersion) === String(currentVersion);
+          messageEl.textContent = sameVersion
+            ? "محتوای جدید داخل اپ آماده است. با تأیید، فقط محتوای اپ بروزرسانی می‌شود."
+            : ("نسخه " + latestVersion + " آماده است (فعلی: " + currentVersion + "). فقط محتوای اپ بروزرسانی می‌شود.");
         }
         if (progressWrap) progressWrap.classList.add("hidden");
         sheet.classList.remove("downloading");
@@ -464,30 +457,74 @@ export const androidUpdateBridgeScript = `(function () {
   })();`;
 
 export const updateSheetExtraStyles = `
-    .update-sheet-message {
-      white-space: pre-line;
-      text-align: right;
-      line-height: 1.7;
+    .update-sheet {
+      max-height: min(78vh, 560px) !important;
+      min-height: 260px !important;
+      overflow: hidden !important;
+    }
+
+    .update-sheet-content {
+      width: 100%;
+      min-height: 0;
+      overflow: hidden;
+      justify-content: flex-start;
+      gap: 10px;
     }
 
     .update-sheet-icon-wrap {
+      width: 52px !important;
+      height: 52px !important;
+      margin-top: 0 !important;
+      flex-shrink: 0;
       background: color-mix(in srgb, var(--accent) 12%, transparent) !important;
     }
 
     .update-sheet-icon {
+      width: 40px !important;
+      height: 40px !important;
       background: color-mix(in srgb, var(--accent) 18%, transparent) !important;
       color: var(--accent) !important;
     }
 
     .update-sheet-icon svg {
+      width: 20px;
+      height: 20px;
       color: inherit;
       stroke: currentColor;
+    }
+
+    .update-sheet-title {
+      flex-shrink: 0;
+      font-size: 16px;
+      line-height: 1.35;
+    }
+
+    .update-sheet-message {
+      white-space: pre-line;
+      text-align: right;
+      line-height: 1.65;
+      font-size: 12px;
+      flex: 1 1 auto;
+      min-height: 0;
+      max-height: none;
+      width: 100%;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 0 2px;
+    }
+
+    .update-sheet-actions {
+      flex-shrink: 0 !important;
+      width: 100%;
+      margin-top: 4px;
+      padding-top: 2px;
     }
 
     .update-sheet-progress {
       width: 100%;
       margin-top: 4px;
       margin-bottom: 4px;
+      flex-shrink: 0;
     }
 
     .update-sheet-progress.hidden {
