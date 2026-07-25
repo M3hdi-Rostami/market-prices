@@ -20,14 +20,18 @@ export const androidPageBody = `<div class="app market-root">
           </svg>
         </button>
         <div class="market-header-center">
-          <p class="market-brand" aria-label="تصمیم">تصمیم</p>
           <p id="currentDateTime" class="header-clock" aria-live="polite">
             <span id="headerDatePart" class="header-date-part">—</span>
             <span class="header-clock-sep" aria-hidden="true">-</span>
             <span id="headerTimePart" class="header-time-part">00:00:00</span>
           </p>
+          <p id="headerTagline" class="header-tagline">قیمت لحظه‌ای برای تصمیم بهتر</p>
         </div>
-        <span class="market-header-spacer" aria-hidden="true"></span>
+        <button type="button" id="marketToolsBtn" class="market-tools-btn" data-market-tab="tools" aria-label="ابزارها" title="ابزارها">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/>
+          </svg>
+        </button>
       </div>
     </header>
 
@@ -51,6 +55,17 @@ export const androidPageBody = `<div class="app market-root">
       </div>
 
       <div id="view-currency" class="market-view">
+        <div class="market-value-prop" aria-label="معرفی کوتاه">
+          <p class="market-value-prop-text">قبل از خرید ارز، طلا، خودرو یا ملک، با تصمیم مطمئن شو.</p>
+        </div>
+        <button type="button" id="currencyToolsShortcut" class="market-tools-shortcut" data-market-tab="tools">
+          <span class="market-tools-shortcut-icon" aria-hidden="true">🛠️</span>
+          <span class="market-tools-shortcut-copy">
+            <strong>ابزارها</strong>
+            <small>ساخت کارت بانکی برای اشتراک شماره کارت</small>
+          </span>
+          <span class="market-tools-shortcut-go" aria-hidden="true">‹</span>
+        </button>
         <div id="currencyList" class="grid price-stack hidden"></div>
       </div>
 
@@ -70,7 +85,7 @@ export const androidPageBody = `<div class="app market-root">
 
     <div id="view-cars" class="market-view hidden">
       <div class="cars-subtabs" role="tablist" aria-label="بخش خودرو">
-        <button type="button" class="cars-subtab-btn is-active" data-cars-subtab="prices" role="tab" aria-selected="true">قیمت صفر</button>
+        <button type="button" class="cars-subtab-btn is-active" data-cars-subtab="prices" role="tab" aria-selected="true">قیمت خودرو صفر</button>
         <button type="button" class="cars-subtab-btn" data-cars-subtab="estimate" role="tab" aria-selected="false">تخمین قیمت</button>
       </div>
 
@@ -121,7 +136,7 @@ export const androidPageBody = `<div class="app market-root">
 
         <div class="cars-estimate-mode-toggle" role="tablist" aria-label="روش تخمین">
           <button type="button" class="cars-estimate-mode-btn is-active" data-cars-estimate-mode="divar" role="tab" aria-selected="true">از آگهی دیوار</button>
-          <button type="button" class="cars-estimate-mode-btn" data-cars-estimate-mode="specs" role="tab" aria-selected="false">با مشخصات</button>
+          <button type="button" class="cars-estimate-mode-btn" data-cars-estimate-mode="specs" role="tab" aria-selected="false">با مشخصات من</button>
         </div>
 
         <div id="carsEstimateDivarPanel" class="cars-estimate-mode-panel">
@@ -153,7 +168,7 @@ export const androidPageBody = `<div class="app market-root">
             </div>
             <div class="my-cars-wrap">
               <div id="myCarsList" class="my-cars-list"></div>
-              <p id="myCarsEmpty" class="my-cars-empty">هنوز خودرویی ذخیره نشده است.</p>
+              <p id="myCarsEmpty" class="my-cars-empty">هنوز خودرویی ذخیره نشده. مشخصات را وارد کن و ذخیره کن تا بعداً سریع تخمین بزنی.</p>
             </div>
           </section>
 
@@ -225,11 +240,32 @@ export const androidPageBody = `<div class="app market-root">
     </div>
 
     <div id="view-housing" class="market-view hidden">
-      <form id="housingSearchForm" class="housing-search-form" autocomplete="off">
-        <div class="housing-form-head">
-          <h2 class="housing-form-title">جستجوی ملک با بودجه</h2>
-          <p class="housing-form-hint">فعلاً فقط تهران · منبع: دیوار</p>
+      <div class="cars-panel-intro">
+        <div class="cars-panel-intro-icon" aria-hidden="true">🏠</div>
+        <div class="cars-panel-intro-text">
+          <h2 class="cars-panel-intro-title">جستجوی ملک متناسب با بودجه من</h2>
+          <p class="cars-panel-intro-hint">بودجه، متراژ و تعداد خواب را مشخص کنید تا آگهی‌های مناسب را پیدا کنید</p>
         </div>
+      </div>
+
+      <section class="cars-estimate-section">
+        <div class="cars-estimate-section-head">
+          <div>
+            <h3 class="cars-estimate-section-title">جستجوهای من</h3>
+            <p class="cars-estimate-section-hint">جستجوها را ذخیره کنید تا بعداً سریع دوباره اجرا شوند</p>
+          </div>
+        </div>
+        <div class="my-cars-wrap">
+          <div id="myHousingSearchesList" class="my-cars-list"></div>
+          <p id="myHousingSearchesEmpty" class="my-cars-empty">هنوز جستجویی ذخیره نشده. فیلترهایت را ذخیره کن تا بعداً با یک لمس دوباره جستجو کنی.</p>
+        </div>
+      </section>
+
+      <form id="housingSearchForm" class="housing-search-form" autocomplete="off">
+        <label class="housing-field">
+          <span class="housing-field-label">نام دلخواه (اختیاری)</span>
+          <input id="housingSearchNickname" class="housing-input" type="text" maxlength="40" placeholder="مثلاً خرید تا ۱۰ میلیارد" />
+        </label>
 
         <label class="housing-field">
           <span class="housing-field-label">شهر</span>
@@ -275,10 +311,13 @@ export const androidPageBody = `<div class="app market-root">
           <select id="housingRooms" class="housing-input"></select>
         </label>
 
-        <button id="housingSearchBtn" type="submit" class="housing-search-btn">
-          <span class="housing-search-btn-spinner" aria-hidden="true"></span>
-          <span class="housing-search-btn-label">پیدا کردن آگهی‌ها</span>
-        </button>
+        <div class="housing-form-actions">
+          <button id="housingSearchBtn" type="submit" class="housing-search-btn">
+            <span class="housing-search-btn-spinner" aria-hidden="true"></span>
+            <span class="housing-search-btn-label">پیدا کردن آگهی‌ها</span>
+          </button>
+          <button id="housingSaveSearchBtn" type="button" class="housing-save-btn">ذخیره جستجو</button>
+        </div>
       </form>
 
       <p id="housingStatus" class="housing-status hidden"></p>
@@ -297,47 +336,16 @@ export const androidPageBody = `<div class="app market-root">
       </div>
     </div>
 
-    <div id="view-more" class="market-view hidden">
-      <div class="more-subtabs" role="tablist" aria-label="بخش تنظیمات">
-        <button type="button" class="more-subtab-btn is-active" data-more-subtab="settings" role="tab" aria-selected="true">تنظیمات</button>
-        <button type="button" class="more-subtab-btn" data-more-subtab="tools" role="tab" aria-selected="false">ابزارها</button>
-        <button type="button" class="more-subtab-btn" data-more-subtab="donate" role="tab" aria-selected="false">حمایت</button>
-        <button type="button" class="more-subtab-btn" data-more-subtab="about" role="tab" aria-selected="false">درباره</button>
-      </div>
-
-      <div id="moreSettingsPanel" class="more-subpanel">
-        <div class="market-more-scroll">
-          <section class="market-more-section">
-            <h3 class="market-more-section-title">ظاهر</h3>
-            <button type="button" id="themeToggleBtn" class="market-more-row">
-              <span class="market-more-row-label">تم اپلیکیشن</span>
-              <span id="themeToggleValue" class="market-more-row-value">تم تاریک</span>
-            </button>
-            <div class="market-accent-field">
-              <p class="market-more-field-label">رنگ قالب</p>
-              <div id="accentColorPicker" class="market-accent-picker" role="group" aria-label="انتخاب رنگ قالب"></div>
-              <p class="market-more-hint">رنگ دکمه‌ها، نشانگر فعال و جزئیات برجسته اپ را عوض می‌کند.</p>
-            </div>
-          </section>
-
-          <section class="market-more-section">
-            <h3 class="market-more-section-title">اعلان قیمت</h3>
-            <label class="market-more-row market-more-toggle-row">
-              <span class="market-more-row-label">هشدار تغییر قیمت</span>
-              <input type="checkbox" id="alertsEnabled" class="market-more-switch" />
-            </label>
-            <div class="market-more-field">
-              <label for="alertsThreshold" class="market-more-field-label">آستانه تغییر (٪)</label>
-              <input id="alertsThreshold" type="number" min="0.1" max="50" step="0.1" inputmode="decimal" class="market-more-input" />
-            </div>
-            <p class="market-more-hint">وقتی دلار یا طلای ۱۸ عیار بیش از این درصد تغییر کند، اعلان نمایش داده می‌شود.</p>
-          </section>
+    <div id="view-tools" class="market-view hidden">
+      <div class="market-more-scroll">
+        <div class="cars-panel-intro">
+          <div class="cars-panel-intro-icon" aria-hidden="true">💳</div>
+          <div class="cars-panel-intro-text">
+            <h2 class="cars-panel-intro-title">ابزارها</h2>
+            <p class="cars-panel-intro-hint">کارت بانکی بساز و راحت شماره کارت را به اشتراک بگذار</p>
+          </div>
         </div>
-      </div>
-
-      <div id="moreToolsPanel" class="more-subpanel hidden">
-        <div class="market-more-scroll">
-          <section class="bank-card-tool" aria-label="ساخت کارت بانکی">
+        <section class="bank-card-tool" aria-label="ساخت کارت بانکی">
             <div class="bank-card-preview-wrap">
               <article id="bankCardPreview" class="bank-card-preview" aria-live="polite">
                 <div class="bank-card-top">
@@ -399,6 +407,51 @@ export const androidPageBody = `<div class="app market-root">
               <p id="bankCardHint" class="bank-card-hint">با وارد کردن شماره کارت، بانک به‌صورت خودکار تشخیص داده می‌شود.</p>
               <button type="button" id="bankCardShareBtn" class="bank-card-share-btn">اشتراک‌گذاری کارت</button>
             </div>
+        </section>
+      </div>
+    </div>
+
+    <div id="view-more" class="market-view hidden">
+      <div class="more-subtabs" role="tablist" aria-label="بخش تنظیمات">
+        <button type="button" class="more-subtab-btn is-active" data-more-subtab="settings" role="tab" aria-selected="true">تنظیمات</button>
+        <button type="button" class="more-subtab-btn" data-more-subtab="donate" role="tab" aria-selected="false">حمایت</button>
+        <button type="button" class="more-subtab-btn" data-more-subtab="about" role="tab" aria-selected="false">درباره</button>
+      </div>
+
+      <div id="moreSettingsPanel" class="more-subpanel">
+        <div class="market-more-scroll">
+          <section class="market-more-section">
+            <h3 class="market-more-section-title">ظاهر</h3>
+            <button type="button" id="themeToggleBtn" class="market-more-row">
+              <span class="market-more-row-label">تم اپلیکیشن</span>
+              <span id="themeToggleValue" class="market-more-row-value">تم تاریک</span>
+            </button>
+            <div class="market-accent-field">
+              <p class="market-more-field-label">رنگ قالب</p>
+              <div id="accentColorPicker" class="market-accent-picker" role="group" aria-label="انتخاب رنگ قالب"></div>
+              <p class="market-more-hint">رنگ دکمه‌ها، نشانگر فعال و جزئیات برجسته اپ را عوض می‌کند.</p>
+            </div>
+          </section>
+
+          <section class="market-more-section">
+            <h3 class="market-more-section-title">اعلان قیمت</h3>
+            <label class="market-more-row market-more-toggle-row">
+              <span class="market-more-row-label">هشدار تغییر قیمت</span>
+              <input type="checkbox" id="alertsEnabled" class="market-more-switch" />
+            </label>
+            <div class="market-more-field">
+              <label for="alertsThreshold" class="market-more-field-label">آستانه تغییر (٪)</label>
+              <input id="alertsThreshold" type="number" min="0.1" max="50" step="0.1" inputmode="decimal" class="market-more-input" />
+            </div>
+            <p class="market-more-hint">وقتی دلار یا طلای ۱۸ عیار بیش از این درصد تغییر کند، اعلان نمایش داده می‌شود.</p>
+          </section>
+
+          <section class="market-more-section">
+            <h3 class="market-more-section-title">میانبر</h3>
+            <button type="button" id="settingsOpenToolsBtn" class="market-more-row" data-market-tab="tools">
+              <span class="market-more-row-label">ابزارها · کارت بانکی</span>
+              <span class="market-more-row-value">باز کردن</span>
+            </button>
           </section>
         </div>
       </div>
@@ -463,9 +516,13 @@ export const androidPageBody = `<div class="app market-root">
           <section class="market-more-section" id="appUpdateSection">
             <h3 class="market-more-section-title">درباره ما</h3>
             <p class="market-about-text">
-              <strong>تصمیم</strong> اپلیکیشنی برای پیگیری قیمت‌های لحظه‌ای ارز و طلا، مشاهده قیمت خودرو،
-              جستجوی ملک با بودجه در دیوار و تخمین قیمت خودرو از آگهی است؛ تا با اطلاعات به‌روز، راحت‌تر تصمیم بگیرید.
+              <strong>تصمیم</strong> کمک می‌کند قبل از خرید ارز، طلا، خودرو یا ملک، با اطلاعات لحظه‌ای مطمئن‌تر تصمیم بگیری.
             </p>
+            <ul class="market-about-scenarios">
+              <li>چک روزانه قیمت دلار و طلا</li>
+              <li>تخمین قیمت خودرو قبل از خرید</li>
+              <li>جستجوی ملک متناسب با بودجه</li>
+            </ul>
             <div class="market-more-row market-more-row-static">
               <span class="market-more-row-label">نسخه اپلیکیشن</span>
               <span id="appContentVersion" class="market-more-row-value">—</span>
@@ -491,6 +548,17 @@ export const androidPageBody = `<div class="app market-root">
             |
             <span id="currentYear"></span> &copy;
           </p>
+        </div>
+      </div>
+    </div>
+
+    <div id="softDonatePrompt" class="soft-donate-prompt hidden" role="dialog" aria-modal="true" aria-labelledby="softDonateTitle">
+      <div class="soft-donate-card">
+        <p id="softDonateTitle" class="soft-donate-title">از تصمیم راضی بودی؟</p>
+        <p class="soft-donate-text">اگر تخمین خودرو یا جستجوی ملک برات مفید بود، یک حمایت کوچک مسیر ساخت امکانات بعدی را روشن‌تر می‌کند.</p>
+        <div class="soft-donate-actions">
+          <button type="button" id="softDonateLaterBtn" class="soft-donate-later">الان نه</button>
+          <button type="button" id="softDonateGoBtn" class="soft-donate-go">حمایت می‌کنم</button>
         </div>
       </div>
     </div>
@@ -642,18 +710,9 @@ export const androidExtraStyles = `
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 2px;
+      gap: 0;
       min-width: 0;
       max-width: 100%;
-    }
-
-    .market-brand {
-      margin: 0;
-      font-size: 15px;
-      font-weight: 800;
-      letter-spacing: 0.04em;
-      color: var(--accent);
-      line-height: 1.1;
     }
 
     .header-date-part {
@@ -675,6 +734,237 @@ export const androidExtraStyles = `
       text-align: center;
       direction: ltr;
       unicode-bidi: isolate;
+    }
+
+    .header-tagline {
+      margin: 2px 0 0;
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--muted);
+      line-height: 1.3;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: min(220px, 56vw);
+    }
+
+    .market-tools-btn {
+      width: 40px;
+      height: 40px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--border-strong, var(--border));
+      border-radius: 12px;
+      background: var(--surface);
+      color: var(--muted);
+      cursor: pointer;
+      justify-self: end;
+    }
+
+    .market-tools-btn.is-active,
+    .market-tools-btn:active {
+      color: var(--accent);
+      border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+      background: color-mix(in srgb, var(--accent) 12%, transparent);
+    }
+
+    .market-tools-btn svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    .market-value-prop {
+      flex-shrink: 0;
+      padding: 8px 12px;
+      border-radius: 12px;
+      background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+      border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--border));
+    }
+
+    .market-value-prop-text {
+      margin: 0;
+      font-size: 12px;
+      line-height: 1.55;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .market-tools-shortcut {
+      flex-shrink: 0;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: inherit;
+      font-family: inherit;
+      text-align: right;
+      cursor: pointer;
+    }
+
+    .market-tools-shortcut-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 12px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: color-mix(in srgb, var(--accent) 14%, transparent);
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+
+    .market-tools-shortcut-copy {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .market-tools-shortcut-copy strong {
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--text);
+    }
+
+    .market-tools-shortcut-copy small {
+      font-size: 11px;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+
+    .market-tools-shortcut-go {
+      color: var(--muted);
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .market-about-scenarios {
+      margin: 10px 0 0;
+      padding: 0 16px 0 0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      color: var(--text);
+      font-size: 12px;
+      line-height: 1.5;
+      font-weight: 600;
+    }
+
+    .soft-donate-prompt {
+      position: fixed;
+      inset: 0;
+      z-index: 5200;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      padding: 16px;
+      padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+      background: rgba(8, 12, 20, 0.45);
+      backdrop-filter: blur(4px);
+    }
+
+    .soft-donate-prompt.hidden {
+      display: none;
+    }
+
+    .soft-donate-card {
+      width: min(420px, 100%);
+      padding: 16px;
+      border-radius: 18px;
+      background: var(--surface);
+      border: 1px solid var(--border-strong, var(--border));
+      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.28);
+    }
+
+    .soft-donate-title {
+      margin: 0;
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--text);
+    }
+
+    .soft-donate-text {
+      margin: 8px 0 0;
+      font-size: 12px;
+      line-height: 1.65;
+      color: var(--muted);
+    }
+
+    .soft-donate-actions {
+      margin-top: 14px;
+      display: grid;
+      grid-template-columns: 1fr 1.2fr;
+      gap: 8px;
+    }
+
+    .soft-donate-later,
+    .soft-donate-go {
+      min-height: 42px;
+      border-radius: 12px;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .soft-donate-later {
+      border: 1px solid var(--border-strong, var(--border));
+      background: transparent;
+      color: var(--muted);
+    }
+
+    .soft-donate-go {
+      border: none;
+      background: var(--accent);
+      color: var(--accent-fg);
+    }
+
+    #view-tools.market-view {
+      overflow-y: auto;
+      overflow-x: hidden;
+      -webkit-overflow-scrolling: touch;
+      gap: 12px;
+      padding-bottom: 8px;
+    }
+
+    .market-bottom-nav-penta .market-nav-label {
+      font-size: 9px;
+    }
+
+    .market-bottom-nav-penta .market-nav-btn {
+      padding: 6px 1px 4px;
+    }
+
+    .market-bottom-nav-penta .market-nav-fab-wrap {
+      width: 52px;
+      flex: 0 0 52px;
+    }
+
+    .cars-empty-friendly,
+    .housing-empty-friendly {
+      margin: 0;
+      padding: 14px;
+      border-radius: 14px;
+      border: 1px dashed color-mix(in srgb, var(--accent) 28%, var(--border));
+      background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+      color: var(--text);
+      font-size: 12px;
+      line-height: 1.7;
+      font-weight: 600;
+    }
+
+    .cars-empty-friendly span,
+    .housing-empty-friendly span {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-weight: 500;
     }
 
     .price-hero-share-row {
@@ -829,7 +1119,7 @@ export const androidExtraStyles = `
 
     .more-subtabs {
       display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 4px;
       padding: 4px;
       border-radius: 14px;
@@ -1120,17 +1410,26 @@ export const androidExtraStyles = `
       box-shadow: var(--card-shadow, none);
     }
 
-    .housing-form-title {
-      margin: 0;
-      font-size: 15px;
-      font-weight: 800;
-      color: var(--text);
+    .housing-form-actions {
+      display: grid;
+      grid-template-columns: 1.4fr 1fr;
+      gap: 8px;
     }
 
-    .housing-form-hint {
-      margin: 2px 0 0;
-      font-size: 11px;
-      color: var(--muted);
+    .housing-save-btn {
+      min-height: 46px;
+      border-radius: 12px;
+      border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--border));
+      background: color-mix(in srgb, var(--accent) 12%, transparent);
+      color: var(--accent);
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .housing-save-btn:active {
+      transform: scale(0.99);
     }
 
     .housing-field {
@@ -2254,13 +2553,16 @@ export const androidExtraStyles = `
 
     .bank-card-number {
       margin: 4px 0 0;
+      width: 100%;
       font-family: ui-monospace, "Cascadia Code", "SF Mono", Menlo, Consolas, monospace;
-      font-size: clamp(18px, 5.4vw, 24px);
+      font-size: clamp(14px, 4.2vw, 22px);
       font-weight: 700;
-      letter-spacing: 0.16em;
+      letter-spacing: 0.08em;
       text-align: center;
       direction: ltr;
       unicode-bidi: isolate;
+      white-space: nowrap;
+      overflow: hidden;
       text-shadow: 0 2px 8px rgba(0, 0, 0, 0.28);
     }
 
@@ -3811,12 +4113,16 @@ export const androidStandaloneUiPatch = `
     const goldViewEl = document.getElementById("view-gold");
     const carsViewEl = document.getElementById("view-cars");
     const housingViewEl = document.getElementById("view-housing");
+    const toolsViewEl = document.getElementById("view-tools");
     const moreViewEl = document.getElementById("view-more");
     const moreSettingsPanelEl = document.getElementById("moreSettingsPanel");
-    const moreToolsPanelEl = document.getElementById("moreToolsPanel");
     const moreDonatePanelEl = document.getElementById("moreDonatePanel");
     const moreAboutPanelEl = document.getElementById("moreAboutPanel");
     const moreSubtabButtons = document.querySelectorAll("[data-more-subtab]");
+    const softDonatePromptEl = document.getElementById("softDonatePrompt");
+    const softDonateLaterBtnEl = document.getElementById("softDonateLaterBtn");
+    const softDonateGoBtnEl = document.getElementById("softDonateGoBtn");
+    const SOFT_DONATE_STORAGE_KEY = "market-prices-soft-donate";
     const currencyListEl = document.getElementById("currencyList");
     const goldListEl = document.getElementById("goldList");
     const goldCalcListEl = document.getElementById("goldCalcList");
@@ -3866,6 +4172,7 @@ export const androidStandaloneUiPatch = `
     const myCarEstimateStatusEl = document.getElementById("myCarEstimateStatus");
     const myCarEstimateResultEl = document.getElementById("myCarEstimateResult");
     const housingSearchFormEl = document.getElementById("housingSearchForm");
+    const housingSearchNicknameEl = document.getElementById("housingSearchNickname");
     const housingCityEl = document.getElementById("housingCity");
     const housingBudgetMaxEl = document.getElementById("housingBudgetMax");
     const housingCreditMaxEl = document.getElementById("housingCreditMax");
@@ -3876,11 +4183,14 @@ export const androidStandaloneUiPatch = `
     const housingBuyFieldsEl = document.getElementById("housingBuyFields");
     const housingRentFieldsEl = document.getElementById("housingRentFields");
     const housingSearchBtnEl = document.getElementById("housingSearchBtn");
+    const housingSaveSearchBtnEl = document.getElementById("housingSaveSearchBtn");
     const housingStatusEl = document.getElementById("housingStatus");
     const housingLoadingEl = document.getElementById("housingLoading");
     const housingResultsWrapEl = document.getElementById("housingResultsWrap");
     const housingListEl = document.getElementById("housingList");
     const housingLoadMoreBtnEl = document.getElementById("housingLoadMoreBtn");
+    const myHousingSearchesListEl = document.getElementById("myHousingSearchesList");
+    const myHousingSearchesEmptyEl = document.getElementById("myHousingSearchesEmpty");
     const housingDealButtons = document.querySelectorAll("[data-housing-deal]");
 
     let activeMarketTab = "currency";
@@ -3904,13 +4214,11 @@ export const androidStandaloneUiPatch = `
     let activeMoreSubtab = "settings";
     try {
       const savedMoreSubtab = localStorage.getItem("market-prices-more-subtab");
-      if (
-        savedMoreSubtab === "donate" ||
-        savedMoreSubtab === "about" ||
-        savedMoreSubtab === "settings" ||
-        savedMoreSubtab === "tools"
-      ) {
+      if (savedMoreSubtab === "donate" || savedMoreSubtab === "about" || savedMoreSubtab === "settings") {
         activeMoreSubtab = savedMoreSubtab;
+      } else if (savedMoreSubtab === "tools") {
+        activeMoreSubtab = "settings";
+        try { localStorage.setItem("market-prices-more-subtab", "settings"); } catch (e2) {}
       }
     } catch (e) {}
     let carRows = [];
@@ -3931,8 +4239,11 @@ export const androidStandaloneUiPatch = `
     let savedCars = [];
     let editingCarId = null;
     let selectedCarId = null;
+    let savedHousingSearches = [];
+    let selectedHousingSearchId = null;
     const SAVED_CARS_STORAGE_KEY = "market-prices-saved-cars";
     const HOUSING_PREFS_KEY = "market-prices-housing-search";
+    const SAVED_HOUSING_SEARCHES_KEY = "market-prices-saved-housing-searches";
 
     function setDivarEstimateStatus(message, isError, isLoading) {
       if (!divarEstimateStatusEl) return;
@@ -3991,6 +4302,7 @@ export const androidStandaloneUiPatch = `
             }
             setDivarEstimateStatus("", false);
             if (divarUrlInputEl) divarUrlInputEl.value = "";
+            maybeShowSoftDonatePrompt("divar-estimate");
           })
           .catch(function (error) {
             console.error("Divar estimate error:", error);
@@ -4380,6 +4692,7 @@ export const androidStandaloneUiPatch = `
               myCarEstimateResultEl.classList.remove("hidden");
             }
             setMyCarStatus("", false);
+            maybeShowSoftDonatePrompt("my-car-estimate");
           })
           .catch(function (err) {
             console.error("Manual car estimate error:", err);
@@ -4448,7 +4761,7 @@ export const androidStandaloneUiPatch = `
     function buildHeroShareActionHtml() {
       return (
         '<div class="price-hero-share-row">' +
-        '<p class="price-hero-share-hint">آخرین قیمت بازار</p>' +
+        '<p class="price-hero-share-hint">اشتراک تصویر قیمت‌ها با دوستان</p>' +
         '<button type="button" class="market-share-icon-btn" aria-label="اشتراک‌گذاری تصویر قیمت" title="اشتراک‌گذاری تصویر قیمت">' +
         '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
         '<path stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M4 12v7a1 1 0 001 1h14a1 1 0 001-1v-7M16 8l-4-4-4 4M12 4v12"/>' +
@@ -4481,7 +4794,7 @@ export const androidStandaloneUiPatch = `
     }
 
     function createRateCard(item, data) {
-      const isGlobal = item.key === "ons";
+      const isGlobal = item.global === true || item.key === "ons";
       const change = toDisplayValue(data.d, isGlobal);
       const changePercent = parseNumber(data.dp);
       const hasChange = !Number.isNaN(change) && change !== 0;
@@ -5057,7 +5370,7 @@ export const androidStandaloneUiPatch = `
         ctx.textAlign = "center";
         ctx.direction = "rtl";
         ctx.font = '500 26px "Vazir-FD", Vazir, Tahoma, sans-serif';
-        ctx.fillText("آماده اشتراک‌گذاری · ساخته‌شده در تصمیم", width / 2, height - 90);
+        ctx.fillText("ساخته‌شده با تصمیم", width / 2, height - 90);
         ctx.fillStyle = accent;
         ctx.font = '800 30px "Vazir-FD", Vazir, Tahoma, sans-serif';
         ctx.fillText("تصمیم", width / 2, height - 48);
@@ -5089,8 +5402,9 @@ export const androidStandaloneUiPatch = `
           const base64 = dataUrl.replace(/^data:image\\/png;base64,/, "");
           const fileName = "bank-card-" + Date.now() + ".png";
 
+          const shareCaption = "اپلیکیشن تصمیم | " + formatCardGroups(digits);
           if (typeof AndroidApp !== "undefined" && typeof AndroidApp["shareImage"] === "function") {
-            AndroidApp["shareImage"](base64, fileName);
+            AndroidApp["shareImage"](base64, fileName, shareCaption);
             showPriceToast("تصویر کارت آماده اشتراک شد");
             return;
           }
@@ -5105,8 +5419,8 @@ export const androidStandaloneUiPatch = `
           if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
             await navigator.share({
               files: [file],
-              title: bank.name,
-              text: holder + " · " + bank.name,
+              title: shareCaption,
+              text: shareCaption,
             });
             showPriceToast("تصویر کارت آماده اشتراک شد");
             return;
@@ -5389,7 +5703,6 @@ export const androidStandaloneUiPatch = `
         button.setAttribute("aria-selected", active ? "true" : "false");
       });
       if (moreSettingsPanelEl) moreSettingsPanelEl.classList.toggle("hidden", activeMoreSubtab !== "settings");
-      if (moreToolsPanelEl) moreToolsPanelEl.classList.toggle("hidden", activeMoreSubtab !== "tools");
       if (moreDonatePanelEl) moreDonatePanelEl.classList.toggle("hidden", activeMoreSubtab !== "donate");
       if (moreAboutPanelEl) moreAboutPanelEl.classList.toggle("hidden", activeMoreSubtab !== "about");
     }
@@ -5400,9 +5713,7 @@ export const androidStandaloneUiPatch = `
           ? "donate"
           : subtab === "about"
             ? "about"
-            : subtab === "tools"
-              ? "tools"
-              : "settings";
+            : "settings";
       if (next === activeMoreSubtab) {
         syncMoreSubtabUi();
         return;
@@ -5412,6 +5723,52 @@ export const androidStandaloneUiPatch = `
         localStorage.setItem("market-prices-more-subtab", activeMoreSubtab);
       } catch (e) {}
       syncMoreSubtabUi();
+    }
+
+    function loadSoftDonateState() {
+      try {
+        const raw = localStorage.getItem(SOFT_DONATE_STORAGE_KEY);
+        if (!raw) return { lastShownAt: 0, dismissedAt: 0, successCount: 0 };
+        const parsed = JSON.parse(raw);
+        return {
+          lastShownAt: Number(parsed.lastShownAt) || 0,
+          dismissedAt: Number(parsed.dismissedAt) || 0,
+          successCount: Number(parsed.successCount) || 0,
+        };
+      } catch (e) {
+        return { lastShownAt: 0, dismissedAt: 0, successCount: 0 };
+      }
+    }
+
+    function saveSoftDonateState(state) {
+      try {
+        localStorage.setItem(SOFT_DONATE_STORAGE_KEY, JSON.stringify(state));
+      } catch (e) {}
+    }
+
+    function hideSoftDonatePrompt() {
+      if (softDonatePromptEl) softDonatePromptEl.classList.add("hidden");
+    }
+
+    function maybeShowSoftDonatePrompt(reason) {
+      const state = loadSoftDonateState();
+      state.successCount = (state.successCount || 0) + 1;
+      saveSoftDonateState(state);
+      const now = Date.now();
+      const weekMs = 7 * 24 * 60 * 60 * 1000;
+      if (state.successCount < 2) return;
+      if (state.lastShownAt && now - state.lastShownAt < weekMs) return;
+      if (state.dismissedAt && now - state.dismissedAt < weekMs) return;
+      if (!softDonatePromptEl) return;
+      softDonatePromptEl.classList.remove("hidden");
+      state.lastShownAt = now;
+      saveSoftDonateState(state);
+    }
+
+    function openDonateFromSoftPrompt() {
+      hideSoftDonatePrompt();
+      switchMarketTab("more");
+      setMoreSubtab("donate");
     }
 
     function showPriceLists() {
@@ -5433,7 +5790,7 @@ export const androidStandaloneUiPatch = `
     }
 
     function createHeroCard(item, data) {
-      const isGlobal = item.key === "ons";
+      const isGlobal = item.global === true || item.key === "ons";
       const change = toDisplayValue(data.d, isGlobal);
       const changePercent = parseNumber(data.dp);
       const hasChange = !Number.isNaN(change) && change !== 0;
@@ -5550,7 +5907,7 @@ export const androidStandaloneUiPatch = `
       carsListEl.innerHTML = "";
 
       if (!filtered.length) {
-        carsListEl.innerHTML = '<p class="cars-empty-state">خودرویی با این مشخصات یافت نشد.</p>';
+        carsListEl.innerHTML = '<p class="cars-empty-friendly">خودرویی با این جستجو پیدا نشد.<span>نام برند یا مدل را کوتاه‌تر بنویس، یا فیلتر را پاک کن.</span></p>';
         showCarsList();
         return;
       }
@@ -5650,6 +6007,7 @@ export const androidStandaloneUiPatch = `
 
     function readHousingQueryFromForm() {
       return {
+        nickname: housingSearchNicknameEl ? housingSearchNicknameEl.value.trim() : "",
         cityId: housingCityEl ? housingCityEl.value : "1",
         dealKey: housingDealKey,
         budgetMax: housingBudgetMaxEl ? housingBudgetMaxEl.value : "",
@@ -5659,6 +6017,42 @@ export const androidStandaloneUiPatch = `
         sizeMax: housingSizeMaxEl ? housingSizeMaxEl.value : "",
         rooms: housingRoomsEl ? housingRoomsEl.value : "",
       };
+    }
+
+    function applyHousingQueryToForm(query) {
+      if (!query) return;
+      housingDealKey = query.dealKey === "rent" ? "rent" : "buy";
+      if (housingSearchNicknameEl) housingSearchNicknameEl.value = query.nickname || "";
+      if (housingCityEl && query.cityId) housingCityEl.value = query.cityId;
+      if (housingBudgetMaxEl) {
+        const parsed = parseHousingMoneyInput(query.budgetMax);
+        housingBudgetMaxEl.value =
+          query.budgetMax && parsed != null ? formatHousingMoneyInput(parsed) : query.budgetMax || "";
+      }
+      if (housingCreditMaxEl) {
+        const parsed = parseHousingMoneyInput(query.creditMax);
+        housingCreditMaxEl.value =
+          query.creditMax && parsed != null ? formatHousingMoneyInput(parsed) : query.creditMax || "";
+      }
+      if (housingRentMaxEl) {
+        const parsed = parseHousingMoneyInput(query.rentMax);
+        housingRentMaxEl.value =
+          query.rentMax != null && query.rentMax !== "" && parsed != null
+            ? formatHousingMoneyInput(parsed)
+            : query.rentMax || "";
+      }
+      if (housingSizeMinEl) {
+        const parsed = parseHousingMoneyInput(query.sizeMin);
+        housingSizeMinEl.value =
+          query.sizeMin && parsed != null ? formatHousingMoneyInput(parsed) : query.sizeMin || "";
+      }
+      if (housingSizeMaxEl) {
+        const parsed = parseHousingMoneyInput(query.sizeMax);
+        housingSizeMaxEl.value =
+          query.sizeMax && parsed != null ? formatHousingMoneyInput(parsed) : query.sizeMax || "";
+      }
+      if (housingRoomsEl && query.rooms != null) housingRoomsEl.value = query.rooms;
+      syncHousingDealFields();
     }
 
     function saveHousingPrefs(query) {
@@ -5675,6 +6069,131 @@ export const androidStandaloneUiPatch = `
       } catch (e) {
         return null;
       }
+    }
+
+    function loadSavedHousingSearches() {
+      try {
+        const raw = localStorage.getItem(SAVED_HOUSING_SEARCHES_KEY);
+        if (!raw) return [];
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function persistSavedHousingSearches() {
+      try {
+        localStorage.setItem(SAVED_HOUSING_SEARCHES_KEY, JSON.stringify(savedHousingSearches));
+      } catch (e) {}
+    }
+
+    function createHousingSearchId() {
+      return "hs-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 8);
+    }
+
+    function buildHousingSearchTitle(search) {
+      if (search.nickname) return search.nickname;
+      const city = getHousingCityById(search.cityId);
+      const deal = getHousingDeal(city, search.dealKey);
+      const dealLabel = deal ? deal.labelFa : search.dealKey === "rent" ? "رهن و اجاره" : "خرید";
+      const cityLabel = city ? city.nameFa : "تهران";
+      return dealLabel + " · " + cityLabel;
+    }
+
+    function buildHousingSearchMeta(search) {
+      const parts = [];
+      if (search.dealKey === "rent") {
+        if (search.creditMax) parts.push("ودیعه تا " + search.creditMax);
+        if (search.rentMax) parts.push("اجاره تا " + search.rentMax);
+      } else if (search.budgetMax) {
+        parts.push("بودجه تا " + search.budgetMax);
+      }
+      if (search.sizeMin || search.sizeMax) {
+        parts.push(
+          "متراژ " +
+            (search.sizeMin || "—") +
+            " تا " +
+            (search.sizeMax || "—"),
+        );
+      }
+      if (search.rooms) {
+        const roomOpt =
+          typeof HOUSING_ROOM_OPTIONS !== "undefined"
+            ? HOUSING_ROOM_OPTIONS.find(function (opt) {
+                return String(opt.value) === String(search.rooms);
+              })
+            : null;
+        parts.push(roomOpt ? roomOpt.label : search.rooms + " خواب");
+      }
+      return parts.join(" · ");
+    }
+
+    function renderSavedHousingSearchesList() {
+      if (!myHousingSearchesListEl) return;
+      if (!savedHousingSearches.length) {
+        myHousingSearchesListEl.innerHTML = "";
+        if (myHousingSearchesEmptyEl) myHousingSearchesEmptyEl.classList.remove("hidden");
+        return;
+      }
+      if (myHousingSearchesEmptyEl) myHousingSearchesEmptyEl.classList.add("hidden");
+      myHousingSearchesListEl.innerHTML = savedHousingSearches
+        .map(function (search) {
+          const title = escapeHtml(buildHousingSearchTitle(search));
+          const meta = escapeHtml(buildHousingSearchMeta(search) || "بدون جزئیات بیشتر");
+          const activeClass = search.id === selectedHousingSearchId ? " is-active" : "";
+          return (
+            '<article class="my-car-item' +
+            activeClass +
+            '" data-saved-housing-id="' +
+            escapeHtml(search.id) +
+            '">' +
+            '<p class="my-car-item-title">' +
+            title +
+            "</p>" +
+            '<p class="my-car-item-meta">' +
+            meta +
+            "</p>" +
+            '<div class="my-car-item-actions">' +
+            '<button type="button" class="my-car-item-btn is-primary" data-housing-action="search">جستجو</button>' +
+            '<button type="button" class="my-car-item-btn" data-housing-action="select">انتخاب</button>' +
+            '<button type="button" class="my-car-item-btn is-danger" data-housing-action="delete">حذف</button>' +
+            "</div></article>"
+          );
+        })
+        .join("");
+    }
+
+    function saveCurrentHousingSearch() {
+      const query = readHousingQueryFromForm();
+      const error = validateHousingQuery(query);
+      if (error) {
+        setHousingStatus(error, true);
+        return;
+      }
+      const item = Object.assign({}, query, {
+        id: createHousingSearchId(),
+        savedAt: Date.now(),
+      });
+      savedHousingSearches = [item].concat(
+        savedHousingSearches.filter(function (existing) {
+          return !(
+            existing.cityId === item.cityId &&
+            existing.dealKey === item.dealKey &&
+            existing.budgetMax === item.budgetMax &&
+            existing.creditMax === item.creditMax &&
+            existing.rentMax === item.rentMax &&
+            existing.sizeMin === item.sizeMin &&
+            existing.sizeMax === item.sizeMax &&
+            existing.rooms === item.rooms &&
+            (existing.nickname || "") === (item.nickname || "")
+          );
+        }),
+      ).slice(0, 20);
+      selectedHousingSearchId = item.id;
+      persistSavedHousingSearches();
+      renderSavedHousingSearchesList();
+      showPriceToast("جستجو ذخیره شد · دفعه بعد از «جستجوهای من» دوباره جستجو کن");
     }
 
     function validateHousingQuery(query) {
@@ -5727,7 +6246,7 @@ export const androidStandaloneUiPatch = `
         .then(function (payload) {
           if (housingLoadingEl) housingLoadingEl.classList.add("hidden");
           if (payload.empty && !append) {
-            setHousingStatus("آگهی‌ای با این فیلترها پیدا نشد. بودجه یا متراژ را تغییر دهید.", true);
+            setHousingStatus("آگهی‌ای پیدا نشد. بودجه را کمی بالاتر ببر یا متراژ/خواب را بازتر کن.", true);
             return;
           }
           renderHousingListings(payload.rows, append);
@@ -5736,6 +6255,7 @@ export const androidStandaloneUiPatch = `
             "نتایج " + (payload.deal ? payload.deal.labelFa : "") + " در " + (payload.city ? payload.city.nameFa : "تهران") + " · " + countText + " آگهی",
             false,
           );
+          if (!append) maybeShowSoftDonatePrompt("housing-search");
         })
         .catch(function (err) {
           console.error("Housing search error:", err);
@@ -5765,37 +6285,16 @@ export const androidStandaloneUiPatch = `
         }).join("");
       }
 
+      savedHousingSearches = loadSavedHousingSearches();
+      renderSavedHousingSearchesList();
+
       const prefs = loadHousingPrefs();
-      if (prefs) {
-        housingDealKey = prefs.dealKey === "rent" ? "rent" : "buy";
-        if (housingCityEl && prefs.cityId) housingCityEl.value = prefs.cityId;
-        if (housingBudgetMaxEl && prefs.budgetMax) {
-          const parsed = parseHousingMoneyInput(prefs.budgetMax);
-          housingBudgetMaxEl.value = parsed != null ? formatHousingMoneyInput(parsed) : prefs.budgetMax;
-        }
-        if (housingCreditMaxEl && prefs.creditMax) {
-          const parsed = parseHousingMoneyInput(prefs.creditMax);
-          housingCreditMaxEl.value = parsed != null ? formatHousingMoneyInput(parsed) : prefs.creditMax;
-        }
-        if (housingRentMaxEl && prefs.rentMax != null && prefs.rentMax !== "") {
-          const parsed = parseHousingMoneyInput(prefs.rentMax);
-          housingRentMaxEl.value = parsed != null ? formatHousingMoneyInput(parsed) : prefs.rentMax;
-        }
-        if (housingSizeMinEl && prefs.sizeMin) {
-          const parsed = parseHousingMoneyInput(prefs.sizeMin);
-          housingSizeMinEl.value = parsed != null ? formatHousingMoneyInput(parsed) : prefs.sizeMin;
-        }
-        if (housingSizeMaxEl && prefs.sizeMax) {
-          const parsed = parseHousingMoneyInput(prefs.sizeMax);
-          housingSizeMaxEl.value = parsed != null ? formatHousingMoneyInput(parsed) : prefs.sizeMax;
-        }
-        if (housingRoomsEl && prefs.rooms) housingRoomsEl.value = prefs.rooms;
-      }
-      syncHousingDealFields();
+      if (prefs) applyHousingQueryToForm(prefs);
+      else syncHousingDealFields();
     }
 
     function switchMarketTab(tab) {
-      if (["currency", "gold", "cars", "housing", "more"].indexOf(tab) === -1) return;
+      if (["currency", "gold", "cars", "housing", "tools", "more"].indexOf(tab) === -1) return;
 
       activeMarketTab = tab;
       pricesPanelEl.classList.toggle("hidden", !isPriceTab(tab));
@@ -5803,9 +6302,15 @@ export const androidStandaloneUiPatch = `
       goldViewEl.classList.toggle("hidden", tab !== "gold");
       carsViewEl.classList.toggle("hidden", tab !== "cars");
       if (housingViewEl) housingViewEl.classList.toggle("hidden", tab !== "housing");
+      if (toolsViewEl) toolsViewEl.classList.toggle("hidden", tab !== "tools");
       moreViewEl.classList.toggle("hidden", tab !== "more");
 
       navButtons.forEach(function (button) {
+        const isNavChrome =
+          button.classList.contains("market-nav-btn") ||
+          button.classList.contains("market-settings-btn") ||
+          button.classList.contains("market-tools-btn");
+        if (!isNavChrome) return;
         button.classList.toggle("is-active", button.dataset.marketTab === tab);
       });
 
@@ -5899,7 +6404,10 @@ export const androidStandaloneUiPatch = `
     if (myCarSaveBtnEl) {
       myCarSaveBtnEl.addEventListener("click", function () {
         const saved = upsertSavedCarFromForm();
-        if (saved) setMyCarStatus("خودرو ذخیره شد", false);
+        if (saved) {
+        setMyCarStatus("خودرو ذخیره شد", false);
+        showPriceToast("خودرو ذخیره شد · دفعه بعد از «خودروهای من» دوباره تخمین بزن");
+      }
       });
     }
     if (myCarCancelEditBtnEl) {
@@ -5987,9 +6495,47 @@ export const androidStandaloneUiPatch = `
       });
     }
 
+    if (housingSaveSearchBtnEl) {
+      housingSaveSearchBtnEl.addEventListener("click", function () {
+        saveCurrentHousingSearch();
+      });
+    }
+
     if (housingLoadMoreBtnEl) {
       housingLoadMoreBtnEl.addEventListener("click", function () {
         runHousingSearch({ append: true });
+      });
+    }
+
+    if (myHousingSearchesListEl) {
+      myHousingSearchesListEl.addEventListener("click", function (event) {
+        const target = event.target;
+        if (!target || typeof target.closest !== "function") return;
+        const actionBtn = target.closest("[data-housing-action]");
+        const card = target.closest("[data-saved-housing-id]");
+        if (!actionBtn || !card) return;
+        const searchId = card.getAttribute("data-saved-housing-id");
+        const search = savedHousingSearches.find(function (item) {
+          return item.id === searchId;
+        });
+        if (!search) return;
+        const action = actionBtn.getAttribute("data-housing-action");
+        if (action === "delete") {
+          savedHousingSearches = savedHousingSearches.filter(function (item) {
+            return item.id !== searchId;
+          });
+          if (selectedHousingSearchId === searchId) selectedHousingSearchId = null;
+          persistSavedHousingSearches();
+          renderSavedHousingSearchesList();
+          showPriceToast("جستجو حذف شد");
+          return;
+        }
+        selectedHousingSearchId = search.id;
+        applyHousingQueryToForm(search);
+        renderSavedHousingSearchesList();
+        if (action === "search") {
+          runHousingSearch({ append: false });
+        }
       });
     }
 
@@ -6014,6 +6560,30 @@ export const androidStandaloneUiPatch = `
     ].forEach(function (id) {
       bindCommaSeparatedNumberInput(document.getElementById(id));
     });
+
+    if (softDonateLaterBtnEl) {
+      softDonateLaterBtnEl.addEventListener("click", function () {
+        const state = loadSoftDonateState();
+        state.dismissedAt = Date.now();
+        saveSoftDonateState(state);
+        hideSoftDonatePrompt();
+      });
+    }
+    if (softDonateGoBtnEl) {
+      softDonateGoBtnEl.addEventListener("click", function () {
+        openDonateFromSoftPrompt();
+      });
+    }
+    if (softDonatePromptEl) {
+      softDonatePromptEl.addEventListener("click", function (event) {
+        if (event.target === softDonatePromptEl) {
+          const state = loadSoftDonateState();
+          state.dismissedAt = Date.now();
+          saveSoftDonateState(state);
+          hideSoftDonatePrompt();
+        }
+      });
+    }
 
     navButtons.forEach(function (button) {
       button.addEventListener("click", function () {

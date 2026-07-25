@@ -217,17 +217,21 @@ export const androidUpdateBridgeScript = `(function () {
     }
 
     function initAppVersionDisplay() {
+      const versionEl = document.getElementById("appContentVersion");
       if (typeof AndroidApp === "undefined") {
         const section = document.getElementById("appUpdateSection");
         if (section) section.style.display = "none";
         return;
       }
-      const versionEl = document.getElementById("appContentVersion");
-      if (!versionEl || typeof APP_UPDATE_CONFIG === "undefined") return;
+      if (!versionEl) return;
       try {
         versionEl.textContent = AndroidApp.getContentVersion();
-      } catch {
-        versionEl.textContent = APP_UPDATE_CONFIG.currentVersion || "—";
+      } catch (_err) {
+        try {
+          if (typeof APP_UPDATE_CONFIG !== "undefined" && APP_UPDATE_CONFIG.currentVersion) {
+            versionEl.textContent = APP_UPDATE_CONFIG.currentVersion;
+          }
+        } catch (_err2) {}
       }
     }
 
@@ -322,9 +326,23 @@ export const androidUpdateBridgeScript = `(function () {
             ? "نسخه جدید اپلیکیشن موجود است"
             : "بروزرسانی محتوا موجود است";
         }
-        messageEl.textContent = updateKind === "apk"
-          ? ("نسخه " + latestVersion + " منتشر شده است. نسخه فعلی شما " + currentVersion + " است. با تأیید، کل اپلیکیشن (همراه با محتوا) بروزرسانی می‌شود.")
-          : ("نسخه " + latestVersion + " منتشر شده است. نسخه فعلی شما " + currentVersion + " است. فقط محتوای داخل اپ بروزرسانی می‌شود.");
+        if (updateKind === "apk") {
+          messageEl.textContent =
+            "نسخه " + latestVersion + " منتشر شده است (نسخه فعلی: " + currentVersion + ").\\n" +
+            "با تأیید، کل اپلیکیشن بروزرسانی می‌شود.\\n\\n" +
+            "چی عوض شده:\\n" +
+            "• تب ابزارها و ساخت کارت بانکی برای اشتراک\\n" +
+            "• جستجوهای من در مسکن و تجربه بهتر تخمین خودرو\\n" +
+            "• دینار عراق و اشتراک تصویر قیمت‌ها";
+        } else {
+          messageEl.textContent =
+            "نسخه " + latestVersion + " منتشر شده است (نسخه فعلی: " + currentVersion + ").\\n" +
+            "فقط محتوای داخل اپ بروزرسانی می‌شود.\\n\\n" +
+            "چی عوض شده:\\n" +
+            "• تب ابزارها · ساخت کارت بانکی\\n" +
+            "• جستجوهای من در مسکن\\n" +
+            "• دینار عراق و بهبود اشتراک قیمت";
+        }
         if (progressWrap) progressWrap.classList.add("hidden");
         sheet.classList.remove("downloading");
         confirmBtn.textContent = updateKind === "apk" ? "بروزرسانی اپلیکیشن" : "بروزرسانی محتوا";
@@ -446,6 +464,12 @@ export const androidUpdateBridgeScript = `(function () {
   })();`;
 
 export const updateSheetExtraStyles = `
+    .update-sheet-message {
+      white-space: pre-line;
+      text-align: right;
+      line-height: 1.7;
+    }
+
     .update-sheet-icon-wrap {
       background: color-mix(in srgb, var(--accent) 12%, transparent) !important;
     }

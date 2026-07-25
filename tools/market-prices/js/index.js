@@ -19,16 +19,18 @@ const GOLD_HERO_KEY = "geram18";
 const CURRENCY_ITEMS = [
   { key: "price_dollar_rl", title: "دلار", unit: "تومان", icon: "💵", hero: true },
   { key: "crypto-tether-irr", title: "تتر", unit: "تومان", icon: "₮" },
+  { key: "oil_brent", title: "نفت برنت", unit: "دلار", icon: "🛢", global: true },
   { key: "price_eur", title: "یورو", unit: "تومان", icon: "💶" },
   { key: "price_aed", title: "درهم", unit: "تومان", icon: "🇦🇪" },
   { key: "price_gbp", title: "پوند", unit: "تومان", icon: "🇬🇧" },
   { key: "price_try", title: "لیر", unit: "تومان", icon: "🇹🇷" },
+  { key: "price_iqd", title: "دینار عراق", unit: "تومان", icon: "🇮🇶" },
 ];
 
 const GOLD_ITEMS = [
   { key: "geram18", title: "طلای ۱۸ عیار", unit: "تومان", icon: "🥇", hero: true },
-  { key: "ons", title: "انس جهانی طلا", unit: "دلار", icon: "🌍" },
-  { key: "sekee", title: "سکه امامی", unit: "تومان", icon: "🪙" },
+  { key: "ons", title: "انس جهانی طلا", unit: "دلار", icon: "🌍", global: true },
+  { key: "sekee", title: "سکه", unit: "تومان", icon: "🪙" },
   { key: "mesghal", title: "مثقال طلا", unit: "تومان", icon: "⚖️" },
 ];
 
@@ -1399,7 +1401,8 @@ const SHARE_CARD_ITEMS = [
   { key: "crypto-tether-irr", title: "تتر", unit: "تومان", icon: "₮", global: false },
   { key: "geram18", title: "طلای ۱۸ عیار", unit: "تومان", icon: "🥇", global: false },
   { key: "ons", title: "انس جهانی طلا", unit: "دلار", icon: "🌍", global: true },
-  { key: "sekee", title: "سکه امامی", unit: "تومان", icon: "🪙", global: false },
+  { key: "sekee", title: "سکه", unit: "تومان", icon: "🪙", global: false },
+  { key: "oil_brent", title: "نفت برنت", unit: "دلار", icon: "🛢", global: true },
 ];
 
 function formatShareNumber(value, isGlobal = false) {
@@ -1675,7 +1678,7 @@ async function shareMarketPricesCard(current) {
   const fileName = `market-prices-${Date.now()}.png`;
 
   if (typeof AndroidApp !== "undefined" && typeof AndroidApp["shareImage"] === "function") {
-    AndroidApp["shareImage"](base64, fileName);
+    AndroidApp["shareImage"](base64, fileName, "اپلیکیشن تصمیم | قیمت لحظه‌ای");
     return { method: "android" };
   }
 
@@ -1690,8 +1693,8 @@ async function shareMarketPricesCard(current) {
   if (navigator.share && navigator.canShare?.({ files: [file] })) {
     await navigator.share({
       files: [file],
-      title: SHARE_CARD_BRAND,
-      text: "قیمت لحظه‌ای دلار، تتر، طلا و سکه",
+      title: "اپلیکیشن تصمیم | قیمت لحظه‌ای",
+      text: "اپلیکیشن تصمیم | قیمت لحظه‌ای",
     });
     return { method: "web-share" };
   }
@@ -2748,7 +2751,7 @@ function initMarketPrices() {
   }
 
   function createPriceCard(item, data) {
-    const isGlobal = item.key === "ons";
+    const isGlobal = item.global === true || item.key === "ons";
     const change = toDisplayValue(data.d, isGlobal);
     const changePercent = parseNumber(data.dp);
     const changeClasses = getChangeClasses(data.dt);
@@ -2796,7 +2799,7 @@ function initMarketPrices() {
   }
 
   function createHeroCard(item, data) {
-    const isGlobal = item.key === "ons";
+    const isGlobal = item.global === true || item.key === "ons";
     const change = toDisplayValue(data.d, isGlobal);
     const changePercent = parseNumber(data.dp);
     const hasChange = !Number.isNaN(change) && change !== 0;

@@ -497,10 +497,14 @@ class MainActivity : Activity() {
         }
 
         @JavascriptInterface
-        fun shareImage(base64Png: String, fileName: String) {
+        fun shareImage(base64Png: String, fileName: String, shareText: String) {
             runOnUiThread {
                 try {
-                    sharePngImage(base64Png, fileName.ifBlank { "market-prices.png" })
+                    sharePngImage(
+                        base64Png,
+                        fileName.ifBlank { "market-prices.png" },
+                        shareText,
+                    )
                 } catch (error: Exception) {
                     webView.evaluateJavascript(
                         "window.__onShareCardError && window.__onShareCardError(${JSONObject.quote(error.message ?: "اشتراک ممکن نشد")});",
@@ -601,7 +605,7 @@ class MainActivity : Activity() {
         startActivity(Intent.createChooser(shareIntent, "ارسال فایل نصب اپلیکیشن"))
     }
 
-    private fun sharePngImage(base64Png: String, fileName: String) {
+    private fun sharePngImage(base64Png: String, fileName: String, shareText: String = "") {
         val clean = base64Png.substringAfter("base64,", base64Png)
         val bytes = Base64.decode(clean, Base64.DEFAULT)
         if (bytes.isEmpty()) {
@@ -637,14 +641,17 @@ class MainActivity : Activity() {
             resolver.update(uri, values, null, null)
         }
 
+        val caption = shareText.trim().ifBlank { "قیمت لحظه‌ای ارز، طلا، خودرو و مسکن" }
+        val chooserTitle =
+            if (fileName.startsWith("bank-card")) "اشتراک‌گذاری شماره کارت" else "اشتراک‌گذاری تصویر قیمت"
         val shareIntent = Intent(Intent.ACTION_SEND).apply {
             type = "image/png"
             putExtra(Intent.EXTRA_STREAM, uri)
-            putExtra(Intent.EXTRA_SUBJECT, "تصمیم")
-            putExtra(Intent.EXTRA_TEXT, "قیمت لحظه‌ای ارز، طلا، خودرو و مسکن")
+            putExtra(Intent.EXTRA_SUBJECT, "اپلیکیشن تصمیم")
+            putExtra(Intent.EXTRA_TEXT, caption)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
-        startActivity(Intent.createChooser(shareIntent, "اشتراک‌گذاری تصویر قیمت"))
+        startActivity(Intent.createChooser(shareIntent, chooserTitle))
     }
 
     @Deprecated("Deprecated in Java")
