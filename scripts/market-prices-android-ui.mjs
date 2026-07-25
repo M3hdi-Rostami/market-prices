@@ -3,8 +3,12 @@ import {
   DONATE_CARD_NUMBER,
   DONATE_CARD_QR_SVG,
 } from "./donate-support-data.mjs";
+import { IRAN_BANK_BY_BIN, IRAN_BANK_UNKNOWN, loadIranBankLogoDataUris } from "./iran-banks-data.mjs";
 
 const DONATE_CARD_DISPLAY = DONATE_CARD_NUMBER.replace(/(\d{4})(?=\d)/g, "$1-");
+const IRAN_BANK_BY_BIN_JSON = JSON.stringify(IRAN_BANK_BY_BIN);
+const IRAN_BANK_UNKNOWN_JSON = JSON.stringify(IRAN_BANK_UNKNOWN);
+const IRAN_BANK_LOGO_DATA_URIS_JSON = JSON.stringify(loadIranBankLogoDataUris());
 
 export const androidPageBody = `<div class="app market-root">
     <header class="header market-header-compact">
@@ -111,106 +115,112 @@ export const androidPageBody = `<div class="app market-root">
           <div class="cars-panel-intro-icon" aria-hidden="true">🔎</div>
           <div class="cars-panel-intro-text">
             <h2 class="cars-panel-intro-title">تخمین قیمت خودرو</h2>
-            <p class="cars-panel-intro-hint">از لینک دیوار، خودروهای ذخیره‌شده یا مشخصات دستی استفاده کنید</p>
+            <p class="cars-panel-intro-hint">یکی از روش‌ها را انتخاب کنید: آگهی دیوار یا مشخصات خودرو</p>
           </div>
         </div>
 
-        <section class="cars-estimate-section">
-          <div class="cars-estimate-section-head">
-            <span class="cars-estimate-step">۱</span>
-            <div>
-              <h3 class="cars-estimate-section-title">تخمین از آگهی دیوار</h3>
-              <p class="cars-estimate-section-hint">لینک آگهی خودرو را بچسبانید تا قیمت حدودی محاسبه شود</p>
+        <div class="cars-estimate-mode-toggle" role="tablist" aria-label="روش تخمین">
+          <button type="button" class="cars-estimate-mode-btn is-active" data-cars-estimate-mode="divar" role="tab" aria-selected="true">از آگهی دیوار</button>
+          <button type="button" class="cars-estimate-mode-btn" data-cars-estimate-mode="specs" role="tab" aria-selected="false">با مشخصات</button>
+        </div>
+
+        <div id="carsEstimateDivarPanel" class="cars-estimate-mode-panel">
+          <section class="cars-estimate-section">
+            <div class="cars-estimate-section-head">
+              <div>
+                <h3 class="cars-estimate-section-title">تخمین از آگهی دیوار</h3>
+                <p class="cars-estimate-section-hint">لینک آگهی خودرو را بچسبانید تا قیمت حدودی محاسبه شود</p>
+              </div>
             </div>
-          </div>
-          <div class="divar-estimate-wrap">
-            <div class="divar-estimate-row">
-              <input id="divarUrlInput" type="url" inputmode="url" autocomplete="off" placeholder="https://divar.ir/v/..." class="divar-estimate-input" />
-              <button id="divarEstimateBtn" type="button" class="divar-estimate-btn"><span class="divar-estimate-btn-spinner" aria-hidden="true"></span><span class="divar-estimate-btn-label">تخمین</span></button>
+            <div class="divar-estimate-wrap">
+              <div class="divar-estimate-row">
+                <input id="divarUrlInput" type="url" inputmode="url" autocomplete="off" placeholder="https://divar.ir/v/..." class="divar-estimate-input" />
+                <button id="divarEstimateBtn" type="button" class="divar-estimate-btn"><span class="divar-estimate-btn-spinner" aria-hidden="true"></span><span class="divar-estimate-btn-label">تخمین</span></button>
+              </div>
+              <p id="divarEstimateStatus" class="divar-estimate-status hidden"></p>
+              <div id="divarEstimateResult" class="divar-estimate-result hidden"></div>
             </div>
-            <p id="divarEstimateStatus" class="divar-estimate-status hidden"></p>
-            <div id="divarEstimateResult" class="divar-estimate-result hidden"></div>
-          </div>
-        </section>
+          </section>
+        </div>
 
-        <section class="cars-estimate-section">
-          <div class="cars-estimate-section-head">
-            <span class="cars-estimate-step">۲</span>
-            <div>
-              <h3 class="cars-estimate-section-title">خودروهای من</h3>
-              <p class="cars-estimate-section-hint">ذخیره کنید تا بعداً سریع دوباره تخمین بزنید</p>
+        <div id="carsEstimateSpecsPanel" class="cars-estimate-mode-panel hidden">
+          <section class="cars-estimate-section">
+            <div class="cars-estimate-section-head">
+              <div>
+                <h3 class="cars-estimate-section-title">خودروهای من</h3>
+                <p class="cars-estimate-section-hint">ذخیره کنید تا بعداً سریع دوباره تخمین بزنید</p>
+              </div>
             </div>
-          </div>
-          <div class="my-cars-wrap">
-            <div id="myCarsList" class="my-cars-list"></div>
-            <p id="myCarsEmpty" class="my-cars-empty">هنوز خودرویی ذخیره نشده است.</p>
-          </div>
-        </section>
-
-        <section class="cars-estimate-section">
-          <div class="cars-estimate-section-head">
-            <span class="cars-estimate-step">۳</span>
-            <div>
-              <h3 class="cars-estimate-section-title">تخمین با مشخصات</h3>
-              <p id="myCarFormModeHint" class="cars-estimate-section-hint">برند، مدل، سال و کارکرد را وارد کنید</p>
+            <div class="my-cars-wrap">
+              <div id="myCarsList" class="my-cars-list"></div>
+              <p id="myCarsEmpty" class="my-cars-empty">هنوز خودرویی ذخیره نشده است.</p>
             </div>
-          </div>
-          <form id="myCarEstimateForm" class="my-car-form" autocomplete="off">
-            <label class="my-car-field">
-              <span class="my-car-field-label">نام دلخواه (اختیاری)</span>
-              <input id="myCarNickname" class="my-car-input" type="text" maxlength="40" placeholder="مثلاً پژو ۲۰۶ خودم" />
-            </label>
+          </section>
 
-            <label class="my-car-field">
-              <span class="my-car-field-label">برند</span>
-              <select id="myCarBrand" class="my-car-input" required>
-                <option value="">انتخاب برند</option>
-              </select>
-            </label>
-
-            <label class="my-car-field">
-              <span class="my-car-field-label">مدل</span>
-              <select id="myCarModel" class="my-car-input" required disabled>
-                <option value="">ابتدا برند را انتخاب کنید</option>
-              </select>
-            </label>
-
-            <label class="my-car-field">
-              <span class="my-car-field-label">تیپ</span>
-              <select id="myCarTrim" class="my-car-input" disabled>
-                <option value="">در صورت نیاز</option>
-              </select>
-            </label>
-
-            <div class="my-car-field-row">
+          <section class="cars-estimate-section">
+            <div class="cars-estimate-section-head">
+              <div>
+                <h3 class="cars-estimate-section-title">تخمین با مشخصات</h3>
+                <p id="myCarFormModeHint" class="cars-estimate-section-hint">برند، مدل، سال و کارکرد را وارد کنید</p>
+              </div>
+            </div>
+            <form id="myCarEstimateForm" class="my-car-form" autocomplete="off">
               <label class="my-car-field">
-                <span class="my-car-field-label">سال ساخت</span>
-                <select id="myCarYear" class="my-car-input" required></select>
+                <span class="my-car-field-label">نام دلخواه (اختیاری)</span>
+                <input id="myCarNickname" class="my-car-input" type="text" maxlength="40" placeholder="مثلاً پژو ۲۰۶ خودم" />
               </label>
+
               <label class="my-car-field">
-                <span class="my-car-field-label">کارکرد (کیلومتر)</span>
-                <input id="myCarMileage" class="my-car-input" type="text" inputmode="numeric" placeholder="مثلاً 120,000" required />
+                <span class="my-car-field-label">برند</span>
+                <select id="myCarBrand" class="my-car-input" required>
+                  <option value="">انتخاب برند</option>
+                </select>
               </label>
-            </div>
 
-            <label class="my-car-field">
-              <span class="my-car-field-label">وضعیت بدنه</span>
-              <select id="myCarBodyStatus" class="my-car-input"></select>
-            </label>
+              <label class="my-car-field">
+                <span class="my-car-field-label">مدل</span>
+                <select id="myCarModel" class="my-car-input" required disabled>
+                  <option value="">ابتدا برند را انتخاب کنید</option>
+                </select>
+              </label>
 
-            <div class="my-car-actions">
-              <button id="myCarEstimateBtn" type="submit" class="my-car-btn my-car-btn-primary">
-                <span class="my-car-btn-spinner" aria-hidden="true"></span>
-                <span class="my-car-btn-label">تخمین قیمت</span>
-              </button>
-              <button id="myCarSaveBtn" type="button" class="my-car-btn my-car-btn-secondary">ذخیره</button>
-              <button id="myCarCancelEditBtn" type="button" class="my-car-btn my-car-btn-ghost hidden">انصراف ویرایش</button>
-            </div>
+              <label class="my-car-field">
+                <span class="my-car-field-label">تیپ</span>
+                <select id="myCarTrim" class="my-car-input" disabled>
+                  <option value="">در صورت نیاز</option>
+                </select>
+              </label>
 
-            <p id="myCarEstimateStatus" class="my-car-status hidden"></p>
-            <div id="myCarEstimateResult" class="divar-estimate-result hidden"></div>
-          </form>
-        </section>
+              <div class="my-car-field-row">
+                <label class="my-car-field">
+                  <span class="my-car-field-label">سال ساخت</span>
+                  <select id="myCarYear" class="my-car-input" required></select>
+                </label>
+                <label class="my-car-field">
+                  <span class="my-car-field-label">کارکرد (کیلومتر)</span>
+                  <input id="myCarMileage" class="my-car-input" type="text" inputmode="numeric" placeholder="مثلاً 120,000" required />
+                </label>
+              </div>
+
+              <label class="my-car-field">
+                <span class="my-car-field-label">وضعیت بدنه</span>
+                <select id="myCarBodyStatus" class="my-car-input"></select>
+              </label>
+
+              <div class="my-car-actions">
+                <button id="myCarEstimateBtn" type="submit" class="my-car-btn my-car-btn-primary">
+                  <span class="my-car-btn-spinner" aria-hidden="true"></span>
+                  <span class="my-car-btn-label">تخمین قیمت</span>
+                </button>
+                <button id="myCarSaveBtn" type="button" class="my-car-btn my-car-btn-secondary">ذخیره</button>
+                <button id="myCarCancelEditBtn" type="button" class="my-car-btn my-car-btn-ghost hidden">انصراف ویرایش</button>
+              </div>
+
+              <p id="myCarEstimateStatus" class="my-car-status hidden"></p>
+              <div id="myCarEstimateResult" class="divar-estimate-result hidden"></div>
+            </form>
+          </section>
+        </div>
       </div>
     </div>
 
@@ -290,6 +300,7 @@ export const androidPageBody = `<div class="app market-root">
     <div id="view-more" class="market-view hidden">
       <div class="more-subtabs" role="tablist" aria-label="بخش تنظیمات">
         <button type="button" class="more-subtab-btn is-active" data-more-subtab="settings" role="tab" aria-selected="true">تنظیمات</button>
+        <button type="button" class="more-subtab-btn" data-more-subtab="tools" role="tab" aria-selected="false">ابزارها</button>
         <button type="button" class="more-subtab-btn" data-more-subtab="donate" role="tab" aria-selected="false">حمایت</button>
         <button type="button" class="more-subtab-btn" data-more-subtab="about" role="tab" aria-selected="false">درباره</button>
       </div>
@@ -324,10 +335,78 @@ export const androidPageBody = `<div class="app market-root">
         </div>
       </div>
 
+      <div id="moreToolsPanel" class="more-subpanel hidden">
+        <div class="market-more-scroll">
+          <section class="bank-card-tool" aria-label="ساخت کارت بانکی">
+            <div class="bank-card-preview-wrap">
+              <article id="bankCardPreview" class="bank-card-preview" aria-live="polite">
+                <div class="bank-card-top">
+                  <div class="bank-card-chip-wrap">
+                    <div class="bank-card-chip" aria-hidden="true">
+                      <span></span><span></span><span></span><span></span>
+                    </div>
+                    <svg class="bank-card-contactless" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <path d="M8.5 8.5c2.2 2.2 2.2 4.8 0 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                      <path d="M11.5 6c3.5 3.5 3.5 8.5 0 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                      <path d="M14.5 3.5c5 5 5 12 0 17" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                    </svg>
+                  </div>
+                  <div class="bank-card-brand">
+                    <img id="bankCardLogoImg" class="bank-card-logo-img hidden" alt="" width="52" height="52" decoding="async" />
+                    <span id="bankCardLogoMark" class="bank-card-logo-mark">کارت</span>
+                    <span id="bankCardLogoName" class="bank-card-logo-name">بانک</span>
+                  </div>
+                </div>
+                <p id="bankCardNumberPreview" class="bank-card-number" dir="ltr">•••• •••• •••• ••••</p>
+                <div class="bank-card-bottom">
+                  <div class="bank-card-meta">
+                    <span class="bank-card-meta-label">دارنده کارت</span>
+                    <strong id="bankCardHolderPreview" class="bank-card-meta-value">نام و نام خانوادگی</strong>
+                  </div>
+                  <div class="bank-card-meta bank-card-meta-end">
+                    <span class="bank-card-meta-label">بانک</span>
+                    <strong id="bankCardBankPreview" class="bank-card-meta-value">—</strong>
+                  </div>
+                </div>
+              </article>
+            </div>
+
+            <div class="bank-card-form">
+              <label class="bank-card-field">
+                <span class="bank-card-field-label">شماره کارت</span>
+                <input
+                  id="bankCardNumberInput"
+                  class="bank-card-input"
+                  type="text"
+                  inputmode="numeric"
+                  autocomplete="cc-number"
+                  maxlength="19"
+                  placeholder="۶۲۱۹ ۸۶۱۸ ۸۷۷۲ ۳۱۸۶"
+                  dir="ltr"
+                />
+              </label>
+              <label class="bank-card-field">
+                <span class="bank-card-field-label">نام و نام خانوادگی</span>
+                <input
+                  id="bankCardHolderInput"
+                  class="bank-card-input"
+                  type="text"
+                  autocomplete="cc-name"
+                  maxlength="64"
+                  placeholder="مثلاً مهدی رستمی‌زاد"
+                />
+              </label>
+              <p id="bankCardHint" class="bank-card-hint">با وارد کردن شماره کارت، بانک به‌صورت خودکار تشخیص داده می‌شود.</p>
+              <button type="button" id="bankCardShareBtn" class="bank-card-share-btn">اشتراک‌گذاری کارت</button>
+            </div>
+          </section>
+        </div>
+      </div>
+
       <div id="moreDonatePanel" class="more-subpanel hidden">
         <div class="market-more-scroll">
-          <section class="donate-card" aria-label="حمایت از توسعه">
-            <div class="donate-badge">حمایت از توسعه</div>
+          <section class="donate-card" aria-label="حمایت از توسعه‌دهنده">
+            <div class="donate-badge">حمایت از توسعه‌دهنده</div>
             <h2 class="donate-title">اگر «تصمیم» برات مفیده، با هم رشدش بدیم</h2>
             <p class="donate-lead">
               هر حمایت کوچک، یعنی امکانات تازه، سرعت بیشتر و ادامه ساختن بدون تبلیغات مزاحم.
@@ -374,7 +453,7 @@ export const androidPageBody = `<div class="app market-root">
             </div>
 
             <button type="button" id="donatePrimaryCopyBtn" class="donate-primary-btn">کپی شماره کارت</button>
-            <p class="donate-footnote">هیچ اجباری در کار نیست؛ همین که از اپ استفاده می‌کنی برای ادامه مسیر ارزشمند است.</p>
+            <p class="donate-footnote">هیچ پرداخت اجباری نیست؛ همین که از اپ استفاده می‌کنی ارزشمنده ❤️</p>
           </section>
         </div>
       </div>
@@ -750,8 +829,8 @@ export const androidExtraStyles = `
 
     .more-subtabs {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 6px;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 4px;
       padding: 4px;
       border-radius: 14px;
       background: var(--bg);
@@ -762,11 +841,11 @@ export const androidExtraStyles = `
     .more-subtab-btn {
       border: none;
       border-radius: 11px;
-      padding: 10px 6px;
+      padding: 10px 4px;
       background: transparent;
       color: var(--muted);
       font-family: inherit;
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 700;
       cursor: pointer;
     }
@@ -927,6 +1006,45 @@ export const androidExtraStyles = `
       flex-shrink: 0;
     }
 
+    .cars-estimate-mode-toggle {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      padding: 4px;
+      border-radius: 14px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .cars-estimate-mode-btn {
+      border: none;
+      border-radius: 11px;
+      padding: 10px 8px;
+      background: transparent;
+      color: var(--muted);
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .cars-estimate-mode-btn.is-active {
+      background: color-mix(in srgb, var(--accent) 16%, var(--surface));
+      color: var(--accent);
+    }
+
+    .cars-estimate-mode-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+
+    .cars-estimate-mode-panel.hidden {
+      display: none;
+    }
+
     .cars-estimate-section-head {
       display: flex;
       align-items: flex-start;
@@ -961,6 +1079,16 @@ export const androidExtraStyles = `
       font-size: 11px;
       line-height: 1.5;
       color: var(--muted);
+    }
+
+    [data-theme="light"] .cars-estimate-mode-toggle {
+      background: #ffffff;
+      border-color: var(--border-strong);
+    }
+
+    [data-theme="light"] .cars-estimate-mode-btn.is-active {
+      background: color-mix(in srgb, var(--accent) 14%, #ffffff);
+      color: var(--accent);
     }
 
     #view-housing.market-view {
@@ -1462,9 +1590,14 @@ export const androidExtraStyles = `
     .price-hero-card {
       grid-column: 1 / -1;
       position: relative;
-      overflow: hidden;
+      overflow: visible;
       border-radius: 22px;
       border: none;
+      min-width: 0;
+      width: 100%;
+      max-width: 100%;
+      height: auto;
+      box-sizing: border-box;
       background: linear-gradient(
         135deg,
         color-mix(in srgb, var(--accent) 55%, #0f172a) 0%,
@@ -1473,7 +1606,7 @@ export const androidExtraStyles = `
         color-mix(in srgb, var(--accent-glow, var(--accent)) 45%, #fff7ed) 100%
       );
       box-shadow: 0 14px 32px color-mix(in srgb, var(--accent) 28%, transparent);
-      padding: 18px 18px 16px;
+      padding: 16px 14px 20px;
       color: #fff;
     }
 
@@ -1485,6 +1618,7 @@ export const androidExtraStyles = `
       border-radius: 50%;
       background: radial-gradient(circle, rgba(255, 255, 255, 0.18) 0%, transparent 68%);
       pointer-events: none;
+      z-index: 0;
     }
 
     .price-hero-card-top {
@@ -1494,7 +1628,9 @@ export const androidExtraStyles = `
       align-items: flex-start;
       justify-content: space-between;
       gap: 8px;
-      margin-bottom: 8px;
+      margin-bottom: 10px;
+      min-width: 0;
+      flex-shrink: 0;
     }
 
     .price-hero-card-title-wrap {
@@ -1502,6 +1638,7 @@ export const androidExtraStyles = `
       align-items: center;
       gap: 10px;
       min-width: 0;
+      flex: 1 1 auto;
     }
 
     .price-hero-card-icon {
@@ -1515,6 +1652,7 @@ export const androidExtraStyles = `
       font-size: 22px;
       line-height: 1;
       backdrop-filter: blur(6px);
+      flex-shrink: 0;
     }
 
     .price-hero-card-kicker {
@@ -1547,22 +1685,35 @@ export const androidExtraStyles = `
       position: relative;
       z-index: 1;
       display: flex;
-      align-items: flex-end;
+      align-items: center;
       justify-content: space-between;
-      gap: 12px;
-      margin-top: 4px;
+      gap: 10px;
+      margin-top: 8px;
+      min-width: 0;
+      flex-wrap: wrap;
+      flex-shrink: 0;
+      overflow: visible;
     }
 
     .price-hero-card-value {
-      font-size: 30px;
+      flex: 1 1 auto;
+      min-width: 0;
+      max-width: 100%;
+      font-size: clamp(20px, 6.5vw, 28px);
       font-weight: 800;
-      line-height: 1.1;
+      line-height: 1.5;
       font-variant-numeric: tabular-nums;
       color: #fff;
       letter-spacing: -0.02em;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+      padding: 2px 0 4px;
+      overflow: visible;
     }
 
     .price-hero-card-change {
+      flex: 0 0 auto;
+      align-self: center;
       font-size: 12px;
       font-weight: 700;
       padding: 6px 10px;
@@ -1586,14 +1737,20 @@ export const androidExtraStyles = `
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 12px;
-      margin-top: 16px;
+      gap: 10px;
+      margin-top: 14px;
       padding-top: 0;
       border-top: none;
+      min-width: 0;
+      flex-wrap: wrap;
+      flex-shrink: 0;
+      overflow: visible;
     }
 
     .price-hero-share-hint {
       margin: 0;
+      flex: 1 1 120px;
+      min-width: 0;
       font-size: 11px;
       font-weight: 600;
       color: rgba(255, 255, 255, 0.78);
@@ -1601,7 +1758,7 @@ export const androidExtraStyles = `
 
     .price-hero-share-row .market-share-icon-btn {
       width: auto;
-      min-width: 108px;
+      min-width: 132px;
       height: 40px;
       padding: 0 14px;
       border-radius: 12px;
@@ -1613,6 +1770,7 @@ export const androidExtraStyles = `
       align-items: center;
       justify-content: center;
       gap: 6px;
+      flex-shrink: 0;
     }
 
     .price-hero-share-row .market-share-icon-btn svg {
@@ -1621,7 +1779,7 @@ export const androidExtraStyles = `
     }
 
     .price-hero-share-row .market-share-icon-btn::after {
-      content: "اشتراک";
+      content: "اشتراک‌گذاری";
       font-size: 12px;
       font-weight: 700;
     }
@@ -1919,6 +2077,320 @@ export const androidExtraStyles = `
       font-size: 11px;
       line-height: 1.5;
       color: var(--muted-2);
+    }
+
+    .bank-card-tool {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      padding: 4px 2px 12px;
+    }
+
+    .bank-card-preview-wrap {
+      padding: 8px 4px 4px;
+    }
+
+    .bank-card-preview {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 1.586 / 1;
+      border-radius: 20px;
+      padding: 20px 20px 18px;
+      color: #fff;
+      overflow: hidden;
+      isolation: isolate;
+      box-shadow:
+        0 22px 48px color-mix(in srgb, var(--bank-c1, #0e4d5c) 40%, transparent),
+        0 6px 16px rgba(15, 23, 42, 0.22),
+        inset 0 1px 0 rgba(255, 255, 255, 0.22);
+      background:
+        linear-gradient(115deg, rgba(255, 255, 255, 0.18) 0%, transparent 28%, transparent 62%, rgba(255, 255, 255, 0.08) 100%),
+        radial-gradient(120% 90% at 8% 8%, color-mix(in srgb, #ffffff 26%, transparent), transparent 46%),
+        radial-gradient(90% 80% at 92% 12%, color-mix(in srgb, #ffffff 16%, transparent), transparent 40%),
+        radial-gradient(70% 60% at 70% 88%, color-mix(in srgb, #000000 28%, transparent), transparent 55%),
+        linear-gradient(145deg, var(--bank-c1, #0e4d5c), var(--bank-c2, #1a7a8c) 55%, color-mix(in srgb, var(--bank-c1, #0e4d5c) 70%, #000) 100%);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: background 0.35s ease, box-shadow 0.35s ease;
+    }
+
+    .bank-card-preview::before {
+      content: "";
+      position: absolute;
+      inset: -30% -20% auto auto;
+      width: 80%;
+      height: 80%;
+      border-radius: 50%;
+      background: radial-gradient(circle, color-mix(in srgb, #ffffff 18%, transparent), transparent 68%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .bank-card-preview::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        125deg,
+        transparent 0%,
+        transparent 42%,
+        rgba(255, 255, 255, 0.14) 50%,
+        transparent 58%,
+        transparent 100%
+      );
+      mix-blend-mode: soft-light;
+      pointer-events: none;
+      z-index: 0;
+      animation: bank-card-sheen 4.8s ease-in-out infinite;
+    }
+
+    @keyframes bank-card-sheen {
+      0%, 100% { transform: translateX(-18%); opacity: 0.35; }
+      50% { transform: translateX(18%); opacity: 0.7; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .bank-card-preview::after {
+        animation: none;
+      }
+    }
+
+    .bank-card-preview > * {
+      position: relative;
+      z-index: 1;
+    }
+
+    .bank-card-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .bank-card-chip-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .bank-card-chip {
+      width: 46px;
+      height: 34px;
+      border-radius: 8px;
+      background: linear-gradient(145deg, #f7e7b5, #c9a24d 42%, #f0d9a0 78%, #a9842f);
+      box-shadow:
+        inset 0 0 0 1px rgba(255, 255, 255, 0.4),
+        0 2px 6px rgba(0, 0, 0, 0.22);
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr 1fr;
+      gap: 1px;
+      padding: 5px;
+      opacity: 0.98;
+    }
+
+    .bank-card-chip span {
+      border-radius: 2px;
+      background: color-mix(in srgb, #8a6a2a 40%, transparent);
+    }
+
+    .bank-card-contactless {
+      width: 22px;
+      height: 22px;
+      opacity: 0.85;
+      color: rgba(255, 255, 255, 0.92);
+    }
+
+    .bank-card-brand {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 6px;
+      text-align: left;
+      max-width: 58%;
+    }
+
+    .bank-card-logo-img {
+      width: 52px;
+      height: 52px;
+      object-fit: contain;
+      border-radius: 14px;
+      background: #ffffff;
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28);
+      padding: 5px;
+    }
+
+    .bank-card-logo-img.hidden {
+      display: none;
+    }
+
+    .bank-card-logo-mark {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 44px;
+      padding: 5px 10px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.16);
+      border: 1px solid rgba(255, 255, 255, 0.28);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      backdrop-filter: blur(6px);
+    }
+
+    .bank-card-logo-mark.hidden {
+      display: none;
+    }
+
+    .bank-card-logo-name {
+      font-size: 12px;
+      font-weight: 700;
+      opacity: 0.95;
+      line-height: 1.3;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+    }
+
+    .bank-card-number {
+      margin: 4px 0 0;
+      font-family: ui-monospace, "Cascadia Code", "SF Mono", Menlo, Consolas, monospace;
+      font-size: clamp(18px, 5.4vw, 24px);
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-align: center;
+      direction: ltr;
+      unicode-bidi: isolate;
+      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.28);
+    }
+
+    .bank-card-bottom {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 12px;
+      padding-top: 4px;
+      border-top: 1px solid rgba(255, 255, 255, 0.14);
+    }
+
+    .bank-card-meta {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .bank-card-meta-end {
+      text-align: left;
+      align-items: flex-end;
+    }
+
+    .bank-card-meta-label {
+      font-size: 10px;
+      font-weight: 600;
+      opacity: 0.72;
+      letter-spacing: 0.06em;
+    }
+
+    .bank-card-meta-value {
+      font-size: 13px;
+      font-weight: 800;
+      line-height: 1.35;
+      word-break: break-word;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    }
+
+    .bank-card-form {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 16px;
+      border-radius: 18px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+    }
+
+    .bank-card-field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .bank-card-field-label {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--muted);
+    }
+
+    .bank-card-input {
+      width: 100%;
+      min-height: 46px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--border-strong, var(--border));
+      background: var(--input-bg, var(--bg));
+      color: var(--text);
+      font-family: inherit;
+      font-size: 15px;
+      outline: none;
+    }
+
+    .bank-card-input[dir="ltr"] {
+      font-family: ui-monospace, "Cascadia Code", "SF Mono", Menlo, Consolas, monospace;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.06em;
+      text-align: left;
+    }
+
+    .bank-card-input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 18%, transparent);
+    }
+
+    .bank-card-hint {
+      margin: 0;
+      font-size: 11px;
+      line-height: 1.6;
+      color: var(--muted);
+    }
+
+    .bank-card-hint.is-error {
+      color: #e11d48;
+    }
+
+    .bank-card-share-btn {
+      width: 100%;
+      min-height: 48px;
+      border-radius: 14px;
+      border: none;
+      background: var(--accent);
+      color: var(--accent-fg);
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 800;
+      cursor: pointer;
+      box-shadow: 0 10px 22px color-mix(in srgb, var(--accent) 28%, transparent);
+    }
+
+    .bank-card-share-btn:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    .bank-card-share-btn:not(:disabled):active {
+      transform: scale(0.99);
+    }
+
+    [data-theme="light"] .bank-card-form {
+      background: #ffffff;
+      border-color: color-mix(in srgb, var(--accent) 14%, var(--border));
+    }
+
+    [data-theme="light"] .bank-card-input {
+      background: var(--input-bg, #f7f9fc);
+      border-color: var(--border-strong);
     }
 
     .donate-card {
@@ -3341,6 +3813,7 @@ export const androidStandaloneUiPatch = `
     const housingViewEl = document.getElementById("view-housing");
     const moreViewEl = document.getElementById("view-more");
     const moreSettingsPanelEl = document.getElementById("moreSettingsPanel");
+    const moreToolsPanelEl = document.getElementById("moreToolsPanel");
     const moreDonatePanelEl = document.getElementById("moreDonatePanel");
     const moreAboutPanelEl = document.getElementById("moreAboutPanel");
     const moreSubtabButtons = document.querySelectorAll("[data-more-subtab]");
@@ -3352,6 +3825,9 @@ export const androidStandaloneUiPatch = `
     const goldSubtabButtons = document.querySelectorAll("[data-gold-subtab]");
     const carsPricesPanelEl = document.getElementById("carsPricesPanel");
     const carsEstimatePanelEl = document.getElementById("carsEstimatePanel");
+    const carsEstimateDivarPanelEl = document.getElementById("carsEstimateDivarPanel");
+    const carsEstimateSpecsPanelEl = document.getElementById("carsEstimateSpecsPanel");
+    const carsEstimateModeButtons = document.querySelectorAll("[data-cars-estimate-mode]");
     const carsSubtabButtons = document.querySelectorAll("[data-cars-subtab]");
     const navButtons = document.querySelectorAll("[data-market-tab]");
     const navRefreshBtn = document.getElementById("marketNavRefresh");
@@ -3418,10 +3894,22 @@ export const androidStandaloneUiPatch = `
       const savedCarsSubtab = localStorage.getItem("market-prices-cars-subtab");
       if (savedCarsSubtab === "estimate" || savedCarsSubtab === "prices") activeCarsSubtab = savedCarsSubtab;
     } catch (e) {}
+    let activeCarsEstimateMode = "divar";
+    try {
+      const savedCarsEstimateMode = localStorage.getItem("market-prices-cars-estimate-mode");
+      if (savedCarsEstimateMode === "specs" || savedCarsEstimateMode === "divar") {
+        activeCarsEstimateMode = savedCarsEstimateMode;
+      }
+    } catch (e) {}
     let activeMoreSubtab = "settings";
     try {
       const savedMoreSubtab = localStorage.getItem("market-prices-more-subtab");
-      if (savedMoreSubtab === "donate" || savedMoreSubtab === "about" || savedMoreSubtab === "settings") {
+      if (
+        savedMoreSubtab === "donate" ||
+        savedMoreSubtab === "about" ||
+        savedMoreSubtab === "settings" ||
+        savedMoreSubtab === "tools"
+      ) {
         activeMoreSubtab = savedMoreSubtab;
       }
     } catch (e) {}
@@ -4232,6 +4720,421 @@ export const androidStandaloneUiPatch = `
       }
     }
 
+    function initBankCardTool() {
+      const IRAN_BANK_BY_BIN = ${IRAN_BANK_BY_BIN_JSON};
+      const IRAN_BANK_UNKNOWN = ${IRAN_BANK_UNKNOWN_JSON};
+      const IRAN_BANK_LOGO_DATA_URIS = ${IRAN_BANK_LOGO_DATA_URIS_JSON};
+      const previewEl = document.getElementById("bankCardPreview");
+      const numberPreviewEl = document.getElementById("bankCardNumberPreview");
+      const holderPreviewEl = document.getElementById("bankCardHolderPreview");
+      const bankPreviewEl = document.getElementById("bankCardBankPreview");
+      const logoImgEl = document.getElementById("bankCardLogoImg");
+      const logoMarkEl = document.getElementById("bankCardLogoMark");
+      const logoNameEl = document.getElementById("bankCardLogoName");
+      const numberInputEl = document.getElementById("bankCardNumberInput");
+      const holderInputEl = document.getElementById("bankCardHolderInput");
+      const hintEl = document.getElementById("bankCardHint");
+      const shareBtnEl = document.getElementById("bankCardShareBtn");
+      if (!previewEl || !numberInputEl || !holderInputEl || !shareBtnEl) return;
+
+      let bankCardShareBusy = false;
+      const logoImageCache = {};
+      const defaultHint = "با وارد کردن شماره کارت، بانک به‌صورت خودکار تشخیص داده می‌شود.";
+
+      function toLatinDigits(value) {
+        return String(value || "")
+          .replace(/[۰-۹]/g, function (ch) {
+            return String("۰۱۲۳۴۵۶۷۸۹".indexOf(ch));
+          })
+          .replace(/[٠-٩]/g, function (ch) {
+            return String("٠١٢٣٤٥٦٧٨٩".indexOf(ch));
+          });
+      }
+
+      function digitsOnly(value) {
+        return toLatinDigits(value).replace(/\\D/g, "");
+      }
+
+      function formatCardGroups(digits) {
+        const clean = String(digits || "").slice(0, 16);
+        return clean.replace(/(\\d{4})(?=\\d)/g, "$1 ").trim();
+      }
+
+      function formatCardPreview(digits) {
+        const clean = String(digits || "").slice(0, 16);
+        if (!clean) return "•••• •••• •••• ••••";
+        let out = "";
+        for (let i = 0; i < 16; i += 1) {
+          out += i < clean.length ? clean.charAt(i) : "•";
+          if (i % 4 === 3 && i < 15) out += " ";
+        }
+        return out;
+      }
+
+      function lookupBank(digits) {
+        if (!digits || digits.length < 6) return null;
+        return IRAN_BANK_BY_BIN[digits.slice(0, 6)] || null;
+      }
+
+      function getBankLogoDataUri(bank) {
+        if (!bank || !bank.logo) return "";
+        return IRAN_BANK_LOGO_DATA_URIS[bank.logo] || "";
+      }
+
+      function loadBankLogoImage(dataUri) {
+        if (!dataUri) return Promise.resolve(null);
+        if (logoImageCache[dataUri]) return Promise.resolve(logoImageCache[dataUri]);
+        return new Promise(function (resolve) {
+          const img = new Image();
+          img.onload = function () {
+            logoImageCache[dataUri] = img;
+            resolve(img);
+          };
+          img.onerror = function () {
+            resolve(null);
+          };
+          img.src = dataUri;
+        });
+      }
+
+      function setHint(message, isError) {
+        if (!hintEl) return;
+        hintEl.textContent = message || defaultHint;
+        hintEl.classList.toggle("is-error", !!isError);
+      }
+
+      function syncBankCardPreview() {
+        const digits = digitsOnly(numberInputEl.value);
+        const holder = holderInputEl.value.trim();
+        const bank = lookupBank(digits) || IRAN_BANK_UNKNOWN;
+        const known = !!lookupBank(digits);
+        const logoUri = known ? getBankLogoDataUri(bank) : "";
+
+        numberInputEl.value = formatCardGroups(digits);
+        if (numberPreviewEl) numberPreviewEl.textContent = formatCardPreview(digits);
+        if (holderPreviewEl) {
+          holderPreviewEl.textContent = holder || "نام و نام خانوادگی";
+        }
+        if (bankPreviewEl) bankPreviewEl.textContent = known ? bank.name : digits.length >= 6 ? bank.name : "—";
+        if (logoNameEl) logoNameEl.textContent = known ? bank.name : "بانک";
+        if (logoImgEl) {
+          if (logoUri) {
+            logoImgEl.src = logoUri;
+            logoImgEl.alt = bank.name;
+            logoImgEl.classList.remove("hidden");
+            if (logoMarkEl) logoMarkEl.classList.add("hidden");
+          } else {
+            logoImgEl.removeAttribute("src");
+            logoImgEl.alt = "";
+            logoImgEl.classList.add("hidden");
+            if (logoMarkEl) {
+              logoMarkEl.classList.remove("hidden");
+              logoMarkEl.textContent = bank.shortName;
+            }
+          }
+        } else if (logoMarkEl) {
+          logoMarkEl.classList.remove("hidden");
+          logoMarkEl.textContent = bank.shortName;
+        }
+        previewEl.style.setProperty("--bank-c1", bank.c1);
+        previewEl.style.setProperty("--bank-c2", bank.c2);
+
+        if (digits.length >= 6 && !known) {
+          setHint("این پیش‌شماره در فهرست بانک‌ها نیست؛ کارت با ظاهر عمومی ساخته می‌شود.", true);
+        } else if (digits.length > 0 && digits.length < 6) {
+          setHint("حداقل ۶ رقم اول شماره کارت را وارد کنید تا بانک تشخیص داده شود.");
+        } else {
+          setHint(defaultHint);
+        }
+      }
+
+      function roundRect(ctx, x, y, w, h, r) {
+        const radius = Math.min(r, w / 2, h / 2);
+        ctx.beginPath();
+        ctx.moveTo(x + radius, y);
+        ctx.arcTo(x + w, y, x + w, y + h, radius);
+        ctx.arcTo(x + w, y + h, x, y + h, radius);
+        ctx.arcTo(x, y + h, x, y, radius);
+        ctx.arcTo(x, y, x + w, y, radius);
+        ctx.closePath();
+      }
+
+      async function buildBankCardShareCanvas(digits, holder, bank) {
+        try {
+          await document.fonts.ready;
+        } catch (e) {}
+
+        const width = 1080;
+        const height = 1480;
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) throw new Error("ساخت تصویر ممکن نشد");
+
+        const isLight =
+          document.documentElement.getAttribute("data-theme") === "light";
+        const accent =
+          getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() ||
+          (isLight ? "#0f766e" : "#00e5a0");
+
+        // Soft branded frame background
+        const frameGrad = ctx.createLinearGradient(0, 0, width, height);
+        if (isLight) {
+          frameGrad.addColorStop(0, "#eef3f9");
+          frameGrad.addColorStop(0.5, "#f8fafc");
+          frameGrad.addColorStop(1, "#e8eef7");
+        } else {
+          frameGrad.addColorStop(0, "#0b1018");
+          frameGrad.addColorStop(0.55, "#151c2a");
+          frameGrad.addColorStop(1, "#0d1420");
+        }
+        ctx.fillStyle = frameGrad;
+        ctx.fillRect(0, 0, width, height);
+
+        ctx.fillStyle = accent;
+        ctx.globalAlpha = 0.12;
+        ctx.beginPath();
+        ctx.arc(160, 180, 240, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(920, 1280, 280, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+
+        // Brand header
+        roundRect(ctx, width / 2 - 96, 56, 192, 52, 26);
+        ctx.fillStyle = accent;
+        ctx.globalAlpha = 0.16;
+        ctx.fill();
+        ctx.globalAlpha = 1;
+        ctx.strokeStyle = accent;
+        ctx.globalAlpha = 0.4;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = accent;
+        ctx.textAlign = "center";
+        ctx.direction = "rtl";
+        ctx.font = '800 30px "Vazir-FD", Vazir, Tahoma, sans-serif';
+        ctx.fillText("تصمیم", width / 2, 91);
+
+        ctx.fillStyle = isLight ? "#0f172a" : "#ffffff";
+        ctx.font = '800 44px "Vazir-FD", Vazir, Tahoma, sans-serif';
+        ctx.fillText("کارت بانکی من", width / 2, 170);
+        ctx.fillStyle = isLight ? "#64748b" : "#8b95a8";
+        ctx.font = '600 24px "Vazir-FD", Vazir, Tahoma, sans-serif';
+        ctx.fillText(bank.name, width / 2, 214);
+
+        // Floating card geometry
+        const cardW = 920;
+        const cardH = Math.round(cardW / 1.586);
+        const cardX = (width - cardW) / 2;
+        const cardY = 270;
+
+        // Drop shadow
+        ctx.fillStyle = "rgba(0,0,0,0.28)";
+        roundRect(ctx, cardX + 10, cardY + 22, cardW, cardH, 42);
+        ctx.fill();
+
+        // Card body
+        const cardGrad = ctx.createLinearGradient(cardX, cardY, cardX + cardW, cardY + cardH);
+        cardGrad.addColorStop(0, bank.c1);
+        cardGrad.addColorStop(0.55, bank.c2);
+        cardGrad.addColorStop(1, bank.c1);
+        roundRect(ctx, cardX, cardY, cardW, cardH, 42);
+        ctx.fillStyle = cardGrad;
+        ctx.fill();
+
+        // Gloss layers
+        const gloss1 = ctx.createRadialGradient(cardX + 140, cardY + 90, 20, cardX + 140, cardY + 90, 320);
+        gloss1.addColorStop(0, "rgba(255,255,255,0.28)");
+        gloss1.addColorStop(1, "rgba(255,255,255,0)");
+        ctx.fillStyle = gloss1;
+        ctx.fillRect(cardX, cardY, cardW, cardH);
+
+        const gloss2 = ctx.createLinearGradient(cardX, cardY, cardX + cardW, cardY + cardH);
+        gloss2.addColorStop(0, "rgba(255,255,255,0.14)");
+        gloss2.addColorStop(0.35, "rgba(255,255,255,0)");
+        gloss2.addColorStop(0.55, "rgba(255,255,255,0.08)");
+        gloss2.addColorStop(1, "rgba(0,0,0,0.18)");
+        ctx.fillStyle = gloss2;
+        ctx.fillRect(cardX, cardY, cardW, cardH);
+
+        // Chip
+        const chipX = cardX + 72;
+        const chipY = cardY + 72;
+        const chipGrad = ctx.createLinearGradient(chipX, chipY, chipX + 100, chipY + 76);
+        chipGrad.addColorStop(0, "#f7e7b5");
+        chipGrad.addColorStop(0.45, "#c9a24d");
+        chipGrad.addColorStop(1, "#f0d9a0");
+        roundRect(ctx, chipX, chipY, 100, 76, 14);
+        ctx.fillStyle = chipGrad;
+        ctx.fill();
+        ctx.strokeStyle = "rgba(255,255,255,0.35)";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.strokeStyle = "rgba(138,106,42,0.35)";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(chipX + 50, chipY + 8);
+        ctx.lineTo(chipX + 50, chipY + 68);
+        ctx.moveTo(chipX + 10, chipY + 38);
+        ctx.lineTo(chipX + 90, chipY + 38);
+        ctx.stroke();
+
+        // Contactless arcs
+        ctx.strokeStyle = "rgba(255,255,255,0.85)";
+        ctx.lineWidth = 4;
+        ctx.lineCap = "round";
+        [[28, 0.85], [44, 0.55], [60, 0.35]].forEach(function (pair) {
+          const r = pair[0];
+          ctx.globalAlpha = pair[1];
+          ctx.beginPath();
+          ctx.arc(chipX + 148, chipY + 38, r, -Math.PI * 0.55, Math.PI * 0.55);
+          ctx.stroke();
+        });
+        ctx.globalAlpha = 1;
+
+        // Logo
+        const logoImg = await loadBankLogoImage(getBankLogoDataUri(bank));
+        if (logoImg) {
+          const logoSize = 118;
+          const logoX = cardX + cardW - 80 - logoSize;
+          const logoY = cardY + 64;
+          roundRect(ctx, logoX - 12, logoY - 12, logoSize + 24, logoSize + 24, 28);
+          ctx.fillStyle = "#ffffff";
+          ctx.fill();
+          ctx.drawImage(logoImg, logoX, logoY, logoSize, logoSize);
+        } else {
+          roundRect(ctx, cardX + cardW - 250, cardY + 78, 170, 52, 26);
+          ctx.fillStyle = "rgba(255,255,255,0.16)";
+          ctx.fill();
+          ctx.fillStyle = "#ffffff";
+          ctx.font = '800 26px "Vazir-FD", Vazir, Tahoma, sans-serif';
+          ctx.textAlign = "center";
+          ctx.fillText(bank.shortName, cardX + cardW - 165, cardY + 112);
+        }
+
+        // Card number
+        ctx.font = '700 58px ui-monospace, Menlo, Consolas, monospace';
+        ctx.textAlign = "center";
+        ctx.direction = "ltr";
+        ctx.fillStyle = "#ffffff";
+        ctx.shadowColor = "rgba(0,0,0,0.35)";
+        ctx.shadowBlur = 10;
+        ctx.fillText(formatCardPreview(digits), width / 2, cardY + cardH * 0.58);
+        ctx.shadowBlur = 0;
+
+        // Divider
+        ctx.strokeStyle = "rgba(255,255,255,0.18)";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(cardX + 72, cardY + cardH - 150);
+        ctx.lineTo(cardX + cardW - 72, cardY + cardH - 150);
+        ctx.stroke();
+
+        // Holder / bank meta
+        ctx.direction = "rtl";
+        ctx.textAlign = "right";
+        ctx.fillStyle = "rgba(255,255,255,0.7)";
+        ctx.font = '600 22px "Vazir-FD", Vazir, Tahoma, sans-serif';
+        ctx.fillText("دارنده کارت", cardX + cardW - 72, cardY + cardH - 108);
+        ctx.fillStyle = "#ffffff";
+        ctx.font = '800 36px "Vazir-FD", Vazir, Tahoma, sans-serif';
+        ctx.fillText(holder || "نام و نام خانوادگی", cardX + cardW - 72, cardY + cardH - 58);
+
+        ctx.textAlign = "left";
+        ctx.fillStyle = "rgba(255,255,255,0.7)";
+        ctx.font = '600 22px "Vazir-FD", Vazir, Tahoma, sans-serif';
+        ctx.fillText("بانک", cardX + 72, cardY + cardH - 108);
+        ctx.fillStyle = "#ffffff";
+        ctx.font = '800 32px "Vazir-FD", Vazir, Tahoma, sans-serif';
+        ctx.fillText(bank.name, cardX + 72, cardY + cardH - 58);
+
+        // Footer
+        ctx.fillStyle = isLight ? "#64748b" : "#8b95a8";
+        ctx.textAlign = "center";
+        ctx.direction = "rtl";
+        ctx.font = '500 26px "Vazir-FD", Vazir, Tahoma, sans-serif';
+        ctx.fillText("آماده اشتراک‌گذاری · ساخته‌شده در تصمیم", width / 2, height - 90);
+        ctx.fillStyle = accent;
+        ctx.font = '800 30px "Vazir-FD", Vazir, Tahoma, sans-serif';
+        ctx.fillText("تصمیم", width / 2, height - 48);
+
+        return canvas;
+      }
+
+      async function shareBankCardImage() {
+        if (bankCardShareBusy) return;
+        const digits = digitsOnly(numberInputEl.value);
+        const holder = holderInputEl.value.trim();
+        if (digits.length < 16) {
+          setHint("برای اشتراک‌گذاری، شماره کارت ۱۶ رقمی را کامل وارد کنید.", true);
+          numberInputEl.focus();
+          return;
+        }
+        if (!holder) {
+          setHint("نام و نام خانوادگی را وارد کنید.", true);
+          holderInputEl.focus();
+          return;
+        }
+
+        const bank = lookupBank(digits) || IRAN_BANK_UNKNOWN;
+        bankCardShareBusy = true;
+        shareBtnEl.disabled = true;
+        try {
+          const canvas = await buildBankCardShareCanvas(digits, holder, bank);
+          const dataUrl = canvas.toDataURL("image/png");
+          const base64 = dataUrl.replace(/^data:image\\/png;base64,/, "");
+          const fileName = "bank-card-" + Date.now() + ".png";
+
+          if (typeof AndroidApp !== "undefined" && typeof AndroidApp["shareImage"] === "function") {
+            AndroidApp["shareImage"](base64, fileName);
+            showPriceToast("تصویر کارت آماده اشتراک شد");
+            return;
+          }
+
+          const blob = await new Promise(function (resolve, reject) {
+            canvas.toBlob(function (result) {
+              if (result) resolve(result);
+              else reject(new Error("ساخت فایل تصویر ممکن نشد"));
+            }, "image/png");
+          });
+          const file = new File([blob], fileName, { type: "image/png" });
+          if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({
+              files: [file],
+              title: bank.name,
+              text: holder + " · " + bank.name,
+            });
+            showPriceToast("تصویر کارت آماده اشتراک شد");
+            return;
+          }
+
+          const link = document.createElement("a");
+          link.href = dataUrl;
+          link.download = fileName;
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+          showPriceToast("تصویر کارت دانلود شد");
+        } catch (error) {
+          showPriceToast((error && error.message) || "اشتراک‌گذاری کارت ممکن نشد");
+        } finally {
+          bankCardShareBusy = false;
+          shareBtnEl.disabled = false;
+        }
+      }
+
+      numberInputEl.addEventListener("input", syncBankCardPreview);
+      holderInputEl.addEventListener("input", syncBankCardPreview);
+      shareBtnEl.addEventListener("click", function () {
+        Promise.resolve(shareBankCardImage()).catch(function () {});
+      });
+      syncBankCardPreview();
+    }
+
     function initDonateSupport() {
       const DONATE_CARD_NUMBER = "${DONATE_CARD_NUMBER}";
       const donateCardCopyBtn = document.getElementById("donateCardCopyBtn");
@@ -4353,6 +5256,7 @@ export const androidStandaloneUiPatch = `
       renderAccentPicker();
       applyAccentTheme(getSavedAccentId());
       initDonateSupport();
+      initBankCardTool();
       if (alertsEnabledEl) {
         alertsEnabledEl.addEventListener("change", function () {
           saveAlertSettings({
@@ -4422,6 +5326,37 @@ export const androidStandaloneUiPatch = `
       });
       if (carsPricesPanelEl) carsPricesPanelEl.classList.toggle("hidden", activeCarsSubtab !== "prices");
       if (carsEstimatePanelEl) carsEstimatePanelEl.classList.toggle("hidden", activeCarsSubtab !== "estimate");
+      syncCarsEstimateModeUi();
+    }
+
+    function syncCarsEstimateModeUi() {
+      carsEstimateModeButtons.forEach(function (button) {
+        const active = button.dataset.carsEstimateMode === activeCarsEstimateMode;
+        button.classList.toggle("is-active", active);
+        button.setAttribute("aria-selected", active ? "true" : "false");
+      });
+      if (carsEstimateDivarPanelEl) {
+        carsEstimateDivarPanelEl.classList.toggle("hidden", activeCarsEstimateMode !== "divar");
+      }
+      if (carsEstimateSpecsPanelEl) {
+        carsEstimateSpecsPanelEl.classList.toggle("hidden", activeCarsEstimateMode !== "specs");
+      }
+    }
+
+    function setCarsEstimateMode(mode) {
+      const next = mode === "specs" ? "specs" : "divar";
+      if (next === activeCarsEstimateMode) {
+        syncCarsEstimateModeUi();
+        return;
+      }
+      activeCarsEstimateMode = next;
+      try {
+        localStorage.setItem("market-prices-cars-estimate-mode", activeCarsEstimateMode);
+      } catch (e) {}
+      syncCarsEstimateModeUi();
+      if (activeMarketTab === "cars" && activeCarsSubtab === "estimate" && activeCarsEstimateMode === "specs") {
+        ensureMyCarCatalog().catch(function () {});
+      }
     }
 
     function setCarsSubtab(subtab) {
@@ -4438,7 +5373,11 @@ export const androidStandaloneUiPatch = `
       if (activeMarketTab === "cars" && activeCarsSubtab === "prices" && !carsLoaded) {
         fetchCarPrices();
       }
-      if (activeMarketTab === "cars" && activeCarsSubtab === "estimate") {
+      if (
+        activeMarketTab === "cars" &&
+        activeCarsSubtab === "estimate" &&
+        activeCarsEstimateMode === "specs"
+      ) {
         ensureMyCarCatalog().catch(function () {});
       }
     }
@@ -4450,13 +5389,20 @@ export const androidStandaloneUiPatch = `
         button.setAttribute("aria-selected", active ? "true" : "false");
       });
       if (moreSettingsPanelEl) moreSettingsPanelEl.classList.toggle("hidden", activeMoreSubtab !== "settings");
+      if (moreToolsPanelEl) moreToolsPanelEl.classList.toggle("hidden", activeMoreSubtab !== "tools");
       if (moreDonatePanelEl) moreDonatePanelEl.classList.toggle("hidden", activeMoreSubtab !== "donate");
       if (moreAboutPanelEl) moreAboutPanelEl.classList.toggle("hidden", activeMoreSubtab !== "about");
     }
 
     function setMoreSubtab(subtab) {
       const next =
-        subtab === "donate" ? "donate" : subtab === "about" ? "about" : "settings";
+        subtab === "donate"
+          ? "donate"
+          : subtab === "about"
+            ? "about"
+            : subtab === "tools"
+              ? "tools"
+              : "settings";
       if (next === activeMoreSubtab) {
         syncMoreSubtabUi();
         return;
@@ -4870,7 +5816,7 @@ export const androidStandaloneUiPatch = `
 
       if (tab === "cars") {
         syncCarsSubtabUi();
-        if (activeCarsSubtab === "estimate") {
+        if (activeCarsSubtab === "estimate" && activeCarsEstimateMode === "specs") {
           ensureMyCarCatalog().catch(function () {});
         }
         if (activeCarsSubtab === "prices" && !carsLoaded) {
@@ -4886,7 +5832,7 @@ export const androidStandaloneUiPatch = `
     function handleMarketRefresh() {
       if (activeMarketTab === "cars") {
         if (activeCarsSubtab === "prices") fetchCarPrices();
-        else ensureMyCarCatalog().catch(function () {});
+        else if (activeCarsEstimateMode === "specs") ensureMyCarCatalog().catch(function () {});
       } else if (activeMarketTab === "housing") runHousingSearch({ append: false });
       else if (isPriceTab(activeMarketTab)) fetchPrices();
     }
@@ -5088,6 +6034,13 @@ export const androidStandaloneUiPatch = `
       });
     });
     syncCarsSubtabUi();
+
+    carsEstimateModeButtons.forEach(function (button) {
+      button.addEventListener("click", function () {
+        setCarsEstimateMode(button.dataset.carsEstimateMode);
+      });
+    });
+    syncCarsEstimateModeUi();
 
     moreSubtabButtons.forEach(function (button) {
       button.addEventListener("click", function () {

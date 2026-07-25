@@ -1441,30 +1441,36 @@ function getShareCardTheme() {
       theme = "dark";
     }
   }
-  const isLight = theme === "light";
-  if (isLight) {
+  const accent =
+    getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() ||
+    (theme === "light" ? "#0f766e" : "#00e5a0");
+  if (theme === "light") {
     return {
-      bg0: "#f1f5f9",
-      bg1: "#ffffff",
+      bg0: "#f4f7fb",
+      bg1: "#e8eef7",
       surface: "#ffffff",
+      surfaceSoft: "#f8fafc",
       border: "#e2e8f0",
       text: "#0f172a",
       muted: "#64748b",
-      accent: "#059669",
+      accent,
       danger: "#e11d48",
       flat: "#94a3b8",
+      glow: accent,
     };
   }
   return {
-    bg0: "#0d121c",
-    bg1: "#111621",
-    surface: "#1a2230",
+    bg0: "#0b1018",
+    bg1: "#151c2a",
+    surface: "#1b2433",
+    surfaceSoft: "#222c3d",
     border: "#2a3344",
     text: "#ffffff",
     muted: "#8b95a8",
-    accent: "#00e5a0",
+    accent,
     danger: "#ff4d6d",
     flat: "#6b778c",
+    glow: accent,
   };
 }
 
@@ -1477,6 +1483,23 @@ function roundRectPath(ctx, x, y, w, h, r) {
   ctx.arcTo(x, y + h, x, y, radius);
   ctx.arcTo(x, y, x + w, y, radius);
   ctx.closePath();
+}
+
+function hexToRgba(hex, alpha) {
+  const raw = String(hex || "").replace("#", "").trim();
+  if (raw.length !== 3 && raw.length !== 6) return `rgba(0,229,160,${alpha})`;
+  const full =
+    raw.length === 3
+      ? raw
+          .split("")
+          .map((c) => c + c)
+          .join("")
+      : raw;
+  const n = parseInt(full, 16);
+  const r = (n >> 16) & 255;
+  const g = (n >> 8) & 255;
+  const b = n & 255;
+  return `rgba(${r},${g},${b},${alpha})`;
 }
 
 async function buildMarketPricesShareCard(current) {
@@ -1505,87 +1528,142 @@ async function buildMarketPricesShareCard(current) {
   }
 
   const theme = getShareCardTheme();
+  const width = SHARE_CARD_WIDTH;
+  const headerH = 280;
+  const footerH = 160;
+  const rowH = 210;
+  const gap = 18;
+  const height = headerH + rows.length * (rowH + gap) - gap + footerH + 40;
   const canvas = document.createElement("canvas");
-  canvas.width = SHARE_CARD_WIDTH;
-  canvas.height = SHARE_CARD_HEIGHT;
+  canvas.width = width;
+  canvas.height = height;
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("ساخت تصویر ممکن نشد");
 
-  const gradient = ctx.createLinearGradient(0, 0, SHARE_CARD_WIDTH, SHARE_CARD_HEIGHT);
+  const gradient = ctx.createLinearGradient(0, 0, width, height);
   gradient.addColorStop(0, theme.bg0);
-  gradient.addColorStop(1, theme.bg1);
+  gradient.addColorStop(0.45, theme.bg1);
+  gradient.addColorStop(1, theme.bg0);
   ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, SHARE_CARD_WIDTH, SHARE_CARD_HEIGHT);
+  ctx.fillRect(0, 0, width, height);
 
+  ctx.fillStyle = hexToRgba(theme.glow, 0.16);
+  ctx.beginPath();
+  ctx.arc(140, 120, 260, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = hexToRgba(theme.glow, 0.1);
+  ctx.beginPath();
+  ctx.arc(width - 80, height - 120, 300, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = hexToRgba(theme.accent, 0.08);
+  ctx.beginPath();
+  ctx.arc(width * 0.55, 420, 180, 0, Math.PI * 2);
+  ctx.fill();
+
+  roundRectPath(ctx, width / 2 - 90, 56, 180, 52, 26);
+  ctx.fillStyle = hexToRgba(theme.accent, 0.16);
+  ctx.fill();
+  ctx.strokeStyle = hexToRgba(theme.accent, 0.35);
+  ctx.lineWidth = 2;
+  ctx.stroke();
   ctx.fillStyle = theme.accent;
-  ctx.globalAlpha = 0.12;
-  ctx.beginPath();
-  ctx.arc(180, 220, 220, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.arc(920, 1480, 260, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.globalAlpha = 1;
-
-  ctx.fillStyle = theme.text;
   ctx.textAlign = "center";
   ctx.direction = "rtl";
-  ctx.font = '800 58px "Vazir-FD", Vazir, Tahoma, sans-serif';
-  ctx.fillText(SHARE_CARD_BRAND, SHARE_CARD_WIDTH / 2, 140);
+  ctx.font = '800 30px "Vazir-FD", Vazir, Tahoma, sans-serif';
+  ctx.fillText(SHARE_CARD_BRAND, width / 2, 91);
 
+  ctx.fillStyle = theme.text;
+  ctx.font = '800 54px "Vazir-FD", Vazir, Tahoma, sans-serif';
+  ctx.fillText("قیمت‌های لحظه‌ای", width / 2, 176);
+
+  const dateText = formatPersianDateTime(new Date());
+  ctx.font = '600 26px "Vazir-FD", Vazir, Tahoma, sans-serif';
+  const dateWidth = Math.max(320, ctx.measureText(dateText).width + 48);
+  roundRectPath(ctx, width / 2 - dateWidth / 2, 204, dateWidth, 44, 22);
+  ctx.fillStyle = theme.surface;
+  ctx.fill();
+  ctx.strokeStyle = theme.border;
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
   ctx.fillStyle = theme.muted;
-  ctx.font = '500 30px "Vazir-FD", Vazir, Tahoma, sans-serif';
-  ctx.fillText(formatPersianDateTime(new Date()), SHARE_CARD_WIDTH / 2, 200);
+  ctx.fillText(dateText, width / 2, 234);
 
-  let y = 260;
-  const rowHeight = 230;
-  rows.forEach((row) => {
-    roundRectPath(ctx, 72, y, SHARE_CARD_WIDTH - 144, rowHeight - 20, 28);
-    ctx.fillStyle = theme.surface;
+  let y = headerH;
+  const cardX = 56;
+  const cardW = width - 112;
+
+  rows.forEach((row, index) => {
+    ctx.fillStyle = hexToRgba("#000000", 0.18);
+    roundRectPath(ctx, cardX + 4, y + 8, cardW, rowH, 32);
+    ctx.fill();
+
+    const cardGrad = ctx.createLinearGradient(cardX, y, cardX + cardW, y + rowH);
+    cardGrad.addColorStop(0, theme.surface);
+    cardGrad.addColorStop(1, theme.surfaceSoft);
+    roundRectPath(ctx, cardX, y, cardW, rowH, 32);
+    ctx.fillStyle = cardGrad;
     ctx.fill();
     ctx.strokeStyle = theme.border;
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 1.5;
     ctx.stroke();
 
-    ctx.font = '52px "Vazir-FD", Vazir, Tahoma, sans-serif';
-    ctx.textAlign = "right";
-    ctx.fillText(row.icon, SHARE_CARD_WIDTH - 120, y + 78);
+    ctx.fillStyle = hexToRgba(theme.accent, 0.85);
+    roundRectPath(ctx, cardX, y + 28, 8, rowH - 56, 4);
+    ctx.fill();
+
+    const iconCx = width - 132;
+    const iconCy = y + 72;
+    ctx.beginPath();
+    ctx.arc(iconCx, iconCy, 40, 0, Math.PI * 2);
+    ctx.fillStyle = hexToRgba(theme.accent, 0.14);
+    ctx.fill();
+    ctx.font = '40px "Vazir-FD", Vazir, Tahoma, sans-serif';
+    ctx.textAlign = "center";
+    ctx.fillText(row.icon, iconCx, iconCy + 14);
 
     ctx.fillStyle = theme.text;
-    ctx.font = '700 38px "Vazir-FD", Vazir, Tahoma, sans-serif';
-    ctx.fillText(row.title, SHARE_CARD_WIDTH - 200, y + 68);
+    ctx.textAlign = "right";
+    ctx.font = '800 36px "Vazir-FD", Vazir, Tahoma, sans-serif';
+    ctx.fillText(row.title, width - 198, y + 62);
 
     ctx.fillStyle = theme.muted;
-    ctx.font = '500 24px "Vazir-FD", Vazir, Tahoma, sans-serif';
-    ctx.fillText(row.unit, SHARE_CARD_WIDTH - 200, y + 104);
+    ctx.font = '600 24px "Vazir-FD", Vazir, Tahoma, sans-serif';
+    ctx.fillText(row.unit, width - 198, y + 98);
 
     ctx.fillStyle = theme.text;
-    ctx.font = '800 56px "Vazir-FD", Vazir, Tahoma, sans-serif';
     ctx.textAlign = "left";
-    ctx.fillText(row.value, 120, y + 150);
+    ctx.font = '800 58px "Vazir-FD", Vazir, Tahoma, sans-serif';
+    ctx.fillText(row.value, cardX + 36, y + 158);
 
     const changeColor =
       row.change.tone === "up" ? theme.accent : row.change.tone === "down" ? theme.danger : theme.flat;
-    roundRectPath(ctx, 120, y + 165, 200, 36, 18);
-    ctx.fillStyle = changeColor;
-    ctx.globalAlpha = 0.16;
-    ctx.fill();
-    ctx.globalAlpha = 1;
-    ctx.fillStyle = changeColor;
     ctx.font = '700 24px "Vazir-FD", Vazir, Tahoma, sans-serif';
+    const badgeW = Math.max(150, ctx.measureText(row.change.text).width + 48);
+    const badgeX = width - 80 - badgeW;
+    const badgeY = y + 136;
+    roundRectPath(ctx, badgeX, badgeY, badgeW, 42, 21);
+    ctx.fillStyle = hexToRgba(changeColor, 0.16);
+    ctx.fill();
+    ctx.fillStyle = changeColor;
     ctx.textAlign = "center";
-    ctx.fillText(row.change.text, 220, y + 191);
+    ctx.fillText(row.change.text, badgeX + badgeW / 2, badgeY + 29);
 
-    y += rowHeight;
+    ctx.fillStyle = hexToRgba(theme.muted, 0.12);
+    ctx.font = '800 64px "Vazir-FD", Vazir, Tahoma, sans-serif';
+    ctx.textAlign = "left";
+    ctx.fillText(String(index + 1).padStart(2, "0"), cardX + 28, y + 58);
+
+    y += rowH + gap;
   });
 
   ctx.fillStyle = theme.muted;
   ctx.textAlign = "center";
-  ctx.font = '500 28px "Vazir-FD", Vazir, Tahoma, sans-serif';
-  ctx.fillText("قیمت لحظه‌ای · قابل اشتراک‌گذاری", SHARE_CARD_WIDTH / 2, SHARE_CARD_HEIGHT - 100);
+  ctx.direction = "rtl";
+  ctx.font = '500 26px "Vazir-FD", Vazir, Tahoma, sans-serif';
+  ctx.fillText("برای تصمیم بهتر · قیمت لحظه‌ای بازار", width / 2, height - 88);
   ctx.fillStyle = theme.accent;
-  ctx.font = '700 30px "Vazir-FD", Vazir, Tahoma, sans-serif';
-  ctx.fillText(SHARE_CARD_BRAND, SHARE_CARD_WIDTH / 2, SHARE_CARD_HEIGHT - 55);
+  ctx.font = '800 32px "Vazir-FD", Vazir, Tahoma, sans-serif';
+  ctx.fillText(SHARE_CARD_BRAND, width / 2, height - 42);
 
   return canvas;
 }

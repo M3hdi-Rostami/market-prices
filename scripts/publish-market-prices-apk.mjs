@@ -62,31 +62,105 @@ function ensureGh() {
   }
 }
 
+function sleepMs(ms) {
+  spawnSync("sleep", [String(Math.max(1, Math.ceil(ms / 1000)))], { stdio: "ignore" });
+}
+
+function runGh(args, options = {}) {
+  const result = spawnSync("gh", args, {
+    cwd: options.cwd || rootDir,
+    stdio: options.stdio || "pipe",
+    encoding: "utf8",
+    env: options.env || process.env,
+  });
+  return {
+    ok: (result.status ?? 1) === 0,
+    status: result.status ?? 1,
+    stdout: (result.stdout || "").trim(),
+    stderr: (result.stderr || "").trim(),
+  };
+}
+
+function isTransientGhError(stderr) {
+  const text = String(stderr || "").toLowerCase();
+  return (
+    text.includes("error connecting") ||
+    text.includes("timeout") ||
+    text.includes("temporarily unavailable") ||
+    text.includes("connection reset") ||
+    text.includes("tls handshake") ||
+    text.includes("i/o timeout") ||
+    text.includes("network is unreachable") ||
+    text.includes("http 5")
+  );
+}
+
+function runGhWithRetry(args, { attempts = 5, label = "gh" } = {}) {
+  let lastError = "";
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    const result = runGh(args, { stdio: "pipe" });
+    if (result.ok) return result;
+
+    lastError = result.stderr || result.stdout || `${label} failed`;
+    const retryable = isTransientGhError(lastError);
+    if (!retryable || attempt === attempts) {
+      throw new Error(`${label} failed: ${lastError}`);
+    }
+
+    const waitMs = Math.min(30_000, 2_000 * 2 ** (attempt - 1));
+    console.warn(
+      `  ${label}: transient GitHub API error (attempt ${attempt}/${attempts}); retrying in ${Math.round(waitMs / 1000)}s ...`,
+    );
+    console.warn(`  ${lastError}`);
+    sleepMs(waitMs);
+  }
+  throw new Error(`${label} failed: ${lastError}`);
+}
+
+function releaseExists(repo, tag) {
+  const result = runGh(["release", "view", tag, "--repo", repo], { stdio: "pipe" });
+  return result.ok;
+}
+
 function uploadApkRelease(apkFile, version) {
   ensureGh();
   const repo = `${APP_UPDATE_REPO.repoOwner}/${APP_UPDATE_REPO.repoName}`;
   const tag = version.releaseTag;
   const title = `Android APK ${version.versionName} (${version.versionCode})`;
+  const notes = `Market Prices Android APK\n\n- versionName: ${version.versionName}\n- versionCode: ${version.versionCode}`;
 
   console.log(`Uploading APK to GitHub release ${repo}@${tag} ...`);
 
-  spawnSync("gh", ["release", "delete", tag, "--repo", repo, "--yes"], {
-    cwd: rootDir,
-    stdio: "ignore",
-  });
+  // Prefer in-place asset replace over delete+create so a flaky upload cannot
+  // leave the release missing after a successful delete.
+  if (releaseExists(repo, tag)) {
+    runGhWithRetry(
+      ["release", "upload", tag, apkFile, "--repo", repo, "--clobber"],
+      { label: "gh release upload" },
+    );
+    runGhWithRetry(
+      ["release", "edit", tag, "--repo", repo, "--title", title, "--notes", notes],
+      { label: "gh release edit" },
+    );
+  } else {
+    runGhWithRetry(
+      [
+        "release",
+        "create",
+        tag,
+        apkFile,
+        "--repo",
+        repo,
+        "--title",
+        title,
+        "--notes",
+        notes,
+      ],
+      { label: "gh release create" },
+    );
+  }
 
-  run("gh", [
-    "release",
-    "create",
-    tag,
-    apkFile,
-    "--repo",
-    repo,
-    "--title",
-    title,
-    "--notes",
-    `Market Prices Android APK\n\n- versionName: ${version.versionName}\n- versionCode: ${version.versionCode}`,
-  ]);
+  console.log(`  uploaded: https://github.com/${repo}/releases/download/${tag}/market-prices.apk`);
 }
 
 function publishApkMetadata(version, sha256) {
