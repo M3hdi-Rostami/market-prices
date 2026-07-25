@@ -1,6 +1,7 @@
 package ir.superextension.marketprices
 
 import android.annotation.SuppressLint
+import android.app.AlertDialog
 import android.app.Activity
 import android.content.ContentValues
 import android.content.Intent
@@ -36,6 +37,7 @@ class MainActivity : Activity() {
     private var pendingUpdateRepoName: String? = null
     private var pendingUpdateBranch: String? = null
     private val shareApkBusy = AtomicBoolean(false)
+    private var nativeUpdateCheckDone = false
     companion object {
         private var activityRef: WeakReference<MainActivity>? = null
 
@@ -75,6 +77,10 @@ class MainActivity : Activity() {
         }
 
         webView.webViewClient = object : WebViewClient() {
+            override fun onPageFinished(view: WebView?, url: String?) {
+                scheduleNativeUpdateCheckIfNeeded()
+            }
+
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                 val url = request?.url?.toString() ?: return false
                 if (shouldOpenExternally(url)) {
@@ -118,6 +124,49 @@ class MainActivity : Activity() {
             host.endsWith(".t.me") ||
             host == "divar.ir" ||
             host.endsWith(".divar.ir")
+    }
+
+    private fun scheduleNativeUpdateCheckIfNeeded() {
+        if (nativeUpdateCheckDone) return
+        nativeUpdateCheckDone = true
+
+        Thread {
+            try {
+                val result = MarketPricesUpdater.checkForUpdate(
+                    this,
+                    "M3hdi-Rostami",
+                    "market-prices",
+                    "main",
+                )
+                if (result.hasUpdate) {
+                    runOnUiThread { showNativeUpdateDialog(result) }
+                }
+            } catch (_: Exception) {
+                // Ignore background update check failures.
+            }
+        }.start()
+    }
+
+    private fun showNativeUpdateDialog(check: UpdateCheckResult) {
+        if (isFinishing) return
+
+        val message = when (check.updateKind) {
+            "apk" ->
+                "نسخه ${check.latestVersion} از اپلیکیشن موجود است. برای دریافت آخرین امکانات، بروزرسانی را شروع کنید."
+            "content" ->
+                "محتوای جدید (نسخه ${check.latestVersion}) موجود است. برای دریافت آخرین قیمت‌ها و امکانات، بروزرسانی را شروع کنید."
+            else ->
+                "نسخه جدید (${check.latestVersion}) موجود است."
+        }
+
+        AlertDialog.Builder(this)
+            .setTitle("بروزرسانی موجود")
+            .setMessage(message)
+            .setPositiveButton("شروع بروزرسانی") { _, _ ->
+                beginAppUpdate("M3hdi-Rostami", "market-prices", "main")
+            }
+            .setNegativeButton("بعداً", null)
+            .show()
     }
 
     private fun loadMarketPrices() {

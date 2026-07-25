@@ -35,9 +35,100 @@ const GOLD_ITEMS = [
 ];
 
 const ALERT_WATCH_ITEMS = [
-  { key: CURRENCY_HERO_KEY, title: "دلار" },
-  { key: GOLD_HERO_KEY, title: "طلای ۱۸ عیار" },
+  { key: CURRENCY_HERO_KEY, title: "دلار", settingsKey: "price_dollar_rl" },
+  { key: GOLD_HERO_KEY, title: "طلای ۱۸ عیار", settingsKey: "geram18" },
+  { key: "sekee", title: "سکه", settingsKey: "sekee" },
 ];
+
+const LAST_PRICES_STORAGE_KEY = "market-prices-last-current";
+const LAST_PRICES_FETCHED_AT_KEY = "market-prices-last-fetched-at";
+const LAST_CARS_STORAGE_KEY = "market-prices-last-cars";
+const LAST_CARS_FETCHED_AT_KEY = "market-prices-last-cars-fetched-at";
+
+function isTehranMarketHours() {
+  try {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: "Asia/Tehran",
+      hour: "numeric",
+      hour12: false,
+    }).formatToParts(new Date());
+    const hour = Number(parts.find((part) => part.type === "hour")?.value);
+    return hour >= 9 && hour < 17;
+  } catch {
+    return true;
+  }
+}
+
+function cacheMarketPrices(current) {
+  try {
+    localStorage.setItem(LAST_PRICES_STORAGE_KEY, JSON.stringify(current));
+    localStorage.setItem(LAST_PRICES_FETCHED_AT_KEY, String(Date.now()));
+  } catch {
+    /* ignore */
+  }
+}
+
+function loadCachedMarketPrices() {
+  try {
+    const raw = localStorage.getItem(LAST_PRICES_STORAGE_KEY);
+    const fetchedAt = Number(localStorage.getItem(LAST_PRICES_FETCHED_AT_KEY));
+    if (!raw || !Number.isFinite(fetchedAt)) return null;
+    return { current: JSON.parse(raw), fetchedAt };
+  } catch {
+    return null;
+  }
+}
+
+function formatMinutesAgo(fetchedAt) {
+  const mins = Math.max(1, Math.round((Date.now() - fetchedAt) / 60000));
+  return `${mins.toLocaleString("fa-IR")} دقیقه پیش`;
+}
+
+function showPricesOfflineBanner(fetchedAt) {
+  const el = document.getElementById("pricesOfflineBanner");
+  if (!el || !fetchedAt) return;
+  el.textContent = `آفلاین · آخرین بروزرسانی ${formatMinutesAgo(fetchedAt)}`;
+  el.classList.remove("hidden");
+}
+
+function hidePricesOfflineBanner() {
+  const el = document.getElementById("pricesOfflineBanner");
+  if (el) el.classList.add("hidden");
+}
+
+function cacheCarPrices(rows) {
+  try {
+    localStorage.setItem(LAST_CARS_STORAGE_KEY, JSON.stringify(rows));
+    localStorage.setItem(LAST_CARS_FETCHED_AT_KEY, String(Date.now()));
+  } catch {
+    /* ignore */
+  }
+}
+
+function loadCachedCarPrices() {
+  try {
+    const raw = localStorage.getItem(LAST_CARS_STORAGE_KEY);
+    const fetchedAt = Number(localStorage.getItem(LAST_CARS_FETCHED_AT_KEY));
+    if (!raw || !Number.isFinite(fetchedAt)) return null;
+    const rows = JSON.parse(raw);
+    if (!Array.isArray(rows) || !rows.length) return null;
+    return { rows, fetchedAt };
+  } catch {
+    return null;
+  }
+}
+
+function showCarsOfflineBanner(fetchedAt) {
+  const el = document.getElementById("carsOfflineBanner");
+  if (!el || !fetchedAt) return;
+  el.textContent = `آفلاین · آخرین بروزرسانی ${formatMinutesAgo(fetchedAt)}`;
+  el.classList.remove("hidden");
+}
+
+function hideCarsOfflineBanner() {
+  const el = document.getElementById("carsOfflineBanner");
+  if (el) el.classList.add("hidden");
+}
 
 let pricesRefreshTimer = null;
 let currentDateTimeTimer = null;
@@ -935,8 +1026,110 @@ function renderDivarEstimateResult(result) {
       <div class="divar-estimate-verdict ${verdictToneClass(estimate.verdict)}">
         نتیجه: <strong>${escapeHtml(estimate.verdict)}</strong>
       </div>
+      <button type="button" class="estimate-share-btn" aria-label="اشتراک تخمین قیمت">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M4 12v7a1 1 0 001 1h14a1 1 0 001-1v-7M16 8l-4-4-4 4M12 4v12"/>
+        </svg>
+        اشتراک تخمین
+      </button>
     </article>
   `;
+}
+
+function buildEstimateShareSummary(result) {
+  const { ad, estimate } = result;
+  const title = [estimate.brandFa || ad.brandModelFa, estimate.modelFa].filter(Boolean).join(" ");
+  const mid = formatEstimateToman(estimate.suggestedPrice || estimate.minPrice);
+  const min = formatEstimateToman(estimate.minPrice);
+  const max = formatEstimateToman(estimate.maxPrice);
+  return { title: title || "تخمین قیمت خودرو", mid, min, max, verdict: estimate.verdict || "" };
+}
+
+async function buildEstimateShareCanvas(result) {
+  const summary = buildEstimateShareSummary(result);
+  const theme = getShareCardTheme();
+  const canvas = document.createElement("canvas");
+  const width = 1080;
+  const height = 720;
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("ساخت تصویر ممکن نشد");
+
+  ctx.fillStyle = theme.bg0 || theme.bg1;
+  ctx.fillRect(0, 0, width, height);
+
+  ctx.fillStyle = theme.text;
+  ctx.textAlign = "center";
+  ctx.direction = "rtl";
+  ctx.font = '800 42px "Vazir-FD", Vazir, Tahoma, sans-serif';
+  ctx.fillText("تخمین قیمت خودرو", width / 2, 88);
+
+  ctx.font = '700 36px "Vazir-FD", Vazir, Tahoma, sans-serif';
+  ctx.fillText(summary.title, width / 2, 160);
+
+  ctx.fillStyle = theme.accent;
+  ctx.font = '800 64px "Vazir-FD", Vazir, Tahoma, sans-serif';
+  ctx.fillText(summary.mid, width / 2, 300);
+
+  ctx.fillStyle = theme.muted;
+  ctx.font = '600 28px "Vazir-FD", Vazir, Tahoma, sans-serif';
+  ctx.fillText(`از ${summary.min} تا ${summary.max}`, width / 2, 370);
+
+  if (summary.verdict) {
+    ctx.fillStyle = theme.text;
+    ctx.font = '700 30px "Vazir-FD", Vazir, Tahoma, sans-serif';
+    ctx.fillText(`نتیجه: ${summary.verdict}`, width / 2, 450);
+  }
+
+  ctx.fillStyle = theme.muted;
+  ctx.font = '500 26px "Vazir-FD", Vazir, Tahoma, sans-serif';
+  ctx.fillText("برای تصمیم بهتر · اپلیکیشن تصمیم", width / 2, height - 88);
+  ctx.fillStyle = theme.accent;
+  ctx.font = '800 32px "Vazir-FD", Vazir, Tahoma, sans-serif';
+  ctx.fillText(SHARE_CARD_BRAND, width / 2, height - 42);
+
+  return canvas;
+}
+
+async function shareEstimateResult(result) {
+  const canvas = await buildEstimateShareCanvas(result);
+  const dataUrl = canvas.toDataURL("image/png");
+  const base64 = dataUrl.replace(/^data:image\/png;base64,/, "");
+  const fileName = `car-estimate-${Date.now()}.png`;
+  const summary = buildEstimateShareSummary(result);
+  const shareText = `${summary.title} · ${summary.mid} (${summary.min} – ${summary.max}) · اپلیکیشن تصمیم`;
+
+  if (typeof AndroidApp !== "undefined" && typeof AndroidApp["shareImage"] === "function") {
+    AndroidApp["shareImage"](base64, fileName, shareText);
+    return { method: "android" };
+  }
+
+  const blob = await new Promise((resolve, reject) => {
+    canvas.toBlob((value) => {
+      if (value) resolve(value);
+      else reject(new Error("ساخت فایل تصویر ممکن نشد"));
+    }, "image/png");
+  });
+
+  const file = new File([blob], fileName, { type: "image/png" });
+  if (navigator.share && navigator.canShare?.({ files: [file] })) {
+    await navigator.share({ files: [file], title: shareText, text: shareText });
+    return { method: "web-share" };
+  }
+
+  if (navigator.share) {
+    await navigator.share({ title: shareText, text: shareText });
+    return { method: "web-share-text" };
+  }
+
+  const link = document.createElement("a");
+  link.href = dataUrl;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  return { method: "download" };
 }
 
 const DIVAR_POSTLIST_SEARCH_API = "https://api.divar.ir/v8/postlist/w/search";
@@ -1782,6 +1975,8 @@ function initMarketPrices() {
   let toastHideTimer = null;
   let shareCardBusy = false;
   let divarEstimateBusy = false;
+  let lastDivarEstimateResult = null;
+  let estimateShareBusy = false;
 
   function setDivarEstimateStatus(message, isError = false, isLoading = false) {
     if (!divarEstimateStatusEl) return;
@@ -1810,11 +2005,28 @@ function initMarketPrices() {
   }
 
   function clearDivarEstimateResult() {
+    lastDivarEstimateResult = null;
     if (divarEstimateResultEl) {
       divarEstimateResultEl.classList.add("hidden");
       divarEstimateResultEl.innerHTML = "";
     }
     setDivarEstimateStatus("");
+  }
+
+  function handleEstimateShareClick() {
+    if (estimateShareBusy || !lastDivarEstimateResult) return;
+    estimateShareBusy = true;
+    Promise.resolve(shareEstimateResult(lastDivarEstimateResult))
+      .then(() => {
+        showPriceToast("تصویر تخمین آماده اشتراک شد");
+      })
+      .catch((error) => {
+        console.error("Estimate share error:", error);
+        showPriceToast(error?.message || "اشتراک تخمین ممکن نشد");
+      })
+      .finally(() => {
+        estimateShareBusy = false;
+      });
   }
 
   async function handleDivarEstimateClick() {
@@ -1835,6 +2047,7 @@ function initMarketPrices() {
 
     try {
       const result = await estimateFromDivarUrl(url);
+      lastDivarEstimateResult = result;
       if (divarEstimateResultEl) {
         divarEstimateResultEl.innerHTML = renderDivarEstimateResult(result);
         divarEstimateResultEl.classList.remove("hidden");
@@ -1874,7 +2087,16 @@ function initMarketPrices() {
   }
 
   function getDefaultAlertSettings() {
-    return { enabled: false, threshold: DEFAULT_ALERT_THRESHOLD };
+    return {
+      enabled: false,
+      threshold: DEFAULT_ALERT_THRESHOLD,
+      marketHoursOnly: false,
+      watch: {
+        price_dollar_rl: true,
+        geram18: true,
+        sekee: false,
+      },
+    };
   }
 
   function getAlertSettings() {
@@ -1883,9 +2105,13 @@ function initMarketPrices() {
       if (!raw) return getDefaultAlertSettings();
       const parsed = JSON.parse(raw);
       const threshold = Number(parsed.threshold);
+      const defaults = getDefaultAlertSettings();
+      const watch = Object.assign({}, defaults.watch, parsed.watch || {});
       return {
         enabled: parsed.enabled === true,
         threshold: Number.isFinite(threshold) && threshold > 0 ? threshold : DEFAULT_ALERT_THRESHOLD,
+        marketHoursOnly: parsed.marketHoursOnly === true,
+        watch,
       };
     } catch {
       return getDefaultAlertSettings();
@@ -1952,6 +2178,11 @@ function initMarketPrices() {
       return;
     }
 
+    if (settings.marketHoursOnly && !isTehranMarketHours()) {
+      savePreviousPricesSnapshot(current);
+      return;
+    }
+
     const prev = previousPricesSnapshot || loadPreviousPricesSnapshot();
     if (!prev) {
       savePreviousPricesSnapshot(current);
@@ -1959,7 +2190,10 @@ function initMarketPrices() {
     }
 
     const alerts = [];
-    ALERT_WATCH_ITEMS.forEach(({ key, title }) => {
+    ALERT_WATCH_ITEMS.forEach(({ key, title, settingsKey }) => {
+      const watchKey = settingsKey || key;
+      if (settings.watch && settings.watch[watchKey] === false) return;
+
       const prevRaw = prev[key];
       const nextRaw = current[key]?.p;
       if (prevRaw == null || nextRaw == null) return;
@@ -2896,10 +3130,18 @@ function initMarketPrices() {
       if (!data.current) throw new Error("داده‌ای دریافت نشد");
 
       renderAllPrices(data.current, { silent });
+      cacheMarketPrices(data.current);
+      hidePricesOfflineBanner();
     } catch (error) {
       console.error("Prices fetch error:", error);
       if (silent) return;
-      showError("خطا در دریافت قیمت‌ها. اتصال اینترنت را بررسی کنید.");
+      const cached = loadCachedMarketPrices();
+      if (cached?.current) {
+        renderAllPrices(cached.current, { silent: true, offline: true });
+        showPricesOfflineBanner(cached.fetchedAt);
+        return;
+      }
+      showError("ارز و طلا · خطا در دریافت قیمت‌ها. اتصال اینترنت را بررسی کنید.");
     }
   }
 
@@ -2978,10 +3220,19 @@ function initMarketPrices() {
 
       renderCarRows(rows);
       carsLoaded = true;
+      cacheCarPrices(rows);
+      hideCarsOfflineBanner();
     } catch (error) {
       console.error("Bama car prices fetch error:", error);
       if (silent) return;
-      showCarsError("خطا در دریافت قیمت خودرو. اتصال اینترنت را بررسی کنید.");
+      const cached = loadCachedCarPrices();
+      if (cached?.rows) {
+        renderCarRows(cached.rows);
+        carsLoaded = true;
+        showCarsOfflineBanner(cached.fetchedAt);
+        return;
+      }
+      showCarsError("خودرو صفر · خطا در دریافت قیمت خودرو. اتصال اینترنت را بررسی کنید.");
     }
   }
 
@@ -3045,6 +3296,11 @@ function initMarketPrices() {
         if (dismissBtn) {
           event.preventDefault();
           clearDivarEstimateResult();
+          return;
+        }
+        if (target.closest(".estimate-share-btn")) {
+          event.preventDefault();
+          handleEstimateShareClick();
         }
       });
     }

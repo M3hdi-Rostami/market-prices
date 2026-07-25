@@ -36,6 +36,9 @@ export const androidPageBody = `<div class="app market-root">
     </header>
 
     <div id="prices-panel" class="market-prices-panel">
+      <div id="pricesOfflineBanner" class="market-offline-banner hidden" role="status" aria-live="polite"></div>
+      <div id="marketTrendStrip" class="market-trend-strip hidden" aria-live="polite"></div>
+
       <div id="loading" class="state state-loading hidden">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
           <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" opacity="0.25"/>
@@ -55,9 +58,6 @@ export const androidPageBody = `<div class="app market-root">
       </div>
 
       <div id="view-currency" class="market-view">
-        <div class="market-value-prop" aria-label="معرفی کوتاه">
-          <p class="market-value-prop-text">قبل از خرید ارز، طلا، خودرو یا ملک، با تصمیم مطمئن شو.</p>
-        </div>
         <button type="button" id="currencyToolsShortcut" class="market-tools-shortcut" data-market-tab="tools">
           <span class="market-tools-shortcut-icon" aria-hidden="true">🛠️</span>
           <span class="market-tools-shortcut-copy">
@@ -120,6 +120,8 @@ export const androidPageBody = `<div class="app market-root">
           <button id="carsRetryBtn" type="button" class="btn-retry">تلاش مجدد</button>
         </div>
 
+        <div id="carsOfflineBanner" class="market-offline-banner hidden" role="status" aria-live="polite"></div>
+
         <div id="carsListWrap" class="cars-list-wrap hidden">
           <div id="carsList" class="cars-list"></div>
         </div>
@@ -163,22 +165,33 @@ export const androidPageBody = `<div class="app market-root">
             <div class="cars-estimate-section-head">
               <div>
                 <h3 class="cars-estimate-section-title">خودروهای من</h3>
-                <p class="cars-estimate-section-hint">ذخیره کنید تا بعداً سریع دوباره تخمین بزنید</p>
               </div>
             </div>
             <div class="my-cars-wrap">
               <div id="myCarsList" class="my-cars-list"></div>
-              <p id="myCarsEmpty" class="my-cars-empty">هنوز خودرویی ذخیره نشده. مشخصات را وارد کن و ذخیره کن تا بعداً سریع تخمین بزنی.</p>
+              <p id="myCarsEmpty" class="my-cars-empty">هنوز خودرویی ذخیره نشده.</p>
             </div>
           </section>
 
-          <section class="cars-estimate-section">
-            <div class="cars-estimate-section-head">
-              <div>
-                <h3 class="cars-estimate-section-title">تخمین با مشخصات</h3>
-                <p id="myCarFormModeHint" class="cars-estimate-section-hint">برند، مدل، سال و کارکرد را وارد کنید</p>
-              </div>
+          <section class="cars-estimate-section is-collapsible" id="myCarFormSection">
+            <button type="button" class="collapse-panel-toggle" id="myCarFormCollapseBtn" aria-expanded="true" aria-controls="myCarFormCollapse">
+              <span class="collapse-panel-main">
+                <span class="collapse-panel-icon" aria-hidden="true">📝</span>
+                <span class="collapse-panel-copy">
+                  <strong class="collapse-panel-title">تخمین با مشخصات من</strong>
+                  <small class="collapse-panel-desc">برند، مدل، سال و کارکرد را وارد کنید</small>
+                </span>
+              </span>
+              <span class="collapse-panel-action">
+                <span class="collapse-panel-action-label" data-collapse-label>بستن</span>
+                <span class="collapse-panel-chevron" aria-hidden="true"></span>
+              </span>
+            </button>
+            <div class="collapse-panel-preview" data-collapse-preview aria-hidden="true">
+              <span>برند</span><span>مدل</span><span>سال</span><span>کارکرد</span><span>وضعیت بدنه</span>
             </div>
+            <div id="myCarFormCollapse" class="collapse-section-body">
+            <p id="myCarFormModeHint" class="cars-estimate-section-hint collapse-inline-hint hidden">برند، مدل، سال و کارکرد را وارد کنید</p>
             <form id="myCarEstimateForm" class="my-car-form" autocomplete="off">
               <label class="my-car-field">
                 <span class="my-car-field-label">نام دلخواه (اختیاری)</span>
@@ -232,8 +245,17 @@ export const androidPageBody = `<div class="app market-root">
               </div>
 
               <p id="myCarEstimateStatus" class="my-car-status hidden"></p>
-              <div id="myCarEstimateResult" class="divar-estimate-result hidden"></div>
             </form>
+            </div>
+          </section>
+
+          <section id="myCarEstimateResultSection" class="cars-estimate-section estimate-result-box hidden" aria-live="polite">
+            <div class="cars-estimate-section-head">
+              <div>
+                <h3 class="cars-estimate-section-title">نتیجه تخمین</h3>
+              </div>
+            </div>
+            <div id="myCarEstimateResult" class="divar-estimate-result"></div>
           </section>
         </div>
       </div>
@@ -252,15 +274,32 @@ export const androidPageBody = `<div class="app market-root">
         <div class="cars-estimate-section-head">
           <div>
             <h3 class="cars-estimate-section-title">جستجوهای من</h3>
-            <p class="cars-estimate-section-hint">جستجوها را ذخیره کنید تا بعداً سریع دوباره اجرا شوند</p>
           </div>
         </div>
         <div class="my-cars-wrap">
           <div id="myHousingSearchesList" class="my-cars-list"></div>
-          <p id="myHousingSearchesEmpty" class="my-cars-empty">هنوز جستجویی ذخیره نشده. فیلترهایت را ذخیره کن تا بعداً با یک لمس دوباره جستجو کنی.</p>
+          <p id="myHousingSearchesEmpty" class="my-cars-empty">هنوز جستجویی ذخیره نشده.</p>
         </div>
       </section>
 
+      <section class="cars-estimate-section is-collapsible" id="housingFormSection">
+        <button type="button" class="collapse-panel-toggle" id="housingFormCollapseBtn" aria-expanded="true" aria-controls="housingFormCollapse">
+          <span class="collapse-panel-main">
+            <span class="collapse-panel-icon" aria-hidden="true">🔎</span>
+            <span class="collapse-panel-copy">
+              <strong class="collapse-panel-title">جستجوی ملک</strong>
+              <small class="collapse-panel-desc">بودجه، متراژ و خواب را تنظیم کنید</small>
+            </span>
+          </span>
+          <span class="collapse-panel-action">
+            <span class="collapse-panel-action-label" data-collapse-label>بستن</span>
+            <span class="collapse-panel-chevron" aria-hidden="true"></span>
+          </span>
+        </button>
+        <div class="collapse-panel-preview" data-collapse-preview aria-hidden="true">
+          <span>شهر</span><span>بودجه</span><span>متراژ</span><span>خواب</span>
+        </div>
+        <div id="housingFormCollapse" class="collapse-section-body">
       <form id="housingSearchForm" class="housing-search-form" autocomplete="off">
         <label class="housing-field">
           <span class="housing-field-label">نام دلخواه (اختیاری)</span>
@@ -319,6 +358,8 @@ export const androidPageBody = `<div class="app market-root">
           <button id="housingSaveSearchBtn" type="button" class="housing-save-btn">ذخیره جستجو</button>
         </div>
       </form>
+        </div>
+      </section>
 
       <p id="housingStatus" class="housing-status hidden"></p>
 
@@ -443,7 +484,26 @@ export const androidPageBody = `<div class="app market-root">
               <label for="alertsThreshold" class="market-more-field-label">آستانه تغییر (٪)</label>
               <input id="alertsThreshold" type="number" min="0.1" max="50" step="0.1" inputmode="decimal" class="market-more-input" />
             </div>
-            <p class="market-more-hint">وقتی دلار یا طلای ۱۸ عیار بیش از این درصد تغییر کند، اعلان نمایش داده می‌شود.</p>
+            <label class="market-more-row market-more-toggle-row">
+              <span class="market-more-row-label">فقط ساعات بازار (۹–۱۷ تهران)</span>
+              <input type="checkbox" id="alertsMarketHoursOnly" class="market-more-switch" />
+            </label>
+            <div class="market-alert-watch-group" role="group" aria-label="انتخاب نمادهای هشدار">
+              <p class="market-more-field-label">نمادهای تحت نظر</p>
+              <label class="market-alert-watch-row">
+                <span>دلار</span>
+                <input type="checkbox" id="alertWatchDollar" class="market-more-switch" />
+              </label>
+              <label class="market-alert-watch-row">
+                <span>طلای ۱۸</span>
+                <input type="checkbox" id="alertWatchGeram18" class="market-more-switch" />
+              </label>
+              <label class="market-alert-watch-row">
+                <span>سکه</span>
+                <input type="checkbox" id="alertWatchSekee" class="market-more-switch" />
+              </label>
+            </div>
+            <p class="market-more-hint">وقتی نمادهای انتخاب‌شده بیش از آستانه تغییر کنند، اعلان نمایش داده می‌شود.</p>
           </section>
 
           <section class="market-more-section">
@@ -523,6 +583,13 @@ export const androidPageBody = `<div class="app market-root">
               <li>تخمین قیمت خودرو قبل از خرید</li>
               <li>جستجوی ملک متناسب با بودجه</li>
             </ul>
+            <button type="button" id="inviteFriendBtn" class="market-invite-btn">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M16 8a6 6 0 01-12 0M12 16v5M8 21h8"/>
+              </svg>
+              دعوت دوست
+            </button>
+            <p class="market-more-hint">متن دعوت و لینک نصب را برای دوستانتان بفرستید.</p>
             <div class="market-more-row market-more-row-static">
               <span class="market-more-row-label">نسخه اپلیکیشن</span>
               <span id="appContentVersion" class="market-more-row-value">—</span>
@@ -2132,29 +2199,214 @@ export const androidExtraStyles = `
     }
 
     .rate-card-spark {
-      flex: 0 0 68px;
-      width: 68px;
-      height: 28px;
+      flex: 0 0 58px;
+      width: 58px;
+      height: 30px;
       overflow: visible;
+      background: transparent;
     }
 
-    .rate-card-spark path {
+    .rate-card-spark-fill {
+      opacity: 1;
+    }
+
+    .rate-card-spark-line {
       fill: none;
-      stroke-width: 2;
+      stroke: currentColor;
+      stroke-width: 1.7;
       stroke-linecap: round;
       stroke-linejoin: round;
     }
 
-    .rate-card-spark.is-up path {
-      stroke: var(--accent);
+    .rate-card-spark-dot {
+      fill: currentColor;
+      stroke: var(--surface);
+      stroke-width: 1.5;
     }
 
-    .rate-card-spark.is-down path {
-      stroke: var(--danger);
+    .rate-card-spark.is-up {
+      color: #22c55e;
     }
 
-    .rate-card-spark.is-flat path {
-      stroke: var(--muted);
+    .rate-card-spark.is-down {
+      color: #ef4444;
+    }
+
+    .rate-card-spark.is-flat {
+      color: var(--muted);
+    }
+
+    .price-hero-chart-wrap {
+      position: relative;
+      z-index: 1;
+      margin-top: 10px;
+      height: 46px;
+      border-radius: 12px;
+      overflow: hidden;
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .price-hero-spark {
+      display: block;
+      width: 100%;
+      height: 46px;
+      color: #ffffff;
+    }
+
+    .price-hero-spark .rate-card-spark-fill {
+      opacity: 1;
+    }
+
+    .price-hero-spark .rate-card-spark-line {
+      stroke-width: 2;
+    }
+
+    .price-hero-spark .rate-card-spark-dot {
+      stroke: rgba(15, 23, 42, 0.25);
+      stroke-width: 1.6;
+    }
+
+    .is-collapsible.cars-estimate-section {
+      padding: 10px;
+      border-radius: 16px;
+      border: 1px solid var(--border-strong, var(--border));
+      background: color-mix(in srgb, var(--surface) 92%, var(--surface-2));
+      gap: 0;
+    }
+
+    .collapse-panel-toggle {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 6px 4px;
+      border: none;
+      border-radius: 12px;
+      background: transparent;
+      color: inherit;
+      font-family: inherit;
+      text-align: right;
+      cursor: pointer;
+    }
+
+    .collapse-panel-toggle:active {
+      background: color-mix(in srgb, var(--accent) 8%, transparent);
+    }
+
+    .collapse-panel-main {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      flex: 1;
+    }
+
+    .collapse-panel-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      flex-shrink: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: color-mix(in srgb, var(--accent) 14%, transparent);
+      font-size: 18px;
+    }
+
+    .collapse-panel-copy {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+      text-align: right;
+    }
+
+    .collapse-panel-title {
+      font-size: 14px;
+      font-weight: 800;
+      color: var(--text);
+      line-height: 1.3;
+    }
+
+    .collapse-panel-desc {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+
+    .collapse-panel-action {
+      flex-shrink: 0;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 34px;
+      padding: 0 10px 0 8px;
+      border-radius: 999px;
+      border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border));
+      background: color-mix(in srgb, var(--accent) 12%, transparent);
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .collapse-panel-chevron {
+      width: 8px;
+      height: 8px;
+      border-right: 2px solid currentColor;
+      border-bottom: 2px solid currentColor;
+      transform: rotate(45deg);
+      margin-top: -3px;
+      transition: transform 0.2s ease;
+    }
+
+    .is-collapsible.is-collapsed .collapse-panel-chevron {
+      transform: rotate(-135deg);
+      margin-top: 3px;
+    }
+
+    .collapse-panel-preview {
+      display: none;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin: 8px 4px 2px;
+    }
+
+    .is-collapsible.is-collapsed .collapse-panel-preview {
+      display: flex;
+    }
+
+    .collapse-panel-preview span {
+      display: inline-flex;
+      align-items: center;
+      min-height: 26px;
+      padding: 0 10px;
+      border-radius: 999px;
+      border: 1px dashed color-mix(in srgb, var(--accent) 30%, var(--border));
+      background: color-mix(in srgb, var(--accent) 8%, transparent);
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .collapse-section-body {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+    }
+
+    .collapse-section-body.is-collapsed {
+      display: none;
+    }
+
+    .collapse-inline-hint {
+      margin: 0 0 10px;
+    }
+
+    .is-collapsible.is-collapsed .collapse-panel-desc {
+      color: var(--text);
+      opacity: 0.75;
     }
 
     .rate-card-side {
@@ -3156,6 +3408,20 @@ export const androidExtraStyles = `
       min-width: 0;
     }
 
+    .estimate-result-box {
+      border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border));
+      background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+      box-shadow: 0 8px 22px color-mix(in srgb, var(--accent) 12%, transparent);
+    }
+
+    .estimate-result-box .cars-estimate-section-head {
+      margin-bottom: 10px;
+    }
+
+    .estimate-result-box .divar-estimate-result {
+      margin: 0;
+    }
+
     .my-cars-wrap,
     .my-car-form {
       flex-shrink: 0;
@@ -3657,7 +3923,24 @@ export const androidExtraStyles = `
       color: #fff;
     }
 
-    [data-theme="light"] .price-hero-share-row .market-share-icon-btn {
+    [data-theme="light"] .price-hero-chart-wrap {
+      background: color-mix(in srgb, var(--accent) 10%, #ffffff);
+    }
+
+    [data-theme="light"] .price-hero-spark {
+      color: var(--accent);
+    }
+
+    [data-theme="light"] .price-hero-spark .rate-card-spark-dot {
+      stroke: #ffffff;
+    }
+
+    [data-theme="light"] .is-collapsible.cars-estimate-section {
+      background: #ffffff;
+      border-color: var(--border);
+    }
+
+        [data-theme="light"] .price-hero-share-row .market-share-icon-btn {
       background: color-mix(in srgb, var(--accent) 70%, #0f172a);
       color: #fff;
       border: none;
@@ -4105,6 +4388,154 @@ export const androidExtraStyles = `
       text-align: center;
       font-size: 13px;
       color: var(--muted);
+    }
+
+    .market-offline-banner {
+      margin: 0 0 8px;
+      padding: 8px 12px;
+      border-radius: 10px;
+      font-size: 12px;
+      font-weight: 700;
+      text-align: center;
+      color: var(--accent-fg);
+      background: color-mix(in srgb, var(--accent) 88%, #000);
+      border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+    }
+
+    .market-offline-banner.hidden {
+      display: none;
+    }
+
+    .market-trend-strip {
+      display: flex;
+      gap: 8px;
+      margin: 0 0 10px;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+
+    .market-trend-strip.hidden {
+      display: none;
+    }
+
+    .market-trend-strip::-webkit-scrollbar {
+      display: none;
+    }
+
+    .market-trend-chip {
+      flex: 0 0 auto;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      font-size: 11px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .market-trend-chip-label {
+      color: var(--muted);
+    }
+
+    .market-trend-chip-value {
+      color: var(--text);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .market-trend-chip-change {
+      font-variant-numeric: tabular-nums;
+      padding: 2px 6px;
+      border-radius: 999px;
+      font-size: 10px;
+    }
+
+    .market-trend-chip-change.is-up {
+      color: var(--accent);
+      background: color-mix(in srgb, var(--accent) 14%, transparent);
+    }
+
+    .market-trend-chip-change.is-down {
+      color: var(--danger);
+      background: color-mix(in srgb, var(--danger) 14%, transparent);
+    }
+
+    .market-trend-chip-change.is-flat {
+      color: var(--muted-2);
+      background: var(--surface-2);
+    }
+
+    .market-alert-watch-group {
+      display: grid;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .market-alert-watch-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--surface-2);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .market-invite-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      min-height: 46px;
+      margin-top: 12px;
+      border: none;
+      border-radius: 12px;
+      background: var(--accent);
+      color: var(--accent-fg);
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .market-invite-btn svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    .market-invite-btn:active {
+      transform: scale(0.98);
+    }
+
+    .estimate-share-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      width: 100%;
+      margin-top: 10px;
+      min-height: 40px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--surface-2);
+      color: var(--text);
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .estimate-share-btn svg {
+      width: 16px;
+      height: 16px;
     }`;
 
 export const androidStandaloneUiPatch = `
@@ -4149,6 +4580,14 @@ export const androidStandaloneUiPatch = `
     const accentColorPickerEl = document.getElementById("accentColorPicker");
     const alertsEnabledEl = document.getElementById("alertsEnabled");
     const alertsThresholdEl = document.getElementById("alertsThreshold");
+    const alertsMarketHoursOnlyEl = document.getElementById("alertsMarketHoursOnly");
+    const alertWatchDollarEl = document.getElementById("alertWatchDollar");
+    const alertWatchGeram18El = document.getElementById("alertWatchGeram18");
+    const alertWatchSekeeEl = document.getElementById("alertWatchSekee");
+    const inviteFriendBtnEl = document.getElementById("inviteFriendBtn");
+    const pricesOfflineBannerEl = document.getElementById("pricesOfflineBanner");
+    const carsOfflineBannerEl = document.getElementById("carsOfflineBanner");
+    const marketTrendStripEl = document.getElementById("marketTrendStrip");
     const priceToastEl = document.getElementById("priceToast");
     const shareApkBtn = document.getElementById("shareApkBtn");
     const divarUrlInputEl = document.getElementById("divarUrlInput");
@@ -4171,6 +4610,7 @@ export const androidStandaloneUiPatch = `
     const myCarFormModeHintEl = document.getElementById("myCarFormModeHint");
     const myCarEstimateStatusEl = document.getElementById("myCarEstimateStatus");
     const myCarEstimateResultEl = document.getElementById("myCarEstimateResult");
+    const myCarEstimateResultSectionEl = document.getElementById("myCarEstimateResultSection");
     const housingSearchFormEl = document.getElementById("housingSearchForm");
     const housingSearchNicknameEl = document.getElementById("housingSearchNickname");
     const housingCityEl = document.getElementById("housingCity");
@@ -4228,6 +4668,9 @@ export const androidStandaloneUiPatch = `
     let previousPricesSnapshot = null;
     let toastHideTimer = null;
     let shareCardBusy = false;
+    let estimateShareBusy = false;
+    let lastDivarEstimateResult = null;
+    let lastMyCarEstimateResult = null;
     let divarEstimateBusy = false;
     let housingDealKey = "buy";
     let housingBusy = false;
@@ -4272,11 +4715,28 @@ export const androidStandaloneUiPatch = `
     }
 
     function clearDivarEstimateResult() {
+      lastDivarEstimateResult = null;
       if (divarEstimateResultEl) {
         divarEstimateResultEl.classList.add("hidden");
         divarEstimateResultEl.innerHTML = "";
       }
       setDivarEstimateStatus("", false);
+    }
+
+    function handleEstimateShareClick(result) {
+      if (estimateShareBusy || !result) return;
+      estimateShareBusy = true;
+      Promise.resolve(shareEstimateResult(result))
+        .then(function () {
+          showPriceToast("تصویر تخمین آماده اشتراک شد");
+        })
+        .catch(function (error) {
+          console.error("Estimate share error:", error);
+          showPriceToast((error && error.message) || "اشتراک تخمین ممکن نشد");
+        })
+        .finally(function () {
+          estimateShareBusy = false;
+        });
     }
 
     function handleDivarEstimateClick() {
@@ -4296,6 +4756,7 @@ export const androidStandaloneUiPatch = `
       setTimeout(function () {
         Promise.resolve(estimateFromDivarUrl(url))
           .then(function (result) {
+            lastDivarEstimateResult = result;
             if (divarEstimateResultEl) {
               divarEstimateResultEl.innerHTML = renderDivarEstimateResult(result);
               divarEstimateResultEl.classList.remove("hidden");
@@ -4405,9 +4866,12 @@ export const androidStandaloneUiPatch = `
     }
 
     function clearMyCarEstimateResult() {
+      lastMyCarEstimateResult = null;
       if (myCarEstimateResultEl) {
-        myCarEstimateResultEl.classList.add("hidden");
         myCarEstimateResultEl.innerHTML = "";
+      }
+      if (myCarEstimateResultSectionEl) {
+        myCarEstimateResultSectionEl.classList.add("hidden");
       }
     }
 
@@ -4457,14 +4921,48 @@ export const androidStandaloneUiPatch = `
     }
 
     function syncMyCarFormModeHint() {
-      if (!myCarFormModeHintEl) return;
-      if (editingCarId) {
-        myCarFormModeHintEl.textContent = "در حال ویرایش خودرو ذخیره‌شده";
-      } else {
-        myCarFormModeHintEl.textContent = "برند، مدل، سال و کارکرد را وارد کنید";
+      if (myCarFormModeHintEl) {
+        if (editingCarId) {
+          myCarFormModeHintEl.textContent = "در حال ویرایش خودرو ذخیره‌شده";
+          myCarFormModeHintEl.classList.remove("hidden");
+        } else {
+          myCarFormModeHintEl.textContent = "";
+          myCarFormModeHintEl.classList.add("hidden");
+        }
       }
       if (myCarCancelEditBtnEl) myCarCancelEditBtnEl.classList.toggle("hidden", !editingCarId);
       if (myCarSaveBtnEl) myCarSaveBtnEl.textContent = editingCarId ? "بروزرسانی" : "ذخیره";
+    }
+
+    function bindCollapseToggle(buttonId, bodyId, storageKey, options) {
+      const opts = options || {};
+      const btn = document.getElementById(buttonId);
+      const body = document.getElementById(bodyId);
+      if (!btn || !body) return;
+      const section = btn.closest(".is-collapsible");
+      const labelEl = btn.querySelector("[data-collapse-label]");
+      const openLabel = opts.openLabel || "باز کردن";
+      const closeLabel = opts.closeLabel || "بستن";
+      let expanded = true;
+      try {
+        const saved = localStorage.getItem(storageKey);
+        if (saved === "0") expanded = false;
+        if (saved === "1") expanded = true;
+      } catch (e) {}
+      function apply() {
+        btn.setAttribute("aria-expanded", expanded ? "true" : "false");
+        body.classList.toggle("is-collapsed", !expanded);
+        if (section) section.classList.toggle("is-collapsed", !expanded);
+        if (labelEl) labelEl.textContent = expanded ? closeLabel : openLabel;
+      }
+      apply();
+      btn.addEventListener("click", function () {
+        expanded = !expanded;
+        try {
+          localStorage.setItem(storageKey, expanded ? "1" : "0");
+        } catch (e) {}
+        apply();
+      });
     }
 
     function resetMyCarForm() {
@@ -4687,9 +5185,12 @@ export const androidStandaloneUiPatch = `
               },
               estimate: estimate,
             };
+            lastMyCarEstimateResult = result;
             if (myCarEstimateResultEl) {
               myCarEstimateResultEl.innerHTML = renderDivarEstimateResult(result);
-              myCarEstimateResultEl.classList.remove("hidden");
+            }
+            if (myCarEstimateResultSectionEl) {
+              myCarEstimateResultSectionEl.classList.remove("hidden");
             }
             setMyCarStatus("", false);
             maybeShowSoftDonatePrompt("my-car-estimate");
@@ -4769,27 +5270,114 @@ export const androidStandaloneUiPatch = `
       );
     }
 
-    function buildRateSparkline(dt, seedKey) {
+    function buildRateSparkline(dt, seedKey, options) {
+      const opts = options || {};
+      const wide = opts.wide === true;
       const directionClass =
         dt === "high" ? "is-up" : dt === "low" ? "is-down" : "is-flat";
+      const width = wide ? 300 : 58;
+      const height = wide ? 46 : 30;
+      const padX = wide ? 8 : 2;
+      const padY = wide ? 8 : 5;
       let seed = 0;
       const key = String(seedKey || "x");
       for (let i = 0; i < key.length; i += 1) seed = (seed + key.charCodeAt(i) * (i + 3)) % 997;
-      const points = [];
-      let y = 14;
-      for (let i = 0; i < 8; i += 1) {
-        const wave = ((seed + i * 17) % 9) - 4;
-        if (dt === "high") y = Math.max(4, Math.min(22, y - 1.4 + wave * 0.35));
-        else if (dt === "low") y = Math.max(4, Math.min(22, y + 1.4 + wave * 0.35));
-        else y = Math.max(6, Math.min(20, 12 + wave * 0.55));
-        points.push((i * 9) + "," + y.toFixed(1));
+      const count = wide ? 14 : 8;
+      const mid = height * 0.58;
+      const amp = wide ? 7 : 4.5;
+      const ys = [];
+      for (let i = 0; i < count; i += 1) {
+        const t = i / (count - 1);
+        const wave = Math.sin((seed % 7) + t * 3.4) * amp * 0.55;
+        const wave2 = Math.cos((seed % 5) + t * 5.1) * amp * 0.25;
+        let y = mid + wave + wave2;
+        if (dt === "high") y -= (t - 0.15) * amp * 0.9;
+        else if (dt === "low") y += (t - 0.15) * amp * 0.9;
+        ys.push(Math.max(padY, Math.min(height - padY, y)));
       }
+
+      const pts = ys.map(function (yy, i) {
+        return {
+          x: padX + (i * (width - padX * 2)) / (count - 1),
+          y: yy,
+        };
+      });
+
+      function smoothLine(points) {
+        if (points.length < 2) return "";
+        let d = "M" + points[0].x.toFixed(1) + " " + points[0].y.toFixed(1);
+        for (let i = 0; i < points.length - 1; i += 1) {
+          const p0 = points[Math.max(0, i - 1)];
+          const p1 = points[i];
+          const p2 = points[i + 1];
+          const p3 = points[Math.min(points.length - 1, i + 2)];
+          const cp1x = p1.x + (p2.x - p0.x) / 6;
+          const cp1y = p1.y + (p2.y - p0.y) / 6;
+          const cp2x = p2.x - (p3.x - p1.x) / 6;
+          const cp2y = p2.y - (p3.y - p1.y) / 6;
+          d +=
+            " C" +
+            cp1x.toFixed(1) +
+            " " +
+            cp1y.toFixed(1) +
+            " " +
+            cp2x.toFixed(1) +
+            " " +
+            cp2y.toFixed(1) +
+            " " +
+            p2.x.toFixed(1) +
+            " " +
+            p2.y.toFixed(1);
+        }
+        return d;
+      }
+
+      const linePath = smoothLine(pts);
+      const last = pts[pts.length - 1];
+      const gradId = "sparkFill_" + String(seedKey || "x").replace(/[^a-zA-Z0-9_-]/g, "") + (wide ? "_w" : "_s");
+      const fillPath =
+        linePath +
+        " L" +
+        last.x.toFixed(1) +
+        " " +
+        height +
+        " L" +
+        pts[0].x.toFixed(1) +
+        " " +
+        height +
+        " Z";
+      const cls = (wide ? "price-hero-spark " : "rate-card-spark ") + directionClass;
+      const dotR = wide ? "3.2" : "2.2";
       return (
-        '<svg class="rate-card-spark ' +
-        directionClass +
-        '" viewBox="0 0 64 28" aria-hidden="true"><path d="M' +
-        points.join(" L") +
-        '"/></svg>'
+        '<svg class="' +
+        cls +
+        '" viewBox="0 0 ' +
+        width +
+        " " +
+        height +
+        '" preserveAspectRatio="none" aria-hidden="true">' +
+        '<defs><linearGradient id="' +
+        gradId +
+        '" x1="0" y1="0" x2="0" y2="1">' +
+        '<stop offset="0%" stop-color="currentColor" stop-opacity="0.28"/>' +
+        '<stop offset="100%" stop-color="currentColor" stop-opacity="0"/>' +
+        "</linearGradient></defs>" +
+        '<path class="rate-card-spark-fill" fill="url(#' +
+        gradId +
+        ')" d="' +
+        fillPath +
+        '"/>' +
+        '<path class="rate-card-spark-line" d="' +
+        linePath +
+        '"/>' +
+        '<circle class="rate-card-spark-dot" cx="' +
+        last.x.toFixed(1) +
+        '" cy="' +
+        last.y.toFixed(1) +
+        '" r="' +
+        dotR +
+        '"/>' +
+        "</svg>"
       );
     }
 
@@ -4834,7 +5422,16 @@ export const androidStandaloneUiPatch = `
     }
 
     function getDefaultAlertSettings() {
-      return { enabled: false, threshold: DEFAULT_ALERT_THRESHOLD };
+      return {
+        enabled: false,
+        threshold: DEFAULT_ALERT_THRESHOLD,
+        marketHoursOnly: false,
+        watch: {
+          price_dollar_rl: true,
+          geram18: true,
+          sekee: false,
+        },
+      };
     }
 
     function getAlertSettings() {
@@ -4843,9 +5440,13 @@ export const androidStandaloneUiPatch = `
         if (!raw) return getDefaultAlertSettings();
         const parsed = JSON.parse(raw);
         const threshold = Number(parsed.threshold);
+        const defaults = getDefaultAlertSettings();
+        const watch = Object.assign({}, defaults.watch, parsed.watch || {});
         return {
           enabled: parsed.enabled === true,
           threshold: Number.isFinite(threshold) && threshold > 0 ? threshold : DEFAULT_ALERT_THRESHOLD,
+          marketHoursOnly: parsed.marketHoursOnly === true,
+          watch: watch,
         };
       } catch {
         return getDefaultAlertSettings();
@@ -4854,6 +5455,21 @@ export const androidStandaloneUiPatch = `
 
     function saveAlertSettings(settings) {
       localStorage.setItem(PRICE_ALERTS_STORAGE_KEY, JSON.stringify(settings));
+    }
+
+    function readAlertSettingsFromUi() {
+      const current = getAlertSettings();
+      const threshold = alertsThresholdEl ? Number(alertsThresholdEl.value) : current.threshold;
+      return {
+        enabled: alertsEnabledEl ? alertsEnabledEl.checked : current.enabled,
+        threshold: Number.isFinite(threshold) && threshold > 0 ? threshold : DEFAULT_ALERT_THRESHOLD,
+        marketHoursOnly: alertsMarketHoursOnlyEl ? alertsMarketHoursOnlyEl.checked : current.marketHoursOnly,
+        watch: {
+          price_dollar_rl: alertWatchDollarEl ? alertWatchDollarEl.checked : current.watch.price_dollar_rl,
+          geram18: alertWatchGeram18El ? alertWatchGeram18El.checked : current.watch.geram18,
+          sekee: alertWatchSekeeEl ? alertWatchSekeeEl.checked : current.watch.sekee,
+        },
+      };
     }
 
     function loadPreviousPricesSnapshot() {
@@ -4910,6 +5526,10 @@ export const androidStandaloneUiPatch = `
         savePreviousPricesSnapshot(current);
         return;
       }
+      if (settings.marketHoursOnly && !isTehranMarketHours()) {
+        savePreviousPricesSnapshot(current);
+        return;
+      }
       const prev = previousPricesSnapshot || loadPreviousPricesSnapshot();
       if (!prev) {
         savePreviousPricesSnapshot(current);
@@ -4917,6 +5537,8 @@ export const androidStandaloneUiPatch = `
       }
       const alerts = [];
       ALERT_WATCH_ITEMS.forEach(function (item) {
+        const watchKey = item.settingsKey || item.key;
+        if (settings.watch && settings.watch[watchKey] === false) return;
         const prevRaw = prev[item.key];
         const nextRaw = current[item.key] && current[item.key].p;
         if (prevRaw == null || nextRaw == null) return;
@@ -4940,6 +5562,90 @@ export const androidStandaloneUiPatch = `
       const message = alerts.join(" · ");
       showPriceToast(message);
       tryShowBrowserNotification("تغییر قیمت", message);
+    }
+
+    function updateMarketTrendStrip(current) {
+      if (!marketTrendStripEl || !current) return;
+      const items = [
+        { key: "price_dollar_rl", label: "دلار" },
+        { key: "geram18", label: "طلای ۱۸" },
+      ];
+      const chips = items
+        .map(function (item) {
+          const data = current[item.key];
+          if (!data) return "";
+          const changePercent = parseNumber(data.dp);
+          const directionClass =
+            data.dt === "high" ? "is-up" : data.dt === "low" ? "is-down" : "is-flat";
+          const arrow = getChangeArrow(data.dt);
+          const changeText =
+            !Number.isNaN(changePercent) && changePercent !== 0
+              ? arrow + " " + Math.abs(changePercent).toLocaleString("fa-IR") + "٪"
+              : arrow + " ۰٪";
+          const priceText = formatPrice(data.p, item.key === "ons");
+          return (
+            '<span class="market-trend-chip">' +
+            '<span class="market-trend-chip-label">' +
+            item.label +
+            "</span>" +
+            '<span class="market-trend-chip-value">' +
+            priceText +
+            "</span>" +
+            '<span class="market-trend-chip-change ' +
+            directionClass +
+            '">' +
+            changeText +
+            "</span></span>"
+          );
+        })
+        .filter(Boolean)
+        .join("");
+      if (!chips) {
+        marketTrendStripEl.classList.add("hidden");
+        marketTrendStripEl.innerHTML = "";
+        return;
+      }
+      marketTrendStripEl.innerHTML = chips;
+      marketTrendStripEl.classList.remove("hidden");
+    }
+
+    function copyInviteText(text, done, fail) {
+      if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+        navigator.clipboard.writeText(text).then(done).catch(fail);
+        return;
+      }
+      try {
+        const input = document.createElement("textarea");
+        input.value = text;
+        input.setAttribute("readonly", "");
+        input.style.position = "fixed";
+        input.style.opacity = "0";
+        document.body.appendChild(input);
+        input.select();
+        const ok = document.execCommand("copy");
+        document.body.removeChild(input);
+        if (ok) done();
+        else fail();
+      } catch (e) {
+        fail();
+      }
+    }
+
+    function handleInviteFriendClick() {
+      const inviteText =
+        "سلام! اپ «تصمیم» رو نصب کن — قیمت لحظه‌ای دلار، طلا، خودرو و جستجوی ملک رو یک‌جا داری. برای تصمیم بهتر قبل از خرید عالیه.";
+      copyInviteText(
+        inviteText,
+        function () {
+          showPriceToast("متن دعوت کپی شد");
+          if (typeof AndroidApp !== "undefined" && typeof AndroidApp["shareApk"] === "function") {
+            AndroidApp["shareApk"]();
+          }
+        },
+        function () {
+          showPriceToast("کپی متن دعوت ممکن نشد");
+        },
+      );
     }
 
     function syncThemeToggleDisplay() {
@@ -5566,27 +6272,38 @@ export const androidStandaloneUiPatch = `
       previousPricesSnapshot = loadPreviousPricesSnapshot();
       if (alertsEnabledEl) alertsEnabledEl.checked = alertSettings.enabled;
       if (alertsThresholdEl) alertsThresholdEl.value = String(alertSettings.threshold);
+      if (alertsMarketHoursOnlyEl) alertsMarketHoursOnlyEl.checked = alertSettings.marketHoursOnly;
+      if (alertWatchDollarEl) alertWatchDollarEl.checked = alertSettings.watch.price_dollar_rl !== false;
+      if (alertWatchGeram18El) alertWatchGeram18El.checked = alertSettings.watch.geram18 !== false;
+      if (alertWatchSekeeEl) alertWatchSekeeEl.checked = alertSettings.watch.sekee === true;
       syncThemeToggleDisplay();
       renderAccentPicker();
       applyAccentTheme(getSavedAccentId());
       initDonateSupport();
       initBankCardTool();
+      function persistAlertsFromUi() {
+        saveAlertSettings(readAlertSettingsFromUi());
+      }
       if (alertsEnabledEl) {
-        alertsEnabledEl.addEventListener("change", function () {
-          saveAlertSettings({
-            enabled: alertsEnabledEl.checked,
-            threshold: getAlertSettings().threshold,
-          });
-        });
+        alertsEnabledEl.addEventListener("change", persistAlertsFromUi);
       }
       if (alertsThresholdEl) {
-        alertsThresholdEl.addEventListener("change", function () {
-          const threshold = Number(alertsThresholdEl.value);
-          saveAlertSettings({
-            enabled: getAlertSettings().enabled,
-            threshold: Number.isFinite(threshold) && threshold > 0 ? threshold : DEFAULT_ALERT_THRESHOLD,
-          });
-        });
+        alertsThresholdEl.addEventListener("change", persistAlertsFromUi);
+      }
+      if (alertsMarketHoursOnlyEl) {
+        alertsMarketHoursOnlyEl.addEventListener("change", persistAlertsFromUi);
+      }
+      if (alertWatchDollarEl) {
+        alertWatchDollarEl.addEventListener("change", persistAlertsFromUi);
+      }
+      if (alertWatchGeram18El) {
+        alertWatchGeram18El.addEventListener("change", persistAlertsFromUi);
+      }
+      if (alertWatchSekeeEl) {
+        alertWatchSekeeEl.addEventListener("change", persistAlertsFromUi);
+      }
+      if (inviteFriendBtnEl) {
+        inviteFriendBtnEl.addEventListener("click", handleInviteFriendClick);
       }
       if (shareApkBtn) {
         shareApkBtn.addEventListener("click", handleShareApkClick);
@@ -5819,7 +6536,9 @@ export const androidStandaloneUiPatch = `
           : hasChange
             ? formatPrice(Math.abs(change), isGlobal)
             : "۰") +
-        "</span></div>" +
+        '</span></div><div class="price-hero-chart-wrap">' +
+        buildRateSparkline(data.dt, item.key + String(data.p || ""), { wide: true, showMarker: true }) +
+        "</div>" +
         buildHeroShareActionHtml();
       return el;
     }
@@ -5847,6 +6566,7 @@ export const androidStandaloneUiPatch = `
     function renderCurrency(current) {
       currencyListEl.innerHTML = "";
       renderItemGroup(CURRENCY_ITEMS, currencyListEl, current);
+      updateMarketTrendStrip(current);
     }
 
     function renderGold(current) {
@@ -5858,6 +6578,7 @@ export const androidStandaloneUiPatch = `
         goldCalcListEl.appendChild(createCoinGoldCard(current));
         goldCalcListEl.appendChild(createGoldWageCard(current));
       }
+      updateMarketTrendStrip(current);
       syncGoldSubtabUi();
     }
 
@@ -5937,10 +6658,21 @@ export const androidStandaloneUiPatch = `
 
         renderCarRows(rows);
         carsLoaded = true;
+        if (typeof cacheCarPrices === "function") cacheCarPrices(rows);
+        if (typeof hideCarsOfflineBanner === "function") hideCarsOfflineBanner();
       } catch (error) {
         console.error("Bama car prices fetch error:", error);
         if (silent) return;
-        showCarsError("خطا در دریافت قیمت خودرو. اتصال اینترنت را بررسی کنید.");
+        if (typeof loadCachedCarPrices === "function") {
+          const cached = loadCachedCarPrices();
+          if (cached && cached.rows) {
+            renderCarRows(cached.rows);
+            carsLoaded = true;
+            if (typeof showCarsOfflineBanner === "function") showCarsOfflineBanner(cached.fetchedAt);
+            return;
+          }
+        }
+        showCarsError("خودرو صفر · خطا در دریافت قیمت خودرو. اتصال اینترنت را بررسی کنید.");
       }
     }
 
@@ -6260,7 +6992,8 @@ export const androidStandaloneUiPatch = `
         .catch(function (err) {
           console.error("Housing search error:", err);
           if (housingLoadingEl) housingLoadingEl.classList.add("hidden");
-          setHousingStatus((err && err.message) || "جستجوی ملک ممکن نشد", true);
+          const detail = err && err.message ? err.message : "اتصال اینترنت را بررسی کنید";
+          setHousingStatus("مسکن · جستجوی ملک ممکن نشد. " + detail, true);
         })
         .finally(function () {
           setHousingBusy(false);
@@ -6345,6 +7078,14 @@ export const androidStandaloneUiPatch = `
     initMoreTab();
     initHousingTab();
     initMyCarEstimateTab();
+    bindCollapseToggle("myCarFormCollapseBtn", "myCarFormCollapse", "market-prices-mycar-form-expanded", {
+      openLabel: "باز کردن فرم",
+      closeLabel: "بستن فرم",
+    });
+    bindCollapseToggle("housingFormCollapseBtn", "housingFormCollapse", "market-prices-housing-form-expanded", {
+      openLabel: "باز کردن فرم",
+      closeLabel: "بستن فرم",
+    });
 
     if (pricesPanelEl) {
       pricesPanelEl.addEventListener("click", function (event) {
@@ -6371,6 +7112,11 @@ export const androidStandaloneUiPatch = `
         if (dismissBtn) {
           event.preventDefault();
           clearDivarEstimateResult();
+          return;
+        }
+        if (target.closest(".estimate-share-btn")) {
+          event.preventDefault();
+          handleEstimateShareClick(lastDivarEstimateResult);
         }
       });
     }
@@ -6381,6 +7127,11 @@ export const androidStandaloneUiPatch = `
         if (target.closest("#divarEstimateDismissBtn, .estimate-dismiss-btn")) {
           event.preventDefault();
           clearMyCarEstimateResult();
+          return;
+        }
+        if (target.closest(".estimate-share-btn")) {
+          event.preventDefault();
+          handleEstimateShareClick(lastMyCarEstimateResult);
         }
       });
     }
@@ -6748,6 +7499,12 @@ export function patchStandaloneUiScript(baseScript) {
       if (goldPricesPanelEl) goldPricesPanelEl.classList.add("hidden");
       if (goldCalcPanelEl) goldCalcPanelEl.classList.add("hidden");
       errorMsgEl.textContent = message;
+      if (typeof hidePricesOfflineBanner === "function") hidePricesOfflineBanner();
+      const trendStrip = document.getElementById("marketTrendStrip");
+      if (trendStrip) {
+        trendStrip.classList.add("hidden");
+        trendStrip.innerHTML = "";
+      }
       setRefreshBusy(false);
     }`,
   );
