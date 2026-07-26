@@ -19,12 +19,13 @@ const GOLD_HERO_KEY = "geram18";
 const CURRENCY_ITEMS = [
   { key: "price_dollar_rl", title: "دلار", unit: "تومان", icon: "💵", hero: true },
   { key: "crypto-tether-irr", title: "تتر", unit: "تومان", icon: "₮" },
+  { key: "crypto-bitcoin-irr", title: "بیت کوین", unit: "تومان", icon: "₿" },
   { key: "oil_brent", title: "نفت برنت", unit: "دلار", icon: "🛢", global: true },
   { key: "price_eur", title: "یورو", unit: "تومان", icon: "💶" },
-  { key: "price_aed", title: "درهم", unit: "تومان", icon: "🇦🇪" },
   { key: "price_gbp", title: "پوند", unit: "تومان", icon: "🇬🇧" },
-  { key: "price_try", title: "لیر", unit: "تومان", icon: "🇹🇷" },
+  { key: "price_aed", title: "درهم", unit: "تومان", icon: "🇦🇪" },
   { key: "price_iqd", title: "دینار عراق", unit: "تومان", icon: "🇮🇶" },
+  { key: "price_try", title: "لیر", unit: "تومان", icon: "🇹🇷" },
 ];
 
 const GOLD_ITEMS = [

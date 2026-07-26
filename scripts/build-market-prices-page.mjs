@@ -72,6 +72,8 @@ const OBFUSCATOR_OPTIONS = {
     "shareImage",
     "shareApk",
     "__onShareApkComplete",
+    "__openBankCardModal",
+    "syncNavCenterFab",
     "shareApkBtn",
     "price-hero-share-btn",
     "price-hero-card-actions",
@@ -138,17 +140,19 @@ const OBFUSCATOR_OPTIONS = {
     "softDonateGoBtn",
     "softDonateTitle",
     "market-prices-soft-donate",
-    "bankCardPreview",
-    "bankCardLogoImg",
-    "bankCardLogoMark",
-    "bankCardLogoName",
-    "bankCardNumberPreview",
-    "bankCardHolderPreview",
-    "bankCardBankPreview",
+    "bankCardStack",
+    "bankCardStackViewport",
+    "bankCardEmpty",
+    "bankCardDots",
+    "bankCardModal",
+    "bankCardModalBackdrop",
+    "bankCardModalTitle",
+    "bankCardModalCancel",
+    "bankCardModalSave",
     "bankCardNumberInput",
     "bankCardHolderInput",
     "bankCardHint",
-    "bankCardShareBtn",
+    "market-prices-saved-bank-cards",
     "housingSaveSearchBtn",
     "myHousingSearchesList",
     "myHousingSearchesEmpty",
@@ -164,6 +168,7 @@ const OBFUSCATOR_OPTIONS = {
     "initDonateSupport",
     "price_dollar_rl",
     "crypto-tether-irr",
+    "crypto-bitcoin-irr",
     "price_iqd",
     "oil_brent",
     "geram18",
@@ -396,18 +401,17 @@ function buildPageHtml(syncedLogic) {
         document.documentElement.setAttribute("data-theme", theme);
         document.documentElement.style.colorScheme = theme;
         var accents = {
-          emerald: { dark: "#00e5a0", light: "#0f766e", fgDark: "#111621", fgLight: "#ffffff", glow: "#06b6d4" },
-          violet: { dark: "#a78bfa", light: "#6d28d9", fgDark: "#111621", fgLight: "#ffffff", glow: "#818cf8" },
-          sky: { dark: "#38bdf8", light: "#0369a1", fgDark: "#111621", fgLight: "#ffffff", glow: "#22d3ee" },
-          amber: { dark: "#fbbf24", light: "#b45309", fgDark: "#111621", fgLight: "#ffffff", glow: "#f59e0b" },
-          rose: { dark: "#fb7185", light: "#be123c", fgDark: "#111621", fgLight: "#ffffff", glow: "#f472b6" },
-          cyan: { dark: "#2dd4bf", light: "#0f766e", fgDark: "#111621", fgLight: "#ffffff", glow: "#22d3ee" }
+          emerald: { color: "#00e5a0", fg: "#111621", glow: "#06b6d4" },
+          violet: { color: "#a78bfa", fg: "#111621", glow: "#818cf8" },
+          sky: { color: "#38bdf8", fg: "#111621", glow: "#22d3ee" },
+          amber: { color: "#fbbf24", fg: "#111621", glow: "#f59e0b" },
+          rose: { color: "#fb7185", fg: "#111621", glow: "#f472b6" },
+          cyan: { color: "#2dd4bf", fg: "#111621", glow: "#22d3ee" }
         };
         var accentId = localStorage.getItem("market-prices-accent") || "emerald";
         var preset = accents[accentId] || accents.emerald;
-        var isLight = theme === "light";
-        document.documentElement.style.setProperty("--accent", isLight ? preset.light : preset.dark);
-        document.documentElement.style.setProperty("--accent-fg", isLight ? preset.fgLight : preset.fgDark);
+        document.documentElement.style.setProperty("--accent", preset.color);
+        document.documentElement.style.setProperty("--accent-fg", preset.fg);
         document.documentElement.style.setProperty("--accent-glow", preset.glow);
         document.documentElement.setAttribute("data-accent", accentId);
       } catch (e) {

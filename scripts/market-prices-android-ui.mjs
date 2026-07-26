@@ -370,77 +370,66 @@ export const androidPageBody = `<div class="app market-root">
     </div>
 
     <div id="view-tools" class="market-view hidden">
-      <div class="market-more-scroll">
+      <div class="market-more-scroll bank-cards-page">
         <div class="cars-panel-intro">
           <div class="cars-panel-intro-icon" aria-hidden="true">💳</div>
           <div class="cars-panel-intro-text">
-            <h2 class="cars-panel-intro-title">ابزارها</h2>
-            <p class="cars-panel-intro-hint">کارت بانکی بساز و راحت شماره کارت را به اشتراک بگذار</p>
+            <h2 class="cars-panel-intro-title">کارت‌های بانکی</h2>
+            <p class="cars-panel-intro-hint">کارت‌هایت را ذخیره کن، ورق بزن و سریع اشتراک بگذار</p>
           </div>
         </div>
-        <section class="bank-card-tool" aria-label="ساخت کارت بانکی">
-            <div class="bank-card-preview-wrap">
-              <article id="bankCardPreview" class="bank-card-preview" aria-live="polite">
-                <div class="bank-card-top">
-                  <div class="bank-card-chip-wrap">
-                    <div class="bank-card-chip" aria-hidden="true">
-                      <span></span><span></span><span></span><span></span>
-                    </div>
-                    <svg class="bank-card-contactless" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                      <path d="M8.5 8.5c2.2 2.2 2.2 4.8 0 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                      <path d="M11.5 6c3.5 3.5 3.5 8.5 0 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                      <path d="M14.5 3.5c5 5 5 12 0 17" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                    </svg>
-                  </div>
-                  <div class="bank-card-brand">
-                    <img id="bankCardLogoImg" class="bank-card-logo-img hidden" alt="" width="52" height="52" decoding="async" />
-                    <span id="bankCardLogoMark" class="bank-card-logo-mark">کارت</span>
-                    <span id="bankCardLogoName" class="bank-card-logo-name">بانک</span>
-                  </div>
-                </div>
-                <p id="bankCardNumberPreview" class="bank-card-number" dir="ltr">•••• •••• •••• ••••</p>
-                <div class="bank-card-bottom">
-                  <div class="bank-card-meta">
-                    <span class="bank-card-meta-label">دارنده کارت</span>
-                    <strong id="bankCardHolderPreview" class="bank-card-meta-value">نام و نام خانوادگی</strong>
-                  </div>
-                  <div class="bank-card-meta bank-card-meta-end">
-                    <span class="bank-card-meta-label">بانک</span>
-                    <strong id="bankCardBankPreview" class="bank-card-meta-value">—</strong>
-                  </div>
-                </div>
-              </article>
-            </div>
 
-            <div class="bank-card-form">
-              <label class="bank-card-field">
-                <span class="bank-card-field-label">شماره کارت</span>
-                <input
-                  id="bankCardNumberInput"
-                  class="bank-card-input"
-                  type="text"
-                  inputmode="numeric"
-                  autocomplete="cc-number"
-                  maxlength="19"
-                  placeholder="۶۲۱۹ ۸۶۱۸ ۸۷۷۲ ۳۱۸۶"
-                  dir="ltr"
-                />
-              </label>
-              <label class="bank-card-field">
-                <span class="bank-card-field-label">نام و نام خانوادگی</span>
-                <input
-                  id="bankCardHolderInput"
-                  class="bank-card-input"
-                  type="text"
-                  autocomplete="cc-name"
-                  maxlength="64"
-                  placeholder="مثلاً مهدی رستمی‌زاد"
-                />
-              </label>
-              <p id="bankCardHint" class="bank-card-hint">با وارد کردن شماره کارت، بانک به‌صورت خودکار تشخیص داده می‌شود.</p>
-              <button type="button" id="bankCardShareBtn" class="bank-card-share-btn">اشتراک‌گذاری کارت</button>
-            </div>
+        <section class="bank-card-tool" aria-label="کارت‌های بانکی ذخیره‌شده">
+          <div id="bankCardEmpty" class="bank-card-empty">
+            <p class="bank-card-empty-title">هنوز کارتی نداری</p>
+            <p class="bank-card-empty-hint">با دکمه + وسط نوار پایین، کارت بانکی جدید اضافه کن</p>
+          </div>
+
+          <div id="bankCardStackViewport" class="bank-card-stack-viewport hidden" aria-live="polite">
+            <div id="bankCardStack" class="bank-card-stack"></div>
+          </div>
+
+          <div id="bankCardDots" class="bank-card-dots hidden" role="tablist" aria-label="کارت‌ها"></div>
         </section>
+      </div>
+    </div>
+
+    <div id="bankCardModal" class="bank-card-modal hidden" aria-hidden="true">
+      <div id="bankCardModalBackdrop" class="bank-card-modal-backdrop"></div>
+      <div class="bank-card-modal-sheet" role="dialog" aria-modal="true" aria-labelledby="bankCardModalTitle">
+        <div class="bank-card-modal-handle" aria-hidden="true"></div>
+        <h3 id="bankCardModalTitle" class="bank-card-modal-title">کارت جدید</h3>
+        <div class="bank-card-form">
+          <label class="bank-card-field">
+            <span class="bank-card-field-label">شماره کارت</span>
+            <input
+              id="bankCardNumberInput"
+              class="bank-card-input"
+              type="text"
+              inputmode="numeric"
+              autocomplete="cc-number"
+              maxlength="19"
+              placeholder="۶۲۱۹ ۸۶۱۸ ۸۷۷۲ ۳۱۸۶"
+              dir="ltr"
+            />
+          </label>
+          <label class="bank-card-field">
+            <span class="bank-card-field-label">نام و نام خانوادگی</span>
+            <input
+              id="bankCardHolderInput"
+              class="bank-card-input"
+              type="text"
+              autocomplete="cc-name"
+              maxlength="64"
+              placeholder="مثلاً مهدی رستمی‌زاد"
+            />
+          </label>
+          <p id="bankCardHint" class="bank-card-hint">با وارد کردن شماره کارت، بانک به‌صورت خودکار تشخیص داده می‌شود.</p>
+          <div class="bank-card-modal-actions">
+            <button type="button" id="bankCardModalCancel" class="bank-card-modal-cancel">انصراف</button>
+            <button type="button" id="bankCardModalSave" class="bank-card-share-btn">ذخیره کارت</button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -501,7 +490,7 @@ export const androidPageBody = `<div class="app market-root">
           <section class="market-more-section">
             <h3 class="market-more-section-title">میانبر</h3>
             <button type="button" id="settingsOpenToolsBtn" class="market-more-row" data-market-tab="tools">
-              <span class="market-more-row-label">ابزارها · کارت بانکی</span>
+              <span class="market-more-row-label">ابزارها · کارت‌های بانکی</span>
               <span class="market-more-row-value">باز کردن</span>
             </button>
           </section>
@@ -931,10 +920,18 @@ export const androidExtraStyles = `
     }
 
     #view-tools.market-view {
+      position: relative;
+      overflow: hidden;
+      gap: 0;
+      padding-bottom: 0;
+    }
+
+    #view-tools .market-more-scroll {
       overflow-y: auto;
       overflow-x: hidden;
       -webkit-overflow-scrolling: touch;
-      gap: 12px;
+      flex: 1;
+      min-height: 0;
       padding-bottom: 8px;
     }
 
@@ -2028,11 +2025,19 @@ export const androidExtraStyles = `
       color: #fff;
     }
 
-    .price-hero-card-change.is-up,
-    .price-hero-card-change.is-down,
+    .price-hero-card-change.is-up {
+      color: #00e5a0;
+      background: color-mix(in srgb, #00e5a0 14%, transparent);
+    }
+
+    .price-hero-card-change.is-down {
+      color: #ff4d6d;
+      background: color-mix(in srgb, #ff4d6d 14%, transparent);
+    }
+
     .price-hero-card-change.is-flat {
-      color: #fff;
-      background: rgba(255, 255, 255, 0.16);
+      color: rgba(255, 255, 255, 0.85);
+      background: rgba(255, 255, 255, 0.12);
     }
 
     .price-hero-share-row {
@@ -2362,11 +2367,11 @@ export const androidExtraStyles = `
     }
 
     .rate-card-change.is-up {
-      color: var(--accent);
+      color: #00c853;
     }
 
     .rate-card-change.is-down {
-      color: var(--danger);
+      color: #ff4d6d;
     }
 
     .rate-card-change.is-flat {
@@ -2571,18 +2576,99 @@ export const androidExtraStyles = `
     .bank-card-tool {
       display: flex;
       flex-direction: column;
-      gap: 18px;
-      padding: 4px 2px 12px;
+      gap: 14px;
+      padding: 4px 2px 88px;
+      min-height: 0;
     }
 
-    .bank-card-preview-wrap {
-      padding: 8px 4px 4px;
+    .bank-cards-page {
+      position: relative;
+    }
+
+    .bank-card-empty {
+      margin: 28px 8px 0;
+      padding: 28px 18px;
+      border-radius: 18px;
+      border: 1px dashed color-mix(in srgb, var(--accent) 30%, var(--border));
+      background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+      text-align: center;
+    }
+
+    .bank-card-empty.hidden {
+      display: none;
+    }
+
+    .bank-card-empty-title {
+      margin: 0 0 6px;
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--text);
+    }
+
+    .bank-card-empty-hint {
+      margin: 0;
+      font-size: 12px;
+      line-height: 1.6;
+      color: var(--muted);
+    }
+
+    .bank-card-stack-viewport {
+      position: relative;
+      width: 100%;
+      max-width: 420px;
+      margin: 8px auto 0;
+      padding: 12px 10px 28px;
+      touch-action: pan-y;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .bank-card-stack-viewport.hidden {
+      display: none;
+    }
+
+    .bank-card-stack {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 1.586 / 1;
+      perspective: 1400px;
+      transform-style: preserve-3d;
+    }
+
+    .bank-card-slide {
+      position: absolute;
+      inset: 0;
+      border: none;
+      padding: 0;
+      background: transparent;
+      transform-origin: center center;
+      transition:
+        transform 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+        opacity 0.35s ease,
+        filter 0.35s ease;
+      will-change: transform, opacity;
+      cursor: grab;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .bank-card-slide.is-dragging {
+      transition: none;
+      cursor: grabbing;
+    }
+
+    .bank-card-slide.is-front {
+      z-index: 5;
+      pointer-events: auto;
+    }
+
+    .bank-card-slide:not(.is-front) {
+      pointer-events: none;
     }
 
     .bank-card-preview {
       position: relative;
       width: 100%;
-      aspect-ratio: 1.586 / 1;
+      height: 100%;
       border-radius: 20px;
       padding: 20px 20px 18px;
       color: #fff;
@@ -2601,7 +2687,6 @@ export const androidExtraStyles = `
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      transition: background 0.35s ease, box-shadow 0.35s ease;
     }
 
     .bank-card-preview::before {
@@ -2642,6 +2727,9 @@ export const androidExtraStyles = `
     @media (prefers-reduced-motion: reduce) {
       .bank-card-preview::after {
         animation: none;
+      }
+      .bank-card-slide {
+        transition: none;
       }
     }
 
@@ -2792,15 +2880,134 @@ export const androidExtraStyles = `
       text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
     }
 
+    .bank-card-slide-actions {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      z-index: 3;
+      display: flex;
+      gap: 8px;
+    }
+
+    .bank-card-icon-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.28);
+      background: rgba(15, 23, 42, 0.35);
+      color: #fff;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      box-shadow: 0 6px 14px rgba(0, 0, 0, 0.22);
+    }
+
+    .bank-card-icon-btn svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .bank-card-icon-btn:active {
+      transform: scale(0.96);
+    }
+
+    .bank-card-icon-btn.is-danger {
+      background: color-mix(in srgb, #ff4d6d 55%, rgba(15, 23, 42, 0.35));
+    }
+
+    .bank-card-dots {
+      display: flex;
+      justify-content: center;
+      gap: 7px;
+      padding: 2px 0 0;
+    }
+
+    .bank-card-dots.hidden {
+      display: none;
+    }
+
+    .bank-card-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      border: none;
+      padding: 0;
+      background: color-mix(in srgb, var(--muted) 45%, transparent);
+      cursor: pointer;
+      transition: width 0.2s ease, background 0.2s ease;
+    }
+
+    .bank-card-dot.is-active {
+      width: 18px;
+      background: var(--accent);
+    }
+
+    .bank-card-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 5000;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+    }
+
+    .bank-card-modal.hidden {
+      display: none;
+    }
+
+    .bank-card-modal-backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.45);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+    }
+
+    .bank-card-modal-sheet {
+      position: relative;
+      width: 100%;
+      max-width: var(--max-w, 720px);
+      margin: 0 auto;
+      max-height: min(86dvh, 640px);
+      overflow: auto;
+      border-radius: 22px 22px 0 0;
+      background: var(--surface);
+      border: 1px solid var(--border-strong, var(--border));
+      border-bottom: none;
+      padding: 8px 16px calc(18px + env(safe-area-inset-bottom, 0px));
+      box-shadow: 0 -16px 40px rgba(15, 23, 42, 0.2);
+      animation: bank-card-modal-up 0.28s ease;
+    }
+
+    @keyframes bank-card-modal-up {
+      from { transform: translateY(24px); opacity: 0.6; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    .bank-card-modal-handle {
+      width: 40px;
+      height: 4px;
+      border-radius: 999px;
+      background: var(--border-strong, var(--border));
+      margin: 6px auto 12px;
+    }
+
+    .bank-card-modal-title {
+      margin: 0 0 12px;
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--text);
+      text-align: center;
+    }
+
     .bank-card-form {
       display: flex;
       flex-direction: column;
       gap: 12px;
-      padding: 16px;
-      border-radius: 18px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+      padding: 4px 0 0;
     }
 
     .bank-card-field {
@@ -2851,8 +3058,29 @@ export const androidExtraStyles = `
       color: #e11d48;
     }
 
+    .bank-card-modal-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 4px;
+    }
+
+    .bank-card-modal-cancel {
+      flex: 0 0 auto;
+      min-width: 96px;
+      min-height: 48px;
+      border-radius: 14px;
+      border: 1px solid var(--border-strong, var(--border));
+      background: var(--surface-2);
+      color: var(--text);
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
     .bank-card-share-btn {
-      width: 100%;
+      flex: 1 1 auto;
+      width: auto;
       min-height: 48px;
       border-radius: 14px;
       border: none;
@@ -2875,14 +3103,13 @@ export const androidExtraStyles = `
       transform: scale(0.99);
     }
 
-    [data-theme="light"] .bank-card-form {
-      background: #ffffff;
-      border-color: color-mix(in srgb, var(--accent) 14%, var(--border));
-    }
-
     [data-theme="light"] .bank-card-input {
       background: var(--input-bg, #f7f9fc);
       border-color: var(--border-strong);
+    }
+
+    [data-theme="light"] .bank-card-modal-sheet {
+      background: #ffffff;
     }
 
     .donate-card {
@@ -3854,8 +4081,16 @@ export const androidExtraStyles = `
       background: rgba(255, 255, 255, 0.18);
     }
 
-    [data-theme="light"] .price-hero-card-change.is-up,
-    [data-theme="light"] .price-hero-card-change.is-down,
+    [data-theme="light"] .price-hero-card-change.is-up {
+      color: #00e5a0;
+      background: color-mix(in srgb, #00e5a0 14%, transparent);
+    }
+
+    [data-theme="light"] .price-hero-card-change.is-down {
+      color: #ff4d6d;
+      background: color-mix(in srgb, #ff4d6d 14%, transparent);
+    }
+
     [data-theme="light"] .price-hero-card-change.is-flat {
       background: rgba(255, 255, 255, 0.18);
       color: #fff;
@@ -4428,13 +4663,13 @@ export const androidExtraStyles = `
     }
 
     .market-trend-chip-change.is-up {
-      color: var(--accent);
-      background: color-mix(in srgb, var(--accent) 14%, transparent);
+      color: #00c853;
+      background: color-mix(in srgb, #00c853 14%, transparent);
     }
 
     .market-trend-chip-change.is-down {
-      color: var(--danger);
-      background: color-mix(in srgb, var(--danger) 14%, transparent);
+      color: #ff4d6d;
+      background: color-mix(in srgb, #ff4d6d 14%, transparent);
     }
 
     .market-trend-chip-change.is-flat {
@@ -5391,16 +5626,25 @@ export const androidStandaloneUiPatch = `
       const change = toDisplayValue(data.d, isGlobal);
       const changePercent = parseNumber(data.dp);
       const hasChange = !Number.isNaN(change) && change !== 0;
+      let direction = "low";
+      if (!Number.isNaN(changePercent) && changePercent !== 0) {
+        direction = changePercent > 0 ? "high" : "low";
+      } else if (data.dt === "high" || data.dt === "low") {
+        direction = data.dt;
+      } else if (hasChange) {
+        direction = change > 0 ? "high" : "low";
+      } else {
+        direction = "flat";
+      }
       const directionClass =
-        data.dt === "high" ? "is-up" : data.dt === "low" ? "is-down" : "is-flat";
+        direction === "high" ? "is-up" : direction === "low" ? "is-down" : "is-flat";
+      const arrow = getChangeArrow(direction);
       const changeLabel =
         !Number.isNaN(changePercent) && changePercent !== 0
-          ? (changePercent > 0 ? "+" : changePercent < 0 ? "−" : "") +
-            Math.abs(changePercent).toLocaleString("fa-IR") +
-            "٪"
+          ? arrow + " " + Math.abs(changePercent).toLocaleString("fa-IR") + "٪"
           : hasChange
-            ? formatPrice(Math.abs(change), isGlobal)
-            : "۰٪";
+            ? arrow + " " + formatPrice(Math.abs(change), isGlobal)
+            : arrow + " ۰٪";
       const el = document.createElement("div");
       el.className = "rate-card";
       el.innerHTML =
@@ -5411,7 +5655,7 @@ export const androidStandaloneUiPatch = `
         '</h3><p class="rate-card-subtitle">' +
         item.unit +
         "</p></div>" +
-        buildRateSparkline(data.dt, item.key + String(data.p || "")) +
+        buildRateSparkline(direction, item.key + String(data.p || "")) +
         '<div class="rate-card-side"><span class="rate-card-change ' +
         directionClass +
         '">' +
@@ -5607,24 +5851,42 @@ export const androidStandaloneUiPatch = `
       const chips = [];
       const dollarData = current.price_dollar_rl;
       if (dollarData) {
+        const dollarDp = parseNumber(dollarData.dp);
+        const dollarDir =
+          !Number.isNaN(dollarDp) && dollarDp !== 0
+            ? dollarDp > 0
+              ? "high"
+              : "low"
+            : dollarData.dt === "high" || dollarData.dt === "low"
+              ? dollarData.dt
+              : "flat";
         chips.push(
           buildTrendChip(
             "دلار",
             formatPrice(dollarData.p, false),
-            parseNumber(dollarData.dp),
-            dollarData.dt,
+            dollarDp,
+            dollarDir,
           ),
         );
       }
 
       const goldData = current.geram18;
       if (goldData) {
+        const goldDp = parseNumber(goldData.dp);
+        const goldDir =
+          !Number.isNaN(goldDp) && goldDp !== 0
+            ? goldDp > 0
+              ? "high"
+              : "low"
+            : goldData.dt === "high" || goldData.dt === "low"
+              ? goldData.dt
+              : "flat";
         chips.push(
           buildTrendChip(
             "طلا",
             formatPrice(goldData.p, false),
-            parseNumber(goldData.dp),
-            goldData.dt,
+            goldDp,
+            goldDir,
           ),
         );
       }
@@ -5648,7 +5910,7 @@ export const androidStandaloneUiPatch = `
         }
         chips.push(
           buildTrendChip(
-            "تارگت طلا",
+            "ارزش ذاتی طلا",
             realGoldPrice.toLocaleString("fa-IR", { maximumFractionDigits: 0 }),
             0,
             targetDt,
@@ -5714,13 +5976,14 @@ export const androidStandaloneUiPatch = `
     }
 
     const MARKET_ACCENT_KEY = "market-prices-accent";
+    // Same accent color in light and dark themes (swatch == applied --accent).
     const ACCENT_PRESETS = [
-      { id: "emerald", label: "زمردی", dark: "#00e5a0", light: "#0f766e", fgDark: "#111621", fgLight: "#ffffff", glow: "#06b6d4" },
-      { id: "violet", label: "بنفش", dark: "#a78bfa", light: "#6d28d9", fgDark: "#111621", fgLight: "#ffffff", glow: "#818cf8" },
-      { id: "sky", label: "آبی", dark: "#38bdf8", light: "#0369a1", fgDark: "#111621", fgLight: "#ffffff", glow: "#22d3ee" },
-      { id: "amber", label: "کهربایی", dark: "#fbbf24", light: "#b45309", fgDark: "#111621", fgLight: "#ffffff", glow: "#f59e0b" },
-      { id: "rose", label: "صورتی", dark: "#fb7185", light: "#be123c", fgDark: "#111621", fgLight: "#ffffff", glow: "#f472b6" },
-      { id: "cyan", label: "فیروزه‌ای", dark: "#2dd4bf", light: "#0f766e", fgDark: "#111621", fgLight: "#ffffff", glow: "#22d3ee" },
+      { id: "emerald", label: "زمردی", color: "#00e5a0", fg: "#111621", glow: "#06b6d4" },
+      { id: "violet", label: "بنفش", color: "#a78bfa", fg: "#111621", glow: "#818cf8" },
+      { id: "sky", label: "آبی", color: "#38bdf8", fg: "#111621", glow: "#22d3ee" },
+      { id: "amber", label: "کهربایی", color: "#fbbf24", fg: "#111621", glow: "#f59e0b" },
+      { id: "rose", label: "صورتی", color: "#fb7185", fg: "#111621", glow: "#f472b6" },
+      { id: "cyan", label: "فیروزه‌ای", color: "#2dd4bf", fg: "#111621", glow: "#22d3ee" },
     ];
 
     function getAccentPreset(id) {
@@ -5737,11 +6000,9 @@ export const androidStandaloneUiPatch = `
 
     function applyAccentTheme(accentId) {
       const preset = getAccentPreset(accentId || getSavedAccentId());
-      const theme = getMarketTheme();
-      const isLight = theme === "light";
       const root = document.documentElement;
-      root.style.setProperty("--accent", isLight ? preset.light : preset.dark);
-      root.style.setProperty("--accent-fg", isLight ? preset.fgLight : preset.fgDark);
+      root.style.setProperty("--accent", preset.color);
+      root.style.setProperty("--accent-fg", preset.fg);
       root.style.setProperty("--accent-glow", preset.glow);
       root.setAttribute("data-accent", preset.id);
       try {
@@ -5768,7 +6029,7 @@ export const androidStandaloneUiPatch = `
           '" aria-label="' +
           preset.label +
           '" style="--swatch:' +
-          preset.dark +
+          preset.color +
           '"></button>'
         );
       }).join("");
@@ -5801,20 +6062,26 @@ export const androidStandaloneUiPatch = `
       const IRAN_BANK_BY_BIN = ${IRAN_BANK_BY_BIN_JSON};
       const IRAN_BANK_UNKNOWN = ${IRAN_BANK_UNKNOWN_JSON};
       const IRAN_BANK_LOGO_DATA_URIS = ${IRAN_BANK_LOGO_DATA_URIS_JSON};
-      const previewEl = document.getElementById("bankCardPreview");
-      const numberPreviewEl = document.getElementById("bankCardNumberPreview");
-      const holderPreviewEl = document.getElementById("bankCardHolderPreview");
-      const bankPreviewEl = document.getElementById("bankCardBankPreview");
-      const logoImgEl = document.getElementById("bankCardLogoImg");
-      const logoMarkEl = document.getElementById("bankCardLogoMark");
-      const logoNameEl = document.getElementById("bankCardLogoName");
+      const STORAGE_KEY = "market-prices-saved-bank-cards";
+
+      const stackEl = document.getElementById("bankCardStack");
+      const viewportEl = document.getElementById("bankCardStackViewport");
+      const emptyEl = document.getElementById("bankCardEmpty");
+      const dotsEl = document.getElementById("bankCardDots");
+      const modalEl = document.getElementById("bankCardModal");
+      const modalBackdropEl = document.getElementById("bankCardModalBackdrop");
+      const modalCancelEl = document.getElementById("bankCardModalCancel");
+      const modalSaveEl = document.getElementById("bankCardModalSave");
       const numberInputEl = document.getElementById("bankCardNumberInput");
       const holderInputEl = document.getElementById("bankCardHolderInput");
       const hintEl = document.getElementById("bankCardHint");
-      const shareBtnEl = document.getElementById("bankCardShareBtn");
-      if (!previewEl || !numberInputEl || !holderInputEl || !shareBtnEl) return;
+      if (!stackEl || !modalEl || !numberInputEl || !holderInputEl || !modalSaveEl) return;
 
+      let cards = [];
+      let activeIndex = 0;
       let bankCardShareBusy = false;
+      let dragState = null;
+      let bankCardAudioCtx = null;
       const logoImageCache = {};
       const defaultHint = "با وارد کردن شماره کارت، بانک به‌صورت خودکار تشخیص داده می‌شود.";
 
@@ -5880,49 +6147,385 @@ export const androidStandaloneUiPatch = `
         hintEl.classList.toggle("is-error", !!isError);
       }
 
-      function syncBankCardPreview() {
-        const digits = digitsOnly(numberInputEl.value);
-        const holder = holderInputEl.value.trim();
-        const bank = lookupBank(digits) || IRAN_BANK_UNKNOWN;
-        const known = !!lookupBank(digits);
+      function loadCards() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (!raw) return [];
+          const parsed = JSON.parse(raw);
+          if (!Array.isArray(parsed)) return [];
+          return parsed
+            .map(function (item) {
+              const number = digitsOnly(item && item.number);
+              const holder = String((item && item.holder) || "").trim();
+              if (number.length !== 16 || !holder) return null;
+              return {
+                id: String((item && item.id) || "card-" + Date.now() + "-" + Math.random().toString(16).slice(2)),
+                number: number,
+                holder: holder.slice(0, 64),
+                createdAt: Number((item && item.createdAt) || Date.now()),
+              };
+            })
+            .filter(Boolean);
+        } catch (e) {
+          return [];
+        }
+      }
+
+      function saveCards() {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(cards));
+        } catch (e) {}
+      }
+
+      function createCardId() {
+        return "card-" + Date.now() + "-" + Math.random().toString(16).slice(2, 8);
+      }
+
+      function escapeHtml(value) {
+        return String(value || "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+      }
+
+      function buildCardFaceHtml(card) {
+        const bank = lookupBank(card.number) || IRAN_BANK_UNKNOWN;
+        const known = !!lookupBank(card.number);
         const logoUri = known ? getBankLogoDataUri(bank) : "";
+        const logoHtml = logoUri
+          ? '<img class="bank-card-logo-img" alt="' +
+            escapeHtml(bank.name) +
+            '" width="52" height="52" decoding="async" src="' +
+            logoUri +
+            '" />'
+          : '<span class="bank-card-logo-mark">' + escapeHtml(bank.shortName) + "</span>";
+        return (
+          '<article class="bank-card-preview" style="--bank-c1:' +
+          bank.c1 +
+          ";--bank-c2:" +
+          bank.c2 +
+          '">' +
+          '<div class="bank-card-slide-actions">' +
+          '<button type="button" class="bank-card-icon-btn" data-bank-share="' +
+          escapeHtml(card.id) +
+          '" aria-label="اشتراک‌گذاری کارت" title="اشتراک‌گذاری">' +
+          '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
+          '<path stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" d="M4 12v7a1 1 0 001 1h14a1 1 0 001-1v-7"/>' +
+          '<path stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" d="M12 3v12"/>' +
+          '<path stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" d="M8 7l4-4 4 4"/>' +
+          "</svg></button>" +
+          '<button type="button" class="bank-card-icon-btn is-danger" data-bank-delete="' +
+          escapeHtml(card.id) +
+          '" aria-label="حذف کارت" title="حذف">' +
+          '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
+          '<path stroke="currentColor" stroke-width="1.9" stroke-linecap="round" d="M5 7h14"/>' +
+          '<path stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" d="M10 11v6M14 11v6"/>' +
+          '<path stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" d="M9 7l1-2h4l1 2m-8 0v11a2 2 0 002 2h6a2 2 0 002-2V7"/>' +
+          "</svg></button>" +
+          "</div>" +
+          '<div class="bank-card-top"><div class="bank-card-chip-wrap">' +
+          '<div class="bank-card-chip" aria-hidden="true"><span></span><span></span><span></span><span></span></div>' +
+          '<svg class="bank-card-contactless" viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
+          '<path d="M8.5 8.5c2.2 2.2 2.2 4.8 0 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>' +
+          '<path d="M11.5 6c3.5 3.5 3.5 8.5 0 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>' +
+          '<path d="M14.5 3.5c5 5 5 12 0 17" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>' +
+          "</svg></div>" +
+          '<div class="bank-card-brand">' +
+          logoHtml +
+          '<span class="bank-card-logo-name">' +
+          escapeHtml(known ? bank.name : "بانک") +
+          "</span></div></div>" +
+          '<p class="bank-card-number" dir="ltr">' +
+          formatCardPreview(card.number) +
+          "</p>" +
+          '<div class="bank-card-bottom"><div class="bank-card-meta">' +
+          '<span class="bank-card-meta-label">دارنده کارت</span>' +
+          '<strong class="bank-card-meta-value">' +
+          escapeHtml(card.holder) +
+          "</strong></div>" +
+          '<div class="bank-card-meta bank-card-meta-end">' +
+          '<span class="bank-card-meta-label">بانک</span>' +
+          '<strong class="bank-card-meta-value">' +
+          escapeHtml(known ? bank.name : "—") +
+          "</strong></div></div></article>"
+        );
+      }
 
-        numberInputEl.value = formatCardGroups(digits);
-        if (numberPreviewEl) numberPreviewEl.textContent = formatCardPreview(digits);
-        if (holderPreviewEl) {
-          holderPreviewEl.textContent = holder || "نام و نام خانوادگی";
+      function stackTransform(offset, dragX) {
+        if (offset === 0) {
+          const rot = (dragX || 0) / 22;
+          const lift = Math.min(Math.abs(dragX || 0) / 18, 10);
+          return (
+            "translate3d(" +
+            (dragX || 0) +
+            "px, " +
+            -lift +
+            "px, 0) rotate(" +
+            rot +
+            "deg) scale(1)"
+          );
         }
-        if (bankPreviewEl) bankPreviewEl.textContent = known ? bank.name : digits.length >= 6 ? bank.name : "—";
-        if (logoNameEl) logoNameEl.textContent = known ? bank.name : "بانک";
-        if (logoImgEl) {
-          if (logoUri) {
-            logoImgEl.src = logoUri;
-            logoImgEl.alt = bank.name;
-            logoImgEl.classList.remove("hidden");
-            if (logoMarkEl) logoMarkEl.classList.add("hidden");
-          } else {
-            logoImgEl.removeAttribute("src");
-            logoImgEl.alt = "";
-            logoImgEl.classList.add("hidden");
-            if (logoMarkEl) {
-              logoMarkEl.classList.remove("hidden");
-              logoMarkEl.textContent = bank.shortName;
-            }
+        const depth = Math.min(Math.abs(offset), 4);
+        const dir = offset > 0 ? 1 : -1;
+        const y = depth * 18;
+        const x = dir * ((depth % 2 === 0 ? -1 : 1) * depth * 10);
+        const scale = 1 - depth * 0.055;
+        const rot = dir * ((depth % 2 === 0 ? -1 : 1) * (5 + depth * 1.8));
+        return (
+          "translate3d(" +
+          x +
+          "px, " +
+          y +
+          "px, " +
+          -depth * 36 +
+          "px) rotate(" +
+          rot +
+          "deg) scale(" +
+          scale +
+          ")"
+        );
+      }
+
+      function circularOffset(index) {
+        const n = cards.length;
+        if (n <= 1) return 0;
+        let diff = index - activeIndex;
+        while (diff > Math.floor(n / 2)) diff -= n;
+        while (diff < -Math.floor((n - 1) / 2)) diff += n;
+        return diff;
+      }
+
+      function applyStackTransforms(dragX) {
+        const slides = stackEl.querySelectorAll(".bank-card-slide");
+        slides.forEach(function (slide) {
+          const index = Number(slide.getAttribute("data-index") || 0);
+          const offset = circularOffset(index);
+          const isFront = offset === 0;
+          slide.classList.toggle("is-front", isFront);
+          slide.style.zIndex = String(40 - Math.abs(offset));
+          slide.style.opacity =
+            Math.abs(offset) > 3 ? "0" : String(1 - Math.min(Math.abs(offset), 3) * 0.08);
+          slide.style.filter =
+            offset === 0 ? "none" : "brightness(" + (1 - Math.min(Math.abs(offset), 3) * 0.06) + ")";
+          slide.style.transform = stackTransform(offset, isFront ? dragX || 0 : 0);
+          slide.style.pointerEvents = isFront ? "auto" : "none";
+        });
+      }
+
+      function renderDots() {
+        if (!dotsEl) return;
+        if (cards.length <= 1) {
+          dotsEl.classList.add("hidden");
+          dotsEl.innerHTML = "";
+          return;
+        }
+        dotsEl.classList.remove("hidden");
+        dotsEl.innerHTML = cards
+          .map(function (_card, index) {
+            return (
+              '<button type="button" class="bank-card-dot' +
+              (index === activeIndex ? " is-active" : "") +
+              '" data-bank-dot="' +
+              index +
+              '" aria-label="کارت ' +
+              (index + 1) +
+              '"></button>'
+            );
+          })
+          .join("");
+      }
+
+      function renderStack() {
+        if (activeIndex >= cards.length) activeIndex = Math.max(0, cards.length - 1);
+        const hasCards = cards.length > 0;
+        if (emptyEl) emptyEl.classList.toggle("hidden", hasCards);
+        if (viewportEl) viewportEl.classList.toggle("hidden", !hasCards);
+
+        if (!hasCards) {
+          stackEl.innerHTML = "";
+          renderDots();
+          return;
+        }
+
+        stackEl.innerHTML = cards
+          .map(function (card, index) {
+            return (
+              '<div class="bank-card-slide" data-index="' +
+              index +
+              '" data-card-id="' +
+              escapeHtml(card.id) +
+              '">' +
+              buildCardFaceHtml(card) +
+              "</div>"
+            );
+          })
+          .join("");
+        renderDots();
+        applyStackTransforms(0);
+      }
+
+      function getBankCardAudioCtx() {
+        try {
+          if (!bankCardAudioCtx) {
+            const Ctx = window.AudioContext || window.webkitAudioContext;
+            if (!Ctx) return null;
+            bankCardAudioCtx = new Ctx();
           }
-        } else if (logoMarkEl) {
-          logoMarkEl.classList.remove("hidden");
-          logoMarkEl.textContent = bank.shortName;
+          if (bankCardAudioCtx.state === "suspended") {
+            bankCardAudioCtx.resume().catch(function () {});
+          }
+          return bankCardAudioCtx;
+        } catch (e) {
+          return null;
         }
-        previewEl.style.setProperty("--bank-c1", bank.c1);
-        previewEl.style.setProperty("--bank-c2", bank.c2);
+      }
 
-        if (digits.length >= 6 && !known) {
-          setHint("این پیش‌شماره در فهرست بانک‌ها نیست؛ کارت با ظاهر عمومی ساخته می‌شود.", true);
+      function playCardFlipSound(direction) {
+        const ctx = getBankCardAudioCtx();
+        if (!ctx) return;
+        const now = ctx.currentTime;
+        const dur = 0.2;
+        const sampleRate = ctx.sampleRate;
+        const length = Math.max(1, Math.floor(sampleRate * dur));
+        const buffer = ctx.createBuffer(1, length, sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < length; i += 1) {
+          const p = i / length;
+          const env = Math.pow(1 - p, 1.55);
+          const flutter = 0.55 + 0.45 * Math.sin(i * 0.07);
+          data[i] = (Math.random() * 2 - 1) * env * flutter;
+        }
+
+        const noise = ctx.createBufferSource();
+        noise.buffer = buffer;
+        const filter = ctx.createBiquadFilter();
+        filter.type = "bandpass";
+        const startFreq = direction >= 0 ? 1550 : 1150;
+        const endFreq = direction >= 0 ? 520 : 780;
+        filter.frequency.setValueAtTime(startFreq, now);
+        filter.frequency.exponentialRampToValueAtTime(Math.max(120, endFreq), now + dur);
+        filter.Q.value = 0.85;
+
+        const noiseGain = ctx.createGain();
+        noiseGain.gain.setValueAtTime(0.0001, now);
+        noiseGain.gain.exponentialRampToValueAtTime(0.32, now + 0.01);
+        noiseGain.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+
+        // soft edge tap — like a plastic card catching
+        const tap = ctx.createOscillator();
+        tap.type = "triangle";
+        tap.frequency.setValueAtTime(direction >= 0 ? 210 : 170, now);
+        tap.frequency.exponentialRampToValueAtTime(55, now + 0.045);
+        const tapGain = ctx.createGain();
+        tapGain.gain.setValueAtTime(0.0001, now);
+        tapGain.gain.exponentialRampToValueAtTime(0.1, now + 0.004);
+        tapGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.055);
+
+        noise.connect(filter);
+        filter.connect(noiseGain);
+        noiseGain.connect(ctx.destination);
+        tap.connect(tapGain);
+        tapGain.connect(ctx.destination);
+
+        noise.start(now);
+        noise.stop(now + dur + 0.02);
+        tap.start(now);
+        tap.stop(now + 0.07);
+      }
+
+      function goToIndex(nextIndex, directionHint) {
+        if (!cards.length) return;
+        const n = cards.length;
+        const prev = activeIndex;
+        activeIndex = ((nextIndex % n) + n) % n;
+        if (activeIndex !== prev) {
+          const dir =
+            typeof directionHint === "number"
+              ? directionHint
+              : activeIndex - prev;
+          playCardFlipSound(dir);
+        }
+        applyStackTransforms(0);
+        renderDots();
+      }
+
+      function openModal() {
+        modalEl.classList.remove("hidden");
+        modalEl.setAttribute("aria-hidden", "false");
+        numberInputEl.value = "";
+        holderInputEl.value = "";
+        setHint(defaultHint);
+        setTimeout(function () {
+          numberInputEl.focus();
+        }, 40);
+      }
+
+      window["__openBankCardModal"] = openModal;
+
+      function closeModal() {
+        modalEl.classList.add("hidden");
+        modalEl.setAttribute("aria-hidden", "true");
+      }
+
+      function syncModalPreviewHint() {
+        const digits = digitsOnly(numberInputEl.value);
+        numberInputEl.value = formatCardGroups(digits);
+        const bank = lookupBank(digits);
+        if (digits.length >= 6 && !bank) {
+          setHint("این پیش‌شماره در فهرست بانک‌ها نیست؛ کارت با ظاهر عمومی ذخیره می‌شود.", true);
         } else if (digits.length > 0 && digits.length < 6) {
           setHint("حداقل ۶ رقم اول شماره کارت را وارد کنید تا بانک تشخیص داده شود.");
+        } else if (digits.length === 16 && bank) {
+          setHint("بانک تشخیص داده شد: " + bank.name);
         } else {
           setHint(defaultHint);
         }
+      }
+
+      function saveNewCard() {
+        const digits = digitsOnly(numberInputEl.value);
+        const holder = holderInputEl.value.trim();
+        if (digits.length !== 16) {
+          setHint("شماره کارت باید ۱۶ رقم باشد.", true);
+          numberInputEl.focus();
+          return;
+        }
+        if (!holder) {
+          setHint("نام و نام خانوادگی را وارد کنید.", true);
+          holderInputEl.focus();
+          return;
+        }
+        const duplicate = cards.some(function (item) {
+          return item.number === digits;
+        });
+        if (duplicate) {
+          setHint("این شماره کارت قبلاً ذخیره شده است.", true);
+          return;
+        }
+        cards.unshift({
+          id: createCardId(),
+          number: digits,
+          holder: holder,
+          createdAt: Date.now(),
+        });
+        activeIndex = 0;
+        saveCards();
+        closeModal();
+        renderStack();
+        showPriceToast("کارت ذخیره شد");
+      }
+
+      function deleteCard(cardId) {
+        const index = cards.findIndex(function (item) {
+          return item.id === cardId;
+        });
+        if (index < 0) return;
+        cards.splice(index, 1);
+        if (activeIndex >= cards.length) activeIndex = Math.max(0, cards.length - 1);
+        saveCards();
+        renderStack();
+        showPriceToast("کارت حذف شد");
       }
 
       function roundRect(ctx, x, y, w, h, r) {
@@ -5949,13 +6552,11 @@ export const androidStandaloneUiPatch = `
         const ctx = canvas.getContext("2d");
         if (!ctx) throw new Error("ساخت تصویر ممکن نشد");
 
-        const isLight =
-          document.documentElement.getAttribute("data-theme") === "light";
+        const isLight = document.documentElement.getAttribute("data-theme") === "light";
         const accent =
           getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() ||
           (isLight ? "#0f766e" : "#00e5a0");
 
-        // Soft branded frame background
         const frameGrad = ctx.createLinearGradient(0, 0, width, height);
         if (isLight) {
           frameGrad.addColorStop(0, "#eef3f9");
@@ -5979,7 +6580,6 @@ export const androidStandaloneUiPatch = `
         ctx.fill();
         ctx.globalAlpha = 1;
 
-        // Brand header
         roundRect(ctx, width / 2 - 96, 56, 192, 52, 26);
         ctx.fillStyle = accent;
         ctx.globalAlpha = 0.16;
@@ -6003,18 +6603,15 @@ export const androidStandaloneUiPatch = `
         ctx.font = '600 24px "Vazir-FD", Vazir, Tahoma, sans-serif';
         ctx.fillText(bank.name, width / 2, 214);
 
-        // Floating card geometry
         const cardW = 920;
         const cardH = Math.round(cardW / 1.586);
         const cardX = (width - cardW) / 2;
         const cardY = 270;
 
-        // Drop shadow
         ctx.fillStyle = "rgba(0,0,0,0.28)";
         roundRect(ctx, cardX + 10, cardY + 22, cardW, cardH, 42);
         ctx.fill();
 
-        // Card body
         const cardGrad = ctx.createLinearGradient(cardX, cardY, cardX + cardW, cardY + cardH);
         cardGrad.addColorStop(0, bank.c1);
         cardGrad.addColorStop(0.55, bank.c2);
@@ -6023,7 +6620,6 @@ export const androidStandaloneUiPatch = `
         ctx.fillStyle = cardGrad;
         ctx.fill();
 
-        // Gloss layers
         const gloss1 = ctx.createRadialGradient(cardX + 140, cardY + 90, 20, cardX + 140, cardY + 90, 320);
         gloss1.addColorStop(0, "rgba(255,255,255,0.28)");
         gloss1.addColorStop(1, "rgba(255,255,255,0)");
@@ -6038,7 +6634,6 @@ export const androidStandaloneUiPatch = `
         ctx.fillStyle = gloss2;
         ctx.fillRect(cardX, cardY, cardW, cardH);
 
-        // Chip
         const chipX = cardX + 72;
         const chipY = cardY + 72;
         const chipGrad = ctx.createLinearGradient(chipX, chipY, chipX + 100, chipY + 76);
@@ -6060,11 +6655,14 @@ export const androidStandaloneUiPatch = `
         ctx.lineTo(chipX + 90, chipY + 38);
         ctx.stroke();
 
-        // Contactless arcs
         ctx.strokeStyle = "rgba(255,255,255,0.85)";
         ctx.lineWidth = 4;
         ctx.lineCap = "round";
-        [[28, 0.85], [44, 0.55], [60, 0.35]].forEach(function (pair) {
+        [
+          [28, 0.85],
+          [44, 0.55],
+          [60, 0.35],
+        ].forEach(function (pair) {
           const r = pair[0];
           ctx.globalAlpha = pair[1];
           ctx.beginPath();
@@ -6073,7 +6671,6 @@ export const androidStandaloneUiPatch = `
         });
         ctx.globalAlpha = 1;
 
-        // Logo
         const logoImg = await loadBankLogoImage(getBankLogoDataUri(bank));
         if (logoImg) {
           const logoSize = 118;
@@ -6093,8 +6690,7 @@ export const androidStandaloneUiPatch = `
           ctx.fillText(bank.shortName, cardX + cardW - 165, cardY + 112);
         }
 
-        // Card number
-        ctx.font = '700 58px ui-monospace, Menlo, Consolas, monospace';
+        ctx.font = "700 58px ui-monospace, Menlo, Consolas, monospace";
         ctx.textAlign = "center";
         ctx.direction = "ltr";
         ctx.fillStyle = "#ffffff";
@@ -6103,7 +6699,6 @@ export const androidStandaloneUiPatch = `
         ctx.fillText(formatCardPreview(digits), width / 2, cardY + cardH * 0.58);
         ctx.shadowBlur = 0;
 
-        // Divider
         ctx.strokeStyle = "rgba(255,255,255,0.18)";
         ctx.lineWidth = 2;
         ctx.beginPath();
@@ -6111,7 +6706,6 @@ export const androidStandaloneUiPatch = `
         ctx.lineTo(cardX + cardW - 72, cardY + cardH - 150);
         ctx.stroke();
 
-        // Holder / bank meta
         ctx.direction = "rtl";
         ctx.textAlign = "right";
         ctx.fillStyle = "rgba(255,255,255,0.7)";
@@ -6129,7 +6723,6 @@ export const androidStandaloneUiPatch = `
         ctx.font = '800 32px "Vazir-FD", Vazir, Tahoma, sans-serif';
         ctx.fillText(bank.name, cardX + 72, cardY + cardH - 58);
 
-        // Footer
         ctx.fillStyle = isLight ? "#64748b" : "#8b95a8";
         ctx.textAlign = "center";
         ctx.direction = "rtl";
@@ -6142,37 +6735,23 @@ export const androidStandaloneUiPatch = `
         return canvas;
       }
 
-      async function shareBankCardImage() {
-        if (bankCardShareBusy) return;
-        const digits = digitsOnly(numberInputEl.value);
-        const holder = holderInputEl.value.trim();
-        if (digits.length < 16) {
-          setHint("برای اشتراک‌گذاری، شماره کارت ۱۶ رقمی را کامل وارد کنید.", true);
-          numberInputEl.focus();
-          return;
-        }
-        if (!holder) {
-          setHint("نام و نام خانوادگی را وارد کنید.", true);
-          holderInputEl.focus();
-          return;
-        }
-
+      async function shareBankCardImage(card) {
+        if (bankCardShareBusy || !card) return;
+        const digits = card.number;
+        const holder = card.holder;
         const bank = lookupBank(digits) || IRAN_BANK_UNKNOWN;
         bankCardShareBusy = true;
-        shareBtnEl.disabled = true;
         try {
           const canvas = await buildBankCardShareCanvas(digits, holder, bank);
           const dataUrl = canvas.toDataURL("image/png");
           const base64 = dataUrl.replace(/^data:image\\/png;base64,/, "");
           const fileName = "bank-card-" + Date.now() + ".png";
-
           const shareCaption = "اپلیکیشن تصمیم | " + formatCardGroups(digits);
           if (typeof AndroidApp !== "undefined" && typeof AndroidApp["shareImage"] === "function") {
             AndroidApp["shareImage"](base64, fileName, shareCaption);
             showPriceToast("تصویر کارت آماده اشتراک شد");
             return;
           }
-
           const blob = await new Promise(function (resolve, reject) {
             canvas.toBlob(function (result) {
               if (result) resolve(result);
@@ -6189,7 +6768,6 @@ export const androidStandaloneUiPatch = `
             showPriceToast("تصویر کارت آماده اشتراک شد");
             return;
           }
-
           const link = document.createElement("a");
           link.href = dataUrl;
           link.download = fileName;
@@ -6201,16 +6779,101 @@ export const androidStandaloneUiPatch = `
           showPriceToast((error && error.message) || "اشتراک‌گذاری کارت ممکن نشد");
         } finally {
           bankCardShareBusy = false;
-          shareBtnEl.disabled = false;
         }
       }
 
-      numberInputEl.addEventListener("input", syncBankCardPreview);
-      holderInputEl.addEventListener("input", syncBankCardPreview);
-      shareBtnEl.addEventListener("click", function () {
-        Promise.resolve(shareBankCardImage()).catch(function () {});
+      function onPointerDown(event) {
+        if (!cards.length) return;
+        if (event.target.closest && event.target.closest(".bank-card-icon-btn")) return;
+        getBankCardAudioCtx();
+        const front = stackEl.querySelector(".bank-card-slide.is-front");
+        if (!front) return;
+        dragState = {
+          pointerId: event.pointerId,
+          startX: event.clientX,
+          startY: event.clientY,
+          dx: 0,
+          dragging: false,
+          front: front,
+        };
+        try {
+          front.setPointerCapture(event.pointerId);
+        } catch (e) {}
+      }
+
+      function onPointerMove(event) {
+        if (!dragState || event.pointerId !== dragState.pointerId) return;
+        const dx = event.clientX - dragState.startX;
+        const dy = event.clientY - dragState.startY;
+        if (!dragState.dragging) {
+          if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+          if (Math.abs(dy) > Math.abs(dx)) {
+            dragState = null;
+            return;
+          }
+          dragState.dragging = true;
+          dragState.front.classList.add("is-dragging");
+        }
+        event.preventDefault();
+        dragState.dx = dx;
+        applyStackTransforms(dx);
+      }
+
+      function onPointerUp(event) {
+        if (!dragState || event.pointerId !== dragState.pointerId) return;
+        const dx = dragState.dx;
+        const front = dragState.front;
+        front.classList.remove("is-dragging");
+        dragState = null;
+        const threshold = Math.min(110, (viewportEl ? viewportEl.clientWidth : 280) * 0.22);
+        if (cards.length > 1 && dx <= -threshold) {
+          goToIndex(activeIndex + 1, 1);
+        } else if (cards.length > 1 && dx >= threshold) {
+          goToIndex(activeIndex - 1, -1);
+        } else {
+          applyStackTransforms(0);
+        }
+      }
+
+      stackEl.addEventListener("pointerdown", onPointerDown);
+      stackEl.addEventListener("pointermove", onPointerMove);
+      stackEl.addEventListener("pointerup", onPointerUp);
+      stackEl.addEventListener("pointercancel", onPointerUp);
+
+      stackEl.addEventListener("click", function (event) {
+        const shareBtn = event.target.closest && event.target.closest("[data-bank-share]");
+        if (shareBtn) {
+          const id = shareBtn.getAttribute("data-bank-share");
+          const card = cards.find(function (item) {
+            return item.id === id;
+          });
+          Promise.resolve(shareBankCardImage(card)).catch(function () {});
+          return;
+        }
+        const deleteBtn = event.target.closest && event.target.closest("[data-bank-delete]");
+        if (deleteBtn) {
+          const id = deleteBtn.getAttribute("data-bank-delete");
+          if (window.confirm("این کارت حذف شود؟")) deleteCard(id);
+        }
       });
-      syncBankCardPreview();
+
+      if (dotsEl) {
+        dotsEl.addEventListener("click", function (event) {
+          const btn = event.target.closest && event.target.closest("[data-bank-dot]");
+          if (!btn) return;
+          goToIndex(Number(btn.getAttribute("data-bank-dot") || 0));
+        });
+      }
+
+      if (modalBackdropEl) modalBackdropEl.addEventListener("click", closeModal);
+      if (modalCancelEl) modalCancelEl.addEventListener("click", closeModal);
+      modalSaveEl.addEventListener("click", saveNewCard);
+      numberInputEl.addEventListener("input", syncModalPreviewHint);
+      holderInputEl.addEventListener("input", syncModalPreviewHint);
+
+      cards = loadCards();
+      activeIndex = 0;
+      renderStack();
     }
 
     function initDonateSupport() {
@@ -6377,8 +7040,35 @@ export const androidStandaloneUiPatch = `
     }
 
     function setRefreshBusy(busy) {
+      if (activeMarketTab === "tools") return;
       if (navRefreshIcon) navRefreshIcon.classList.toggle("spin", busy);
       if (navRefreshBtn) navRefreshBtn.disabled = busy;
+    }
+
+    const NAV_REFRESH_ICON_PATH =
+      'M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15';
+    const NAV_ADD_CARD_ICON_PATH = "M12 5v14M5 12h14";
+
+    function syncNavCenterFab(tab) {
+      if (!navRefreshBtn || !navRefreshIcon) return;
+      const isTools = tab === "tools";
+      navRefreshIcon.classList.remove("spin");
+      navRefreshBtn.disabled = false;
+      if (isTools) {
+        navRefreshBtn.setAttribute("aria-label", "افزودن کارت جدید");
+        navRefreshBtn.title = "کارت جدید";
+        navRefreshIcon.innerHTML =
+          '<path stroke="currentColor" stroke-width="2.2" stroke-linecap="round" d="' +
+          NAV_ADD_CARD_ICON_PATH +
+          '"/>';
+      } else {
+        navRefreshBtn.setAttribute("aria-label", "بروزرسانی قیمت‌ها");
+        navRefreshBtn.title = "بروزرسانی";
+        navRefreshIcon.innerHTML =
+          '<path stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="' +
+          NAV_REFRESH_ICON_PATH +
+          '"/>';
+      }
     }
 
     function syncGoldSubtabUi() {
@@ -6569,8 +7259,16 @@ export const androidStandaloneUiPatch = `
       const change = toDisplayValue(data.d, isGlobal);
       const changePercent = parseNumber(data.dp);
       const hasChange = !Number.isNaN(change) && change !== 0;
+      let direction = "flat";
+      if (!Number.isNaN(changePercent) && changePercent !== 0) {
+        direction = changePercent > 0 ? "high" : "low";
+      } else if (data.dt === "high" || data.dt === "low") {
+        direction = data.dt;
+      } else if (hasChange) {
+        direction = change > 0 ? "high" : "low";
+      }
       const directionClass =
-        data.dt === "high" ? "is-up" : data.dt === "low" ? "is-down" : "is-flat";
+        direction === "high" ? "is-up" : direction === "low" ? "is-down" : "is-flat";
       const el = document.createElement("div");
       el.className = "price-hero-card";
       el.innerHTML =
@@ -6587,7 +7285,7 @@ export const androidStandaloneUiPatch = `
         '</span><span class="price-hero-card-change ' +
         directionClass +
         '">' +
-        getChangeArrow(data.dt) +
+        getChangeArrow(direction) +
         " " +
         (!Number.isNaN(changePercent) && changePercent !== 0
           ? Math.abs(changePercent).toLocaleString("fa-IR") + "٪"
@@ -6595,7 +7293,7 @@ export const androidStandaloneUiPatch = `
             ? formatPrice(Math.abs(change), isGlobal)
             : "۰") +
         '</span></div><div class="price-hero-chart-wrap">' +
-        buildRateSparkline(data.dt, item.key + String(data.p || ""), { wide: true, showMarker: true }) +
+        buildRateSparkline(direction, item.key + String(data.p || ""), { wide: true, showMarker: true }) +
         "</div>" +
         buildHeroShareActionHtml();
       return el;
@@ -7095,6 +7793,8 @@ export const androidStandaloneUiPatch = `
       if (housingViewEl) housingViewEl.classList.toggle("hidden", tab !== "housing");
       if (toolsViewEl) toolsViewEl.classList.toggle("hidden", tab !== "tools");
       moreViewEl.classList.toggle("hidden", tab !== "more");
+      document.body.classList.toggle("is-tools-tab", tab === "tools");
+      syncNavCenterFab(tab);
 
       navButtons.forEach(function (button) {
         const isNavChrome =
@@ -7126,6 +7826,12 @@ export const androidStandaloneUiPatch = `
     }
 
     function handleMarketRefresh() {
+      if (activeMarketTab === "tools") {
+        if (typeof window["__openBankCardModal"] === "function") {
+          window["__openBankCardModal"]();
+        }
+        return;
+      }
       if (activeMarketTab === "cars") {
         if (activeCarsSubtab === "prices") fetchCarPrices();
         else if (activeCarsEstimateMode === "specs") ensureMyCarCatalog().catch(function () {});
