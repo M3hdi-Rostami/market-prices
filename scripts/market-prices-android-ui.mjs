@@ -4375,6 +4375,42 @@ export const androidExtraStyles = `
       white-space: nowrap;
     }
 
+    .market-trend-chip.is-gold-target {
+      border-color: color-mix(in srgb, #d4a017 55%, var(--border));
+      background: linear-gradient(
+        135deg,
+        color-mix(in srgb, #f0c14b 28%, var(--surface)) 0%,
+        color-mix(in srgb, #c9971a 22%, var(--surface)) 100%
+      );
+      box-shadow: inset 0 1px 0 color-mix(in srgb, #ffe9a8 35%, transparent);
+    }
+
+    .market-trend-chip.is-gold-target .market-trend-chip-label {
+      color: color-mix(in srgb, #f6e27a 70%, var(--text));
+    }
+
+    .market-trend-chip.is-gold-target .market-trend-chip-value {
+      color: #ffe9a8;
+    }
+
+    [data-theme="light"] .market-trend-chip.is-gold-target {
+      border-color: color-mix(in srgb, #b8860b 40%, var(--border));
+      background: linear-gradient(
+        135deg,
+        color-mix(in srgb, #f5d76e 55%, #fff) 0%,
+        color-mix(in srgb, #e0b84a 45%, #fff8e7) 100%
+      );
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+    }
+
+    [data-theme="light"] .market-trend-chip.is-gold-target .market-trend-chip-label {
+      color: #8a6408;
+    }
+
+    [data-theme="light"] .market-trend-chip.is-gold-target .market-trend-chip-value {
+      color: #5c4200;
+    }
+
     .market-trend-chip-label {
       color: var(--muted);
     }
@@ -4404,6 +4440,37 @@ export const androidExtraStyles = `
     .market-trend-chip-change.is-flat {
       color: var(--muted-2);
       background: var(--surface-2);
+    }
+
+    /* Keep target % vivid on the gold chip background */
+    .market-trend-chip.is-gold-target .market-trend-chip-change.is-up {
+      color: #00e5a0;
+      background: color-mix(in srgb, #00e5a0 22%, #1a1520);
+    }
+
+    .market-trend-chip.is-gold-target .market-trend-chip-change.is-down {
+      color: #ff4d6d;
+      background: color-mix(in srgb, #ff4d6d 22%, #1a1520);
+    }
+
+    .market-trend-chip.is-gold-target .market-trend-chip-change.is-flat {
+      color: #c4b58a;
+      background: color-mix(in srgb, #000 18%, transparent);
+    }
+
+    [data-theme="light"] .market-trend-chip.is-gold-target .market-trend-chip-change.is-up {
+      color: #047857;
+      background: color-mix(in srgb, #10b981 22%, #fff);
+    }
+
+    [data-theme="light"] .market-trend-chip.is-gold-target .market-trend-chip-change.is-down {
+      color: #b91c1c;
+      background: color-mix(in srgb, #ef4444 20%, #fff);
+    }
+
+    [data-theme="light"] .market-trend-chip.is-gold-target .market-trend-chip-change.is-flat {
+      color: #78716c;
+      background: color-mix(in srgb, #000 6%, #fff);
     }
 
     .market-alert-watch-group {
@@ -5504,46 +5571,99 @@ export const androidStandaloneUiPatch = `
 
     function updateMarketTrendStrip(current) {
       if (!marketTrendStripEl || !current) return;
-      const items = [
-        { key: "price_dollar_rl", label: "دلار" },
-        { key: "geram18", label: "طلای ۱۸" },
-      ];
-      const chips = items
-        .map(function (item) {
-          const data = current[item.key];
-          if (!data) return "";
-          const changePercent = parseNumber(data.dp);
-          const directionClass =
-            data.dt === "high" ? "is-up" : data.dt === "low" ? "is-down" : "is-flat";
-          const arrow = getChangeArrow(data.dt);
-          const changeText =
-            !Number.isNaN(changePercent) && changePercent !== 0
-              ? arrow + " " + Math.abs(changePercent).toLocaleString("fa-IR") + "٪"
+
+      function buildTrendChip(label, priceText, changePercent, direction, extraClass, changeTextOverride) {
+        const directionClass =
+          direction === "high" ? "is-up" : direction === "low" ? "is-down" : "is-flat";
+        const arrow = getChangeArrow(direction);
+        let changeText = changeTextOverride;
+        if (changeText == null) {
+          const pct = Number(changePercent);
+          changeText =
+            !Number.isNaN(pct) && pct !== 0
+              ? arrow + " " + Math.abs(pct).toLocaleString("fa-IR", { maximumFractionDigits: 2 }) + "٪"
               : arrow + " ۰٪";
-          const priceText = formatPrice(data.p, item.key === "ons");
-          return (
-            '<span class="market-trend-chip">' +
-            '<span class="market-trend-chip-label">' +
-            item.label +
-            "</span>" +
-            '<span class="market-trend-chip-value">' +
-            priceText +
-            "</span>" +
-            '<span class="market-trend-chip-change ' +
-            directionClass +
-            '">' +
-            changeText +
-            "</span></span>"
-          );
-        })
-        .filter(Boolean)
-        .join("");
-      if (!chips) {
+        }
+        const chipClass =
+          "market-trend-chip" + (extraClass ? " " + extraClass : "");
+        return (
+          '<span class="' +
+          chipClass +
+          '">' +
+          '<span class="market-trend-chip-label">' +
+          label +
+          "</span>" +
+          '<span class="market-trend-chip-value">' +
+          priceText +
+          "</span>" +
+          '<span class="market-trend-chip-change ' +
+          directionClass +
+          '">' +
+          changeText +
+          "</span></span>"
+        );
+      }
+
+      const chips = [];
+      const dollarData = current.price_dollar_rl;
+      if (dollarData) {
+        chips.push(
+          buildTrendChip(
+            "دلار",
+            formatPrice(dollarData.p, false),
+            parseNumber(dollarData.dp),
+            dollarData.dt,
+          ),
+        );
+      }
+
+      const goldData = current.geram18;
+      if (goldData) {
+        chips.push(
+          buildTrendChip(
+            "طلا",
+            formatPrice(goldData.p, false),
+            parseNumber(goldData.dp),
+            goldData.dt,
+          ),
+        );
+      }
+
+      const realGoldPrice =
+        typeof calculateRealGoldPrice === "function" ? calculateRealGoldPrice(current) : NaN;
+      if (!Number.isNaN(realGoldPrice)) {
+        // Diff vs board gold in tomans: target − gold
+        const marketGold = goldData ? toDisplayValue(goldData.p, false) : NaN;
+        let targetDt = "flat";
+        let diffText = getChangeArrow("flat") + " ۰";
+        if (!Number.isNaN(marketGold)) {
+          const diff = Math.round(realGoldPrice - marketGold);
+          if (diff > 0) targetDt = "high";
+          else if (diff < 0) targetDt = "low";
+          const arrow = getChangeArrow(targetDt);
+          diffText =
+            diff === 0
+              ? arrow + " ۰"
+              : arrow + " " + Math.abs(diff).toLocaleString("fa-IR", { maximumFractionDigits: 0 });
+        }
+        chips.push(
+          buildTrendChip(
+            "تارگت طلا",
+            realGoldPrice.toLocaleString("fa-IR", { maximumFractionDigits: 0 }),
+            0,
+            targetDt,
+            "is-gold-target",
+            diffText,
+          ),
+        );
+      }
+
+      if (!chips.length) {
         marketTrendStripEl.classList.add("hidden");
         marketTrendStripEl.innerHTML = "";
         return;
       }
-      marketTrendStripEl.innerHTML = chips;
+      marketTrendStripEl.innerHTML = chips.join("");
       marketTrendStripEl.classList.remove("hidden");
     }
 

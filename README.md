@@ -30,6 +30,29 @@ npm run setup:apk-signing
 npm run release:apk
 ```
 
+## Local Android emulator
+
+Test on your PC without releasing / sideloading on a phone. Emulator SDK packages and the AVD live under `android/.tools/` (already gitignored).
+
+```bash
+# One-time: download emulator + API 34 system image, create AVD
+npm run bootstrap:emulator   # use VPN if Google downloads are blocked
+
+# Start the emulator window (keep it open)
+npm run emulator
+
+# Watch sources: rebuild + install on every change (leave running)
+npm run reload
+
+# One-shot rebuild + install (no watch)
+npm run reload:once
+
+# Reinstall existing APK only (does NOT pick up source changes)
+npm run run:apk:fast
+```
+
+`run:apk` also starts the emulator in the background if none is running.
+
 Useful flags for `release:apk`:
 
 - `--no-bump` — keep current versionCode/versionName
@@ -40,13 +63,17 @@ Useful flags for `release:apk`:
 ## Project layout
 
 ```
-android/                 # Gradle project (gitignored local tools/SDK/keystore)
+android/                 # Gradle project (gitignored local tools/SDK/keystore/AVD)
 assets/fonts/            # Vazir-FD.ttf bundled into the APK
 tools/market-prices/     # Shared UI logic extracted into the WebView page
 scripts/
   android-src/           # Kotlin + AndroidManifest sources (synced into android/)
   android-app-build.gradle.kts
   android-apk-version.json
+  android-sdk-env.sh
+  bootstrap-android-emulator.sh
+  run-android-emulator.sh
+  install-on-emulator.sh
   build-market-prices-page.mjs
   build-market-prices-apk.mjs
   publish-market-prices-apk.mjs

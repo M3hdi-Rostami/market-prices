@@ -12,7 +12,13 @@
     "build:apk": "node scripts/build-market-prices-apk.mjs",
     "setup:apk-signing": "bash scripts/setup-android-release-keystore.sh",
     "release:apk": "node scripts/publish-market-prices-apk.mjs",
-    "bootstrap:apk": "bash scripts/bootstrap-android-deps.sh"
+    "bootstrap:apk": "bash scripts/bootstrap-android-deps.sh",
+    "bootstrap:emulator": "bash scripts/bootstrap-android-emulator.sh",
+    "emulator": "bash scripts/run-android-emulator.sh",
+    "reload": "node scripts/watch-emulator-reload.mjs",
+    "reload:once": "bash scripts/install-on-emulator.sh",
+    "run:apk": "bash scripts/install-on-emulator.sh",
+    "run:apk:fast": "bash scripts/install-on-emulator.sh --no-build"
   },
   "devDependencies": {
     "javascript-obfuscator": "^4.1.1"
