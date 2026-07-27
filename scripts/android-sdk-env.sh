@@ -217,7 +217,7 @@ install_apk_with_retry() {
     fi
 
     echo "Installing $apk (attempt $i/$attempts) ..."
-    if out="$(adb -s "$serial" install -r -t "$apk" 2>&1)"; then
+    if out="$(adb -s "$serial" install -r -t -d "$apk" 2>&1)"; then
       echo "$out"
       if echo "$out" | grep -qiE 'Success'; then
         ENSURE_EMU_SERIAL="$serial"

@@ -55,6 +55,45 @@ export function bumpAndroidApkVersion() {
   return { previous: current, next };
 }
 
+export function syncAndroidApkVersionFloor() {
+  const current = getAndroidApkVersion();
+  const manifestPaths = [
+    path.join(rootDir, "market-prices-app-version.json"),
+    path.join(rootDir, "android/app/src/main/assets/market-prices-app-version.json"),
+  ];
+
+  let floorCode = 0;
+  let floorName = "";
+
+  for (const manifestPath of manifestPaths) {
+    if (!fs.existsSync(manifestPath)) continue;
+    try {
+      const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+      const code = Number(manifest.apkVersionCode) || 0;
+      if (code > floorCode) {
+        floorCode = code;
+        floorName = String(manifest.apkVersionName || "");
+      }
+    } catch {
+      // ignore malformed manifest
+    }
+  }
+
+  if (floorCode > current.versionCode) {
+    const next = writeAndroidApkVersion({
+      versionCode: floorCode,
+      versionName: floorName || current.versionName,
+      releaseTag: current.releaseTag,
+    });
+    console.log(
+      `  synced APK version floor: ${current.versionName} (${current.versionCode}) → ${next.versionName} (${next.versionCode})`,
+    );
+    return next;
+  }
+
+  return current;
+}
+
 export function getAndroidApkDownloadUrl(version = getAndroidApkVersion(), repo = DEFAULT_REPO) {
   // Prefer raw.githubusercontent.com so in-app updates avoid the GitHub Releases
   // CDN cross-host redirect that Android HttpURLConnection can truncate.

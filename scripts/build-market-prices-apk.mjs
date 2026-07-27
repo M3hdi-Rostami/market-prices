@@ -4,7 +4,7 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { buildMarketPricesPage } from "./build-market-prices-page.mjs";
 import { writeMarketPricesAppVersion } from "./market-prices-app-version.mjs";
-import { injectApkVersionIntoGradle } from "./android-apk-version.mjs";
+import { injectApkVersionIntoGradle, syncAndroidApkVersionFloor } from "./android-apk-version.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(__dirname, "..");
@@ -237,6 +237,7 @@ export async function buildMarketPricesApk() {
     throw new Error(`Gradle wrapper not found: ${gradlew}`);
   }
 
+  syncAndroidApkVersionFloor();
   syncAndroidGradleTemplate();
   syncAndroidSources();
 

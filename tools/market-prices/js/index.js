@@ -1292,15 +1292,19 @@ function extractDivarHousingSpecs(payload) {
     "";
 
   const sections = Array.isArray(payload?.sections) ? payload.sections : [];
+  const descriptionParts = [];
   for (const section of sections) {
     if (section?.section_name !== "DESCRIPTION") continue;
     for (const widget of section?.widgets || []) {
-      const text = String(widget?.data?.text || "").trim();
-      if (text) {
-        specs.description = text;
-        break;
-      }
+      const widgetType = String(widget?.widget_type || "");
+      if (widgetType === "TITLE_ROW") continue;
+      const text = String(widget?.data?.text || widget?.data?.description || "").trim();
+      if (!text || text === "توضیحات") continue;
+      descriptionParts.push(text);
     }
+  }
+  if (descriptionParts.length) {
+    specs.description = descriptionParts.join("\n\n");
   }
 
   return specs;
@@ -1581,10 +1585,108 @@ function renderHousingListingCard(listing) {
             ? `<p class="housing-card-desc">${escapeHtml(desc.slice(0, 180))}${desc.length > 180 ? "…" : ""}</p>`
             : ""
         }
-        <button type="button" class="housing-open-btn" data-housing-open="${escapeHtml(listing.url)}">مشاهده در دیوار</button>
+        <button type="button" class="housing-open-btn" data-housing-details="${escapeHtml(listing.token)}">مشاهده جزئیات</button>
       </div>
     </article>
   `;
+}
+
+function renderHousingListingDetailHtml(listing) {
+  const images = (listing.images && listing.images.length ? listing.images : [listing.thumbUrl]).filter(Boolean);
+  const gallery =
+    images.length > 0
+      ? `<div class="housing-gallery housing-detail-gallery" data-housing-gallery>
+          <div class="housing-gallery-track">
+            ${images
+              .map(
+                (src, index) =>
+                  `<img class="housing-gallery-image housing-detail-gallery-image" src="${escapeHtml(src)}" alt="" loading="lazy" decoding="async" data-gallery-index="${index}" />`,
+              )
+              .join("")}
+          </div>
+          ${
+            images.length > 1
+              ? `<div class="housing-gallery-dots" aria-hidden="true">${images
+                  .map((_, index) => `<span class="housing-gallery-dot${index === 0 ? " is-active" : ""}"></span>`)
+                  .join("")}</div>`
+              : ""
+          }
+          <span class="housing-gallery-count">${escapeHtml(String(images.length))} عکس</span>
+        </div>`
+      : `<div class="housing-gallery housing-gallery-empty housing-detail-gallery-empty">بدون تصویر</div>`;
+
+  const isRent = listing.dealKey === "rent";
+  const creditRaw = listing.creditText || "";
+  const rentRaw =
+    listing.rentText ||
+    (listing.priceText && listing.priceText !== creditRaw ? listing.priceText : "") ||
+    "";
+  const pricePrimary = isRent
+    ? formatHousingPriceLabel(creditRaw || "—", "credit")
+    : listing.totalPriceText || listing.priceText || "—";
+  const priceSecondary = isRent
+    ? formatHousingPriceLabel(rentRaw, "rent")
+    : listing.pricePerMeterText || "";
+
+  const specRows = [
+    { label: "متراژ", value: listing.size ? `${listing.size} متر` : "" },
+    { label: "اتاق", value: listing.rooms || "" },
+    { label: "ساخت", value: listing.year || "" },
+    { label: "طبقه", value: listing.floor || "" },
+    { label: "محله", value: listing.district || "" },
+    { label: "شهر", value: listing.city || "" },
+  ].filter(function (row) {
+    return String(row.value || "").trim();
+  });
+
+  const locationBits = [listing.city, listing.district].filter(Boolean).map((part) => escapeHtml(part));
+  const desc = String(listing.description || "").trim();
+  const meta = String(listing.metaText || "").trim();
+  const badge = String(listing.badgeText || "").trim();
+
+  return (
+    '<div class="housing-detail-body">' +
+    gallery +
+    '<div class="housing-detail-main">' +
+    (badge ? '<span class="housing-detail-badge">' + escapeHtml(badge) + "</span>" : "") +
+    '<div class="housing-price-block">' +
+    '<p class="housing-price-primary">' +
+    escapeHtml(pricePrimary) +
+    "</p>" +
+    (priceSecondary ? '<p class="housing-price-secondary">' + escapeHtml(priceSecondary) + "</p>" : "") +
+    "</div>" +
+    '<h3 id="housingDetailTitle" class="housing-detail-title">' +
+    escapeHtml(listing.title || "جزئیات آگهی") +
+    "</h3>" +
+    (locationBits.length ? '<p class="housing-detail-location">' + locationBits.join(" · ") + "</p>" : "") +
+    (specRows.length
+      ? '<div class="housing-detail-specs">' +
+        specRows
+          .map(function (row) {
+            return (
+              '<div class="housing-detail-spec">' +
+              '<span class="housing-detail-spec-label">' +
+              escapeHtml(row.label) +
+              "</span>" +
+              '<strong class="housing-detail-spec-value">' +
+              escapeHtml(String(row.value)) +
+              "</strong></div>"
+            );
+          })
+          .join("") +
+        "</div>"
+      : "") +
+    (meta ? '<p class="housing-detail-meta">' + escapeHtml(meta) + "</p>" : "") +
+    (desc
+      ? '<div class="housing-detail-desc-wrap"><h4 class="housing-detail-desc-title">توضیحات</h4><p class="housing-detail-desc">' +
+        escapeHtml(desc) +
+        "</p></div>"
+      : '<p class="housing-detail-desc housing-detail-desc-empty">توضیحات تکمیلی برای این آگهی ثبت نشده است.</p>') +
+    '<button type="button" class="housing-detail-divar-btn" data-housing-open="' +
+    escapeHtml(listing.url || "") +
+    '">مشاهده در دیوار</button>' +
+    "</div></div>"
+  );
 }
 
 const SHARE_CARD_BRAND = "تصمیم";

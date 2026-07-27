@@ -367,6 +367,14 @@ export const androidPageBody = `<div class="app market-root">
         <div id="housingList" class="housing-list"></div>
         <button id="housingLoadMoreBtn" type="button" class="housing-load-more hidden">آگهی‌های بیشتر</button>
       </div>
+
+      <div id="housingDetailSheet" class="housing-detail-sheet hidden" aria-hidden="true">
+        <div id="housingDetailBackdrop" class="housing-detail-backdrop"></div>
+        <div class="housing-detail-panel" role="dialog" aria-modal="true" aria-labelledby="housingDetailTitle">
+          <div class="housing-detail-handle" aria-hidden="true"></div>
+          <div id="housingDetailContent" class="housing-detail-content" aria-live="polite"></div>
+        </div>
+      </div>
     </div>
 
     <div id="view-tools" class="market-view hidden">
@@ -1710,6 +1718,192 @@ export const androidExtraStyles = `
       font-size: 13px;
       font-weight: 800;
       cursor: pointer;
+    }
+
+    .housing-detail-sheet {
+      position: fixed;
+      inset: 0;
+      z-index: 5200;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+    }
+
+    .housing-detail-sheet.hidden {
+      display: none;
+    }
+
+    .housing-detail-backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.45);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+    }
+
+    .housing-detail-panel {
+      position: relative;
+      width: 100%;
+      max-width: var(--max-w, 720px);
+      margin: 0 auto;
+      max-height: min(88dvh, 760px);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      border-radius: 22px 22px 0 0;
+      background: var(--surface);
+      border: 1px solid var(--border-strong, var(--border));
+      border-bottom: none;
+      box-shadow: 0 -16px 40px rgba(15, 23, 42, 0.2);
+      animation: housing-detail-up 0.28s ease;
+    }
+
+    @keyframes housing-detail-up {
+      from { transform: translateY(24px); opacity: 0.6; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    .housing-detail-handle {
+      width: 40px;
+      height: 4px;
+      border-radius: 999px;
+      background: var(--border-strong, var(--border));
+      margin: 10px auto 6px;
+      flex-shrink: 0;
+    }
+
+    .housing-detail-content {
+      overflow: auto;
+      -webkit-overflow-scrolling: touch;
+      padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    }
+
+    .housing-detail-body {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    .housing-detail-gallery .housing-gallery-image,
+    .housing-detail-gallery-image {
+      height: 240px;
+    }
+
+    .housing-detail-gallery-empty {
+      min-height: 160px;
+    }
+
+    .housing-detail-main {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 14px 16px 18px;
+    }
+
+    .housing-detail-badge {
+      align-self: flex-start;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: color-mix(in srgb, var(--danger, #ef4444) 14%, transparent);
+      color: var(--danger, #ef4444);
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .housing-detail-title {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 800;
+      line-height: 1.55;
+      color: var(--text);
+    }
+
+    .housing-detail-location {
+      margin: 0;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .housing-detail-specs {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .housing-detail-spec {
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: color-mix(in srgb, var(--surface-2) 70%, var(--border));
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 0;
+    }
+
+    .housing-detail-spec-label {
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .housing-detail-spec-value {
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--text);
+      line-height: 1.4;
+    }
+
+    .housing-detail-meta {
+      margin: 0;
+      font-size: 12px;
+      line-height: 1.65;
+      color: var(--muted);
+    }
+
+    .housing-detail-desc-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .housing-detail-desc-title {
+      margin: 0;
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--text);
+    }
+
+    .housing-detail-desc {
+      margin: 0;
+      font-size: 13px;
+      line-height: 1.75;
+      color: var(--text);
+      white-space: pre-wrap;
+    }
+
+    .housing-detail-desc-empty {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .housing-detail-divar-btn {
+      margin-top: 4px;
+      width: 100%;
+      padding: 12px 14px;
+      border: none;
+      border-radius: 12px;
+      background: var(--accent);
+      color: var(--accent-fg, #fff);
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .housing-detail-loading {
+      padding: 28px 16px 40px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 13px;
     }
 
     .housing-load-more {
@@ -4869,6 +5063,9 @@ export const androidStandaloneUiPatch = `
     const housingResultsWrapEl = document.getElementById("housingResultsWrap");
     const housingListEl = document.getElementById("housingList");
     const housingLoadMoreBtnEl = document.getElementById("housingLoadMoreBtn");
+    const housingDetailSheetEl = document.getElementById("housingDetailSheet");
+    const housingDetailBackdropEl = document.getElementById("housingDetailBackdrop");
+    const housingDetailContentEl = document.getElementById("housingDetailContent");
     const myHousingSearchesListEl = document.getElementById("myHousingSearchesList");
     const myHousingSearchesEmptyEl = document.getElementById("myHousingSearchesEmpty");
     const housingDealButtons = document.querySelectorAll("[data-housing-deal]");
@@ -4916,6 +5113,8 @@ export const androidStandaloneUiPatch = `
     let housingBusy = false;
     let housingPaginationData = null;
     let housingHasNextPage = false;
+    let housingListingsByToken = {};
+    let housingDetailBusy = false;
     let housingLastQuery = null;
     let myCarEstimateBusy = false;
     let bamaVehiclesTree = null;
@@ -7481,8 +7680,75 @@ export const androidStandaloneUiPatch = `
       });
     }
 
+    function rememberHousingListings(listings) {
+      (listings || []).forEach(function (listing) {
+        if (listing && listing.token) {
+          housingListingsByToken[listing.token] = listing;
+        }
+      });
+    }
+
+    function closeHousingDetailSheet() {
+      if (!housingDetailSheetEl) return;
+      housingDetailSheetEl.classList.add("hidden");
+      housingDetailSheetEl.setAttribute("aria-hidden", "true");
+      if (housingDetailContentEl) housingDetailContentEl.innerHTML = "";
+    }
+
+    function showHousingDetailLoading() {
+      if (!housingDetailContentEl) return;
+      housingDetailContentEl.innerHTML =
+        '<div class="housing-detail-loading"><span>در حال دریافت جزئیات آگهی...</span></div>';
+    }
+
+    function renderHousingDetailContent(listing) {
+      if (!housingDetailContentEl || !listing) return;
+      housingDetailContentEl.innerHTML = renderHousingListingDetailHtml(listing);
+      bindHousingGallery(housingDetailContentEl);
+    }
+
+    function openHousingDetailSheet(token) {
+      if (!housingDetailSheetEl || !token || housingDetailBusy) return;
+      const cached = housingListingsByToken[token];
+      if (!cached) return;
+
+      housingDetailSheetEl.classList.remove("hidden");
+      housingDetailSheetEl.setAttribute("aria-hidden", "false");
+      renderHousingDetailContent(cached);
+
+      const cachedDesc = String(cached.description || "").trim();
+      const needsFetch = !cached.enriched || !cachedDesc || cachedDesc === "توضیحات";
+      if (!needsFetch || typeof getDivarHousingAdByToken !== "function") return;
+      if (!needsFetch || typeof getDivarHousingAdByToken !== "function") return;
+
+      housingDetailBusy = true;
+      showHousingDetailLoading();
+      Promise.resolve(getDivarHousingAdByToken(token))
+        .then(function (detail) {
+          const merged = Object.assign({}, cached, detail, {
+            dealKey: cached.dealKey,
+            thumbUrl: detail.images && detail.images[0] ? detail.images[0] : cached.thumbUrl,
+            images: detail.images && detail.images.length ? detail.images : cached.images,
+            priceText: cached.priceText || detail.totalPriceText || detail.rentText || "",
+            creditText: cached.creditText || detail.creditText || "",
+            enriched: true,
+          });
+          housingListingsByToken[token] = merged;
+          renderHousingDetailContent(merged);
+        })
+        .catch(function (error) {
+          console.warn("Housing detail fetch failed:", token, error);
+          renderHousingDetailContent(cached);
+          showPriceToast((error && error.message) || "دریافت جزئیات کامل آگهی ممکن نشد");
+        })
+        .finally(function () {
+          housingDetailBusy = false;
+        });
+    }
+
     function renderHousingListings(listings, append) {
       if (!housingListEl) return;
+      rememberHousingListings(listings);
       const html = (listings || []).map(renderHousingListingCard).join("");
       if (append) housingListEl.insertAdjacentHTML("beforeend", html);
       else housingListEl.innerHTML = html;
@@ -7712,6 +7978,7 @@ export const androidStandaloneUiPatch = `
       if (!append) {
         housingPaginationData = null;
         housingHasNextPage = false;
+        housingListingsByToken = {};
         if (housingListEl) housingListEl.innerHTML = "";
         if (housingResultsWrapEl) housingResultsWrapEl.classList.add("hidden");
         if (housingLoadingEl) housingLoadingEl.classList.add("hidden");
@@ -8022,6 +8289,34 @@ export const androidStandaloneUiPatch = `
       });
     }
 
+    if (housingListEl) {
+      housingListEl.addEventListener("click", function (event) {
+        const target = event.target;
+        if (!target || typeof target.closest !== "function") return;
+        const detailsBtn = target.closest("[data-housing-details]");
+        if (detailsBtn) {
+          event.preventDefault();
+          openHousingDetailSheet(detailsBtn.getAttribute("data-housing-details"));
+        }
+      });
+    }
+
+    if (housingDetailBackdropEl) {
+      housingDetailBackdropEl.addEventListener("click", closeHousingDetailSheet);
+    }
+
+    if (housingDetailContentEl) {
+      housingDetailContentEl.addEventListener("click", function (event) {
+        const target = event.target;
+        if (!target || typeof target.closest !== "function") return;
+        const openBtn = target.closest("[data-housing-open]");
+        if (openBtn) {
+          event.preventDefault();
+          openExternalUrl(openBtn.getAttribute("data-housing-open"));
+        }
+      });
+    }
+
     if (myHousingSearchesListEl) {
       myHousingSearchesListEl.addEventListener("click", function (event) {
         const target = event.target;
@@ -8050,18 +8345,6 @@ export const androidStandaloneUiPatch = `
         renderSavedHousingSearchesList();
         if (action === "search") {
           runHousingSearch({ append: false });
-        }
-      });
-    }
-
-    if (housingListEl) {
-      housingListEl.addEventListener("click", function (event) {
-        const target = event.target;
-        if (!target || typeof target.closest !== "function") return;
-        const openBtn = target.closest("[data-housing-open]");
-        if (openBtn) {
-          event.preventDefault();
-          openExternalUrl(openBtn.getAttribute("data-housing-open"));
         }
       });
     }

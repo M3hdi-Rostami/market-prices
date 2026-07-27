@@ -283,6 +283,22 @@ function publishApkMetadata(version, sha256, apkSizeBytes) {
   console.log(`Pushed APK metadata + HTML to origin/${branch}`);
 }
 
+function commitRootApkVersion(version) {
+  const relPath = "scripts/android-apk-version.json";
+  const status = spawnSync("git", ["status", "--porcelain", relPath], {
+    cwd: rootDir,
+    encoding: "utf8",
+  });
+  if ((status.stdout || "").trim()) {
+    run("git", ["add", relPath], { cwd: rootDir });
+    run("git", ["commit", "-m", `Bump Android APK version to ${version.versionName} (code ${version.versionCode}).`], {
+      cwd: rootDir,
+    });
+    run("git", ["push", "-u", "origin", "HEAD"], { cwd: rootDir });
+    console.log("Pushed scripts/android-apk-version.json to origin/main");
+  }
+}
+
 async function main() {
   const args = parseArgs(process.argv.slice(2));
 
@@ -319,6 +335,9 @@ async function main() {
   }
 
   publishApkMetadata(version, sha256, apkSizeBytes);
+  if (!args.noBump) {
+    commitRootApkVersion(version);
+  }
 
   console.log("");
   console.log("Done.");
