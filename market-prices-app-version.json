@@ -1,8 +1,9 @@
 {
-  "version": "1.0.49",
-  "builtAt": "2026-07-26T21:47:24.399Z",
-  "apkVersionCode": 50,
-  "apkVersionName": "1.0.49",
-  "apkUrl": "https://github.com/M3hdi-Rostami/market-prices/releases/download/android-apk/market-prices.apk",
-  "apkSha256": "bfb496c0c77cea6e0cd834ea7f624dae8f61a27ceadcaceea984b3b2fb9252e8"
+  "version": "1.0.50",
+  "builtAt": "2026-07-27T04:52:42.385Z",
+  "apkVersionCode": 51,
+  "apkVersionName": "1.0.50",
+  "apkUrl": "https://raw.githubusercontent.com/M3hdi-Rostami/market-prices/main/market-prices.apk",
+  "apkSha256": "9c3f1c25445f3244ac7c05f6f3e71ced904ef44256045126428a5fe134a26775",
+  "apkSizeBytes": 2008177
 }
