@@ -7,6 +7,7 @@ android/
 # Generated web assets
 market-prices.html
 market-prices-app-version.json
+market-prices.apk
 car-prices.json
 dist/
 

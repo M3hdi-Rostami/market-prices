@@ -56,6 +56,13 @@ export function bumpAndroidApkVersion() {
 }
 
 export function getAndroidApkDownloadUrl(version = getAndroidApkVersion(), repo = DEFAULT_REPO) {
+  // Prefer raw.githubusercontent.com so in-app updates avoid the GitHub Releases
+  // CDN cross-host redirect that Android HttpURLConnection can truncate.
+  void version;
+  return `https://raw.githubusercontent.com/${repo.repoOwner}/${repo.repoName}/main/market-prices.apk`;
+}
+
+export function getAndroidApkReleaseDownloadUrl(version = getAndroidApkVersion(), repo = DEFAULT_REPO) {
   return `https://github.com/${repo.repoOwner}/${repo.repoName}/releases/download/${version.releaseTag}/market-prices.apk`;
 }
 

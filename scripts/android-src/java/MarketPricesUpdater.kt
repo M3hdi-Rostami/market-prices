@@ -158,6 +158,7 @@ object MarketPricesUpdater {
         val remoteApkName = remoteMeta.optString("apkVersionName", "")
         val remoteApkUrl = remoteMeta.optString("apkUrl", "")
         val remoteApkSha = remoteMeta.optString("apkSha256", "").ifBlank { null }
+        val remoteApkSize = remoteMeta.optLong("apkSizeBytes", 0L).takeIf { it > 0L }
         val localApkCode = ApkUpdater.localVersionCode(context)
         val localApkName = ApkUpdater.localVersionName(context)
 
@@ -167,6 +168,7 @@ object MarketPricesUpdater {
                 context = context,
                 url = remoteApkUrl,
                 expectedSha256 = remoteApkSha,
+                expectedSize = remoteApkSize,
             ) { percent, downloaded, total ->
                 onProgress?.invoke(
                     percent,

@@ -12,6 +12,7 @@ import java.security.MessageDigest
 
 object ApkUpdater {
     private const val APK_FILE_NAME = "market-prices-update.apk"
+    private const val MAX_REDIRECTS = 8
     const val ACTION_INSTALL_STATUS = "ir.superextension.marketprices.APK_INSTALL_STATUS"
 
     fun localVersionCode(context: Context): Int {
@@ -38,6 +39,7 @@ object ApkUpdater {
         context: Context,
         url: String,
         expectedSha256: String? = null,
+        expectedSize: Long? = null,
         onProgress: (percent: Int, downloaded: Long, total: Long) -> Unit,
     ): File {
         val target = apkCacheFile(context)
@@ -45,9 +47,14 @@ object ApkUpdater {
             target.delete()
         }
 
-        val connection = openConnection(url)
+        val connection = openFollowingRedirects(url)
         try {
-            val total = connection.contentLengthLong.coerceAtLeast(0L)
+            val totalHeader = connection.contentLengthLong.coerceAtLeast(0L)
+            val total = when {
+                expectedSize != null && expectedSize > 0L -> expectedSize
+                totalHeader > 0L -> totalHeader
+                else -> 0L
+            }
             var downloaded = 0L
             var lastReported = -1
 
@@ -74,7 +81,18 @@ object ApkUpdater {
             }
 
             if (downloaded <= 0L) {
+                target.delete()
                 throw IllegalStateException("فایل APK خالی دریافت شد")
+            }
+
+            if (expectedSize != null && expectedSize > 0L && downloaded != expectedSize) {
+                target.delete()
+                throw IllegalStateException("حجم فایل APK ناقص دریافت شد")
+            }
+
+            if (!looksLikeApk(target)) {
+                target.delete()
+                throw IllegalStateException("فایل دریافتی APK معتبر نیست")
             }
 
             if (!expectedSha256.isNullOrBlank()) {
@@ -87,6 +105,11 @@ object ApkUpdater {
 
             onProgress(100, downloaded, if (total > 0) total else downloaded)
             return target
+        } catch (error: Exception) {
+            if (target.exists()) {
+                target.delete()
+            }
+            throw error
         } finally {
             connection.disconnect()
         }
@@ -143,6 +166,18 @@ object ApkUpdater {
         }
     }
 
+    private fun looksLikeApk(file: File): Boolean {
+        return try {
+            file.inputStream().use { input ->
+                val magic = ByteArray(2)
+                val read = input.read(magic)
+                read == 2 && magic[0] == 'P'.code.toByte() && magic[1] == 'K'.code.toByte()
+            }
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     private fun sha256Hex(file: File): String {
         val digest = MessageDigest.getInstance("SHA-256")
         file.inputStream().use { input ->
@@ -156,24 +191,53 @@ object ApkUpdater {
         return digest.digest().joinToString("") { byte -> "%02x".format(byte) }
     }
 
-    private fun openConnection(url: String): HttpURLConnection {
-        val connection = URL(cacheBustUrl(url)).openConnection() as HttpURLConnection
-        connection.instanceFollowRedirects = true
-        connection.useCaches = false
-        connection.defaultUseCaches = false
-        connection.connectTimeout = 20_000
-        connection.readTimeout = 120_000
-        connection.requestMethod = "GET"
-        connection.setRequestProperty("Accept", "*/*")
-        connection.setRequestProperty("Cache-Control", "no-cache, no-store, must-revalidate")
-        connection.setRequestProperty("Pragma", "no-cache")
+    /**
+     * Follow redirects manually and force Connection: close.
+     * Android HttpURLConnection can truncate bodies when a keep-alive socket
+     * is reused across the github.com → release-assets CDN hop.
+     */
+    private fun openFollowingRedirects(startUrl: String): HttpURLConnection {
+        var currentUrl = cacheBustUrl(startUrl)
+        var redirects = 0
 
-        val code = connection.responseCode
-        if (code !in 200..299) {
-            connection.disconnect()
-            throw IllegalStateException("خطا در دریافت APK ($code)")
+        while (true) {
+            val connection = URL(currentUrl).openConnection() as HttpURLConnection
+            connection.instanceFollowRedirects = false
+            connection.useCaches = false
+            connection.defaultUseCaches = false
+            connection.connectTimeout = 20_000
+            connection.readTimeout = 120_000
+            connection.requestMethod = "GET"
+            connection.setRequestProperty("Accept", "*/*")
+            connection.setRequestProperty("Connection", "close")
+            connection.setRequestProperty("Cache-Control", "no-cache, no-store, must-revalidate")
+            connection.setRequestProperty("Pragma", "no-cache")
+            connection.setRequestProperty("User-Agent", "MarketPricesUpdater/1.0 (Android)")
+
+            val code = connection.responseCode
+            if (code in 300..399) {
+                val location = connection.getHeaderField("Location")
+                connection.disconnect()
+                if (location.isNullOrBlank()) {
+                    throw IllegalStateException("خطا در دریافت APK ($code)")
+                }
+                // Resolve relative Location against the current URL. Do not cache-bust
+                // signed CDN URLs — extra query params can invalidate them.
+                currentUrl = URL(URL(currentUrl), location).toExternalForm()
+                redirects += 1
+                if (redirects > MAX_REDIRECTS) {
+                    throw IllegalStateException("خطا در دریافت APK (redirect)")
+                }
+                continue
+            }
+
+            if (code !in 200..299) {
+                connection.disconnect()
+                throw IllegalStateException("خطا در دریافت APK ($code)")
+            }
+
+            return connection
         }
-        return connection
     }
 
     private fun cacheBustUrl(url: String): String {

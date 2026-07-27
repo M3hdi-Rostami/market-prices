@@ -163,7 +163,7 @@ function uploadApkRelease(apkFile, version) {
   console.log(`  uploaded: https://github.com/${repo}/releases/download/${tag}/market-prices.apk`);
 }
 
-function publishApkMetadata(version, sha256) {
+function publishApkMetadata(version, sha256, apkSizeBytes) {
   ensureReleaseRepo();
 
   const sealedAssetHtml = path.join(rootDir, "android/app/src/main/assets/market-prices.html");
@@ -178,6 +178,8 @@ function publishApkMetadata(version, sha256) {
   const releaseHtml = path.join(releaseDir, "market-prices.html");
   const releaseFontDir = path.join(releaseDir, "fonts");
   const releaseFont = path.join(releaseFontDir, "Vazir-FD.ttf");
+  const releaseApk = path.join(releaseDir, "market-prices.apk");
+  const rootApk = path.join(rootDir, "market-prices.apk");
 
   // Prefer the exact HTML/version sealed into the APK so remote content stamp
   // matches what the new APK already ships (avoids a second "content update" popup).
@@ -204,6 +206,13 @@ function publishApkMetadata(version, sha256) {
     fs.copyFileSync(fontSource, releaseFont);
   }
 
+  // Publish APK on main for raw.githubusercontent.com downloads (avoids Releases CDN redirects).
+  if (!fs.existsSync(apkPath)) {
+    throw new Error(`APK not found for metadata publish: ${apkPath}`);
+  }
+  fs.copyFileSync(apkPath, releaseApk);
+  fs.copyFileSync(apkPath, rootApk);
+
   const sealed = readMarketPricesAppVersion(sealedVersionSource);
   const payload = {
     ...sealed,
@@ -211,6 +220,7 @@ function publishApkMetadata(version, sha256) {
     apkVersionName: version.versionName,
     apkUrl: getAndroidApkDownloadUrl(version),
     apkSha256: sha256,
+    apkSizeBytes: Number(apkSizeBytes) || fs.statSync(apkPath).size,
   };
 
   const versionJsonPaths = [
@@ -221,6 +231,7 @@ function publishApkMetadata(version, sha256) {
 
   writeAppVersionPayload(versionJsonPaths, payload);
   console.log(`  published version stamp builtAt=${payload.builtAt} (preserved from APK assets)`);
+  console.log(`  apkUrl: ${payload.apkUrl}`);
 
   if (!getReleaseRemoteUrl() && !process.argv.includes("--no-push")) {
     console.warn(`No git remote in ${RELEASE_DIR_NAME}/ — metadata committed locally only.`);
@@ -234,6 +245,7 @@ function publishApkMetadata(version, sha256) {
     "market-prices-app-version.json",
     "market-prices.html",
     "fonts/Vazir-FD.ttf",
+    "market-prices.apk",
   ]);
 
   // Remove legacy offline car-prices cache if it was previously published.
@@ -295,7 +307,9 @@ async function main() {
   }
 
   const sha256 = sha256File(apkPath);
+  const apkSizeBytes = fs.statSync(apkPath).size;
   console.log(`  sha256: ${sha256}`);
+  console.log(`  size  : ${apkSizeBytes}`);
   console.log(`  url   : ${getAndroidApkDownloadUrl(version)}`);
 
   if (!args.noUpload) {
@@ -304,7 +318,7 @@ async function main() {
     console.log("Skipped GitHub upload (--no-upload).");
   }
 
-  publishApkMetadata(version, sha256);
+  publishApkMetadata(version, sha256, apkSizeBytes);
 
   console.log("");
   console.log("Done.");

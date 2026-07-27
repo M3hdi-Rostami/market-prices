@@ -66,6 +66,7 @@ const OBFUSCATOR_OPTIONS = {
     "apkVersionName",
     "apkUrl",
     "apkSha256",
+    "apkSizeBytes",
     "updateKind",
     "awaitingInstall",
     "getAppVersionCode",
