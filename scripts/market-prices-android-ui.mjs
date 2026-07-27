@@ -2215,23 +2215,17 @@ export const androidExtraStyles = `
       border-radius: 999px;
       font-variant-numeric: tabular-nums;
       white-space: nowrap;
-      background: rgba(255, 255, 255, 0.16);
       color: #fff;
+      background: rgba(255, 255, 255, 0.22);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
     }
 
-    .price-hero-card-change.is-up {
-      color: #00e5a0;
-      background: color-mix(in srgb, #00e5a0 14%, transparent);
-    }
-
-    .price-hero-card-change.is-down {
-      color: #ff4d6d;
-      background: color-mix(in srgb, #ff4d6d 14%, transparent);
-    }
-
+    .price-hero-card-change.is-up,
+    .price-hero-card-change.is-down,
     .price-hero-card-change.is-flat {
-      color: rgba(255, 255, 255, 0.85);
-      background: rgba(255, 255, 255, 0.12);
+      color: #fff;
+      background: rgba(255, 255, 255, 0.22);
     }
 
     .price-hero-share-row {
@@ -4275,19 +4269,11 @@ export const androidExtraStyles = `
       background: rgba(255, 255, 255, 0.18);
     }
 
-    [data-theme="light"] .price-hero-card-change.is-up {
-      color: #00e5a0;
-      background: color-mix(in srgb, #00e5a0 14%, transparent);
-    }
-
-    [data-theme="light"] .price-hero-card-change.is-down {
-      color: #ff4d6d;
-      background: color-mix(in srgb, #ff4d6d 14%, transparent);
-    }
-
+    [data-theme="light"] .price-hero-card-change.is-up,
+    [data-theme="light"] .price-hero-card-change.is-down,
     [data-theme="light"] .price-hero-card-change.is-flat {
-      background: rgba(255, 255, 255, 0.18);
       color: #fff;
+      background: rgba(255, 255, 255, 0.22);
     }
 
     [data-theme="light"] .price-hero-chart-wrap {

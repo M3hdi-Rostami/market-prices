@@ -122,6 +122,23 @@ function releaseExists(repo, tag) {
   return result.ok;
 }
 
+function isReleaseAlreadyExistsError(stderr) {
+  return String(stderr || "")
+    .toLowerCase()
+    .includes("already exists");
+}
+
+function uploadApkAssetInPlace(repo, tag, apkFile, title, notes) {
+  runGhWithRetry(
+    ["release", "upload", tag, apkFile, "--repo", repo, "--clobber"],
+    { label: "gh release upload" },
+  );
+  runGhWithRetry(
+    ["release", "edit", tag, "--repo", repo, "--title", title, "--notes", notes],
+    { label: "gh release edit" },
+  );
+}
+
 function uploadApkRelease(apkFile, version) {
   ensureGh();
   const repo = `${APP_UPDATE_REPO.repoOwner}/${APP_UPDATE_REPO.repoName}`;
@@ -133,17 +150,12 @@ function uploadApkRelease(apkFile, version) {
 
   // Prefer in-place asset replace over delete+create so a flaky upload cannot
   // leave the release missing after a successful delete.
+  // release view can false-negative on transient API errors; if create then
+  // reports "already exists", fall back to upload --clobber.
   if (releaseExists(repo, tag)) {
-    runGhWithRetry(
-      ["release", "upload", tag, apkFile, "--repo", repo, "--clobber"],
-      { label: "gh release upload" },
-    );
-    runGhWithRetry(
-      ["release", "edit", tag, "--repo", repo, "--title", title, "--notes", notes],
-      { label: "gh release edit" },
-    );
+    uploadApkAssetInPlace(repo, tag, apkFile, title, notes);
   } else {
-    runGhWithRetry(
+    const create = runGh(
       [
         "release",
         "create",
@@ -156,8 +168,33 @@ function uploadApkRelease(apkFile, version) {
         "--notes",
         notes,
       ],
-      { label: "gh release create" },
+      { stdio: "pipe" },
     );
+    if (!create.ok) {
+      const detail = create.stderr || create.stdout || "gh release create failed";
+      if (isReleaseAlreadyExistsError(detail)) {
+        console.warn("  release already exists; uploading asset in place ...");
+        uploadApkAssetInPlace(repo, tag, apkFile, title, notes);
+      } else if (isTransientGhError(detail)) {
+        runGhWithRetry(
+          [
+            "release",
+            "create",
+            tag,
+            apkFile,
+            "--repo",
+            repo,
+            "--title",
+            title,
+            "--notes",
+            notes,
+          ],
+          { label: "gh release create" },
+        );
+      } else {
+        throw new Error(`gh release create failed: ${detail}`);
+      }
+    }
   }
 
   console.log(`  uploaded: https://github.com/${repo}/releases/download/${tag}/market-prices.apk`);
