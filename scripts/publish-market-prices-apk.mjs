@@ -243,6 +243,16 @@ function publishApkMetadata(version, sha256, apkSizeBytes) {
     fs.copyFileSync(fontSource, releaseFont);
   }
 
+  // Keep scripts/android-apk-version.json on main in the same publish commit.
+  // Otherwise a later push from the source tree races .release-repo and fails
+  // with "fetch first" / non-fast-forward.
+  const rootApkVersionJson = path.join(rootDir, "scripts/android-apk-version.json");
+  const releaseApkVersionJson = path.join(releaseDir, "scripts/android-apk-version.json");
+  if (fs.existsSync(rootApkVersionJson)) {
+    fs.mkdirSync(path.dirname(releaseApkVersionJson), { recursive: true });
+    fs.copyFileSync(rootApkVersionJson, releaseApkVersionJson);
+  }
+
   // Publish APK on main for raw.githubusercontent.com downloads (avoids Releases CDN redirects).
   if (!fs.existsSync(apkPath)) {
     throw new Error(`APK not found for metadata publish: ${apkPath}`);
@@ -276,14 +286,16 @@ function publishApkMetadata(version, sha256, apkSizeBytes) {
 
   // Force-add: these generated assets are gitignored in the source tree but must
   // be published on main for in-app update checks (raw.githubusercontent.com).
-  runGit([
-    "add",
-    "-f",
+  const addPaths = [
     "market-prices-app-version.json",
     "market-prices.html",
     "fonts/Vazir-FD.ttf",
     "market-prices.apk",
-  ]);
+  ];
+  if (fs.existsSync(releaseApkVersionJson)) {
+    addPaths.push("scripts/android-apk-version.json");
+  }
+  runGit(["add", "-f", ...addPaths]);
 
   // Remove legacy offline car-prices cache if it was previously published.
   const releaseCarPrices = path.join(releaseDir, "car-prices.json");
@@ -320,20 +332,107 @@ function publishApkMetadata(version, sha256, apkSizeBytes) {
   console.log(`Pushed APK metadata + HTML to origin/${branch}`);
 }
 
+function syncRootAfterReleasePublish() {
+  // Metadata + version bump are pushed from .release-repo. Bring the source tree
+  // onto that commit so a second competing push is not needed.
+  const branchResult = spawnSync("git", ["branch", "--show-current"], {
+    cwd: rootDir,
+    encoding: "utf8",
+  });
+  const branch = (branchResult.stdout || "").trim() || APP_UPDATE_REPO.branch;
+
+  run("git", ["fetch", "origin", branch], { cwd: rootDir });
+
+  const pull = spawnSync(
+    "git",
+    ["pull", "--ff-only", "--autostash", "origin", branch],
+    {
+      cwd: rootDir,
+      encoding: "utf8",
+      stdio: "inherit",
+      env: process.env,
+    },
+  );
+  if ((pull.status ?? 1) === 0) {
+    console.log(`Synced source tree with origin/${branch}`);
+    return;
+  }
+
+  // If the source tree still has a local-only version bump commit, rebase it away
+  // by resetting that file to match origin after a rebase attempt.
+  const rebase = spawnSync(
+    "git",
+    ["pull", "--rebase", "--autostash", "origin", branch],
+    {
+      cwd: rootDir,
+      encoding: "utf8",
+      stdio: "inherit",
+      env: process.env,
+    },
+  );
+  if ((rebase.status ?? 1) !== 0) {
+    throw new Error(
+      `Could not sync source tree with origin/${branch} after release publish. ` +
+        `Run: git pull --rebase --autostash origin ${branch}`,
+    );
+  }
+  console.log(`Rebased source tree onto origin/${branch}`);
+}
+
 function commitRootApkVersion(version) {
+  // Prefer folding the bump into the .release-repo publish commit. If that push
+  // already landed, just sync. Keep a local commit only when the release push
+  // was skipped (--no-push) so the bump is not lost.
   const relPath = "scripts/android-apk-version.json";
   const status = spawnSync("git", ["status", "--porcelain", relPath], {
     cwd: rootDir,
     encoding: "utf8",
   });
-  if ((status.stdout || "").trim()) {
-    run("git", ["add", relPath], { cwd: rootDir });
-    run("git", ["commit", "-m", `Bump Android APK version to ${version.versionName} (code ${version.versionCode}).`], {
-      cwd: rootDir,
-    });
-    run("git", ["push", "-u", "origin", "HEAD"], { cwd: rootDir });
-    console.log("Pushed scripts/android-apk-version.json to origin/main");
+  const dirty = Boolean((status.stdout || "").trim());
+
+  if (process.argv.includes("--no-push")) {
+    if (dirty) {
+      run("git", ["add", relPath], { cwd: rootDir });
+      run(
+        "git",
+        [
+          "commit",
+          "-m",
+          `Bump Android APK version to ${version.versionName} (code ${version.versionCode}).`,
+        ],
+        { cwd: rootDir },
+      );
+      console.log("Version bump committed locally (--no-push).");
+    }
+    return;
   }
+
+  syncRootAfterReleasePublish();
+
+  // If sync brought in the bump via the publish commit, the file should be clean.
+  // If it is still dirty (publish skipped the file), commit + push now that we
+  // are fast-forwarded onto origin.
+  const after = spawnSync("git", ["status", "--porcelain", relPath], {
+    cwd: rootDir,
+    encoding: "utf8",
+  });
+  if (!(after.stdout || "").trim()) {
+    console.log("APK version stamp already on origin/main");
+    return;
+  }
+
+  run("git", ["add", relPath], { cwd: rootDir });
+  run(
+    "git",
+    [
+      "commit",
+      "-m",
+      `Bump Android APK version to ${version.versionName} (code ${version.versionCode}).`,
+    ],
+    { cwd: rootDir },
+  );
+  run("git", ["push", "-u", "origin", "HEAD"], { cwd: rootDir });
+  console.log("Pushed scripts/android-apk-version.json to origin/main");
 }
 
 async function main() {
