@@ -75,7 +75,7 @@ export const androidPageBody = `<div class="app market-root">
       <div id="view-gold" class="market-view hidden">
         <div class="gold-subtabs" role="tablist" aria-label="بخش طلا">
           <button type="button" class="gold-subtab-btn is-active" data-gold-subtab="prices" role="tab" aria-selected="true">قیمت‌ها</button>
-          <button type="button" class="gold-subtab-btn" data-gold-subtab="calc" role="tab" aria-selected="false">ماشین حساب</button>
+          <button type="button" class="gold-subtab-btn" data-gold-subtab="calc" role="tab" aria-selected="false">محاسبات طلا</button>
         </div>
         <div id="goldPricesPanel" class="gold-subpanel">
           <div id="goldList" class="grid price-stack price-scroll-surface hidden"></div>
@@ -7911,7 +7911,6 @@ export const androidStandaloneUiPatch = `
       if (goldCalcListEl) goldCalcListEl.innerHTML = "";
       renderItemGroup(GOLD_ITEMS, goldListEl, current);
       if (goldCalcListEl) {
-        goldCalcListEl.appendChild(createRealGoldCard(current));
         goldCalcListEl.appendChild(createCoinGoldCard(current));
         goldCalcListEl.appendChild(createGoldWageCard(current));
       }
