@@ -1,4 +1,5 @@
 const MOJ3_PRICES_PAGE_URL = "https://moj3.ir/price/";
+const TGJU_AJAX_URL = "https://call4.tgju.org/ajax.json";
 const BAMA_PRICE_API_URL = "https://bama.ir/cad/api/price/hierarchy";
 const BAMA_PAGE_SIZE = 100;
 
@@ -64,10 +65,14 @@ const MOJ3_LABEL_SPECS = [
   { label: "تتر", key: "crypto-tether-irr", global: false },
   { label: "درهم", key: "price_aed", global: false },
   { label: "یورو", key: "price_eur", global: false },
-  { label: "ارزش ذاتی طلای 18 عیار", key: "gold_intrinsic_18", global: false },
-  { label: "ارزش ذاتی طلای 24 عیار", key: "gold_intrinsic_24", global: false },
-  { label: "عیار", key: "ime_fund_ayar", global: false },
+  { label: "ارزش ذاتی طلای 18 عیار", key: "gold_intrinsic_18", global: false, intrinsic: true },
+  { label: "ارزش ذاتی طلای 24 عیار", key: "gold_intrinsic_24", global: false, intrinsic: true },
+  { label: "عیار", key: "ime_fund_ayar", global: false, fund: true },
 ];
+
+const MOJ3_FUND_TGJU_CHANGE_KEYS = {
+  ime_fund_ayar: "ime_fund_ayar",
+};
 
 function stripMoj3HtmlTags(value) {
   return String(value || "").replace(/<[^>]+>/g, "").trim();
@@ -80,25 +85,117 @@ function normalizeMoj3Label(label) {
 function toMoj3TgjuPriceString(tomanValue, isGlobal) {
   const cleaned = String(tomanValue).replace(/,/g, "").trim();
   const num = Number(cleaned);
-  if (!Number.isFinite(num)) return "";
+  if (!Number.isFinite(num) || num === 0) return "";
+  const sign = num < 0 ? "-" : "";
+  const abs = Math.abs(num);
   if (isGlobal) {
-    if (cleaned.includes(".")) return cleaned;
-    return String(Math.round(num));
+    const raw = cleaned.replace(/-/g, "");
+    if (raw.includes(".")) return sign + raw.replace(/^\+/, "");
+    return sign + String(Math.round(abs));
   }
-  return String(Math.round(num * 10)).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return sign + String(Math.round(abs * 10)).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }
 
-function parseMoj3Change(cells, isGlobal) {
-  const pctRaw = stripMoj3HtmlTags(cells[2] || "");
-  const amountRaw = stripMoj3HtmlTags(cells[3] || "");
-  const dp = Math.abs(parseFloat(pctRaw.replace(/[^\d.-]/g, "")) || 0);
-  const dt = pctRaw.includes("-") ? "low" : pctRaw.includes("+") ? "high" : "";
+function parseSignedPercent(pctRaw) {
+  const raw = String(pctRaw || "").trim();
+  if (!raw) return { dp: 0, dt: "" };
+
+  const normalized = raw
+    .replace(/[−–—]/g, "-")
+    .replace(/٪|%/g, "")
+    .replace(/,/g, "")
+    .trim();
+
+  let num = parseFloat(normalized.replace(/\+/g, ""));
+  if (!Number.isFinite(num) || num === 0) return { dp: 0, dt: "" };
+
+  if (normalized.includes("-") || raw.includes("−")) num = -Math.abs(num);
+  else if (normalized.includes("+") || raw.includes("+")) num = Math.abs(num);
+
+  const dt = num > 0 ? "high" : num < 0 ? "low" : "";
+  return { dp: num, dt };
+}
+
+function parseMoj3ChangeValues(pctRaw, amountRaw, isGlobal) {
+  const { dp, dt } = parseSignedPercent(pctRaw);
   let d = "";
   if (amountRaw) {
-    const toman = Number(amountRaw.replace(/,/g, "").replace(/[^\d.-]/g, ""));
-    if (Number.isFinite(toman)) d = toMoj3TgjuPriceString(Math.abs(toman), isGlobal);
+    const normalized = String(amountRaw).replace(/[−–—]/g, "-").replace(/,/g, "");
+    const toman = Number(normalized.replace(/[^\d.-]/g, ""));
+    if (Number.isFinite(toman) && toman !== 0) {
+      d = toMoj3TgjuPriceString(toman, isGlobal);
+    }
   }
   return { dp, dt, d };
+}
+
+function parseMoj3RowCells(rowHtml) {
+  return [...rowHtml.matchAll(/<td([^>]*)>([\s\S]*?)<\/td>/gi)].map((match) => {
+    const attrs = match[1] || "";
+    const labelMatch = attrs.match(/data-label="([^"]+)"/i);
+    return {
+      label: labelMatch ? labelMatch[1] : "",
+      text: stripMoj3HtmlTags(match[2]),
+    };
+  });
+}
+
+function parseMoj3ChangeFromCells(cells, spec) {
+  if (spec.fund || spec.intrinsic) {
+    return { dp: 0, dt: "", d: "" };
+  }
+
+  const byLabel = {};
+  for (const cell of cells) {
+    if (cell.label) byLabel[cell.label] = cell.text;
+  }
+
+  const pctRaw = byLabel["Change (%)"] || "";
+  const amountRaw = byLabel["Change Amount"] || "";
+
+  if (pctRaw || amountRaw) {
+    return parseMoj3ChangeValues(pctRaw, amountRaw, spec.global);
+  }
+
+  const fallbackPct = cells[2];
+  if (fallbackPct?.label && fallbackPct.label.toLowerCase() === "bubble") {
+    return { dp: 0, dt: "", d: "" };
+  }
+
+  const fallbackAmount = cells[3];
+  if (fallbackAmount?.label && fallbackAmount.label.toLowerCase() === "bubble") {
+    return parseMoj3ChangeValues(fallbackPct?.text || "", "", spec.global);
+  }
+
+  return parseMoj3ChangeValues(fallbackPct?.text || "", fallbackAmount?.text || "", spec.global);
+}
+
+function signedDpFromTgjuItem(item) {
+  const dp = Number(item?.dp);
+  if (!Number.isFinite(dp) || dp === 0) return 0;
+  if (item.dt === "low") return -Math.abs(dp);
+  if (item.dt === "high") return Math.abs(dp);
+  return dp;
+}
+
+function applyTgjuFundChanges(current, tgjuCurrent) {
+  if (!current || !tgjuCurrent) return current;
+
+  for (const [key, tgjuKey] of Object.entries(MOJ3_FUND_TGJU_CHANGE_KEYS)) {
+    if (!current[key]) continue;
+    const item = tgjuCurrent[tgjuKey];
+    if (!item) continue;
+
+    const dp = signedDpFromTgjuItem(item);
+    current[key] = {
+      ...current[key],
+      dp,
+      dt: dp > 0 ? "high" : dp < 0 ? "low" : "",
+      ...(item.d ? { d: String(item.d) } : {}),
+    };
+  }
+
+  return current;
 }
 
 function parseMoj3PriceHtml(html) {
@@ -108,19 +205,17 @@ function parseMoj3PriceHtml(html) {
   let match;
 
   while ((match = rowRe.exec(html)) !== null) {
-    const cells = [...match[1].matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)].map((cell) =>
-      stripMoj3HtmlTags(cell[1]),
-    );
+    const cells = parseMoj3RowCells(match[1]);
     if (!cells.length) continue;
 
-    const label = normalizeMoj3Label(cells[0]);
+    const label = normalizeMoj3Label(cells[0].text);
     const spec = labelMap.get(label);
     if (!spec || current[spec.key]) continue;
 
-    const priceToman = cells[1];
+    const priceToman = cells[1]?.text;
     if (!priceToman) continue;
 
-    const change = parseMoj3Change(cells, spec.global);
+    const change = parseMoj3ChangeFromCells(cells, spec);
     current[spec.key] = {
       p: toMoj3TgjuPriceString(priceToman, spec.global),
       dp: change.dp,
@@ -457,12 +552,49 @@ async function fetchMoj3PricesHtml() {
   }
 }
 
+async function fetchTgjuAjaxPayload() {
+  if (isAndroidStandalone() && typeof AndroidApp.httpGet === "function") {
+    const raw = await androidHttpGet(TGJU_AJAX_URL);
+    const trimmed = String(raw || "").trim();
+    if (trimmed.startsWith("{")) {
+      const payload = JSON.parse(trimmed);
+      if (payload?.__error) throw new Error(payload.message || "خطا در دریافت تغییر صندوق");
+      return payload;
+    }
+    return JSON.parse(raw);
+  }
+
+  try {
+    const response = await fetch(TGJU_AJAX_URL, { cache: "no-store" });
+    if (!response.ok) throw new Error(`TGJU HTTP ${response.status}`);
+    return response.json();
+  } catch (directError) {
+    console.warn("TGJU direct fetch failed:", directError);
+    const html = await fetchMoj3HtmlViaAllOrigins(TGJU_AJAX_URL);
+    return JSON.parse(html);
+  }
+}
+
+async function enrichMoj3FundChanges(current) {
+  if (!current || !Object.keys(MOJ3_FUND_TGJU_CHANGE_KEYS).some((key) => current[key])) {
+    return current;
+  }
+  try {
+    const tgju = await fetchTgjuAjaxPayload();
+    return applyTgjuFundChanges(current, tgju?.current);
+  } catch (error) {
+    console.warn("TGJU fund change enrich failed:", error);
+    return current;
+  }
+}
+
 async function fetchMoj3PricesPayload() {
   const html = await fetchMoj3PricesHtml();
   const current = parseMoj3PriceHtml(html);
   if (!current.geram18 && !current.price_dollar_rl) {
     throw new Error("داده‌ای دریافت نشد");
   }
+  await enrichMoj3FundChanges(current);
   return { current };
 }
 

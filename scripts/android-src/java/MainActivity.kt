@@ -736,6 +736,10 @@ class MainActivity : Activity() {
                 return path == "/" || path.startsWith("/price")
             }
 
+            if (host == "call4.tgju.org" || host.endsWith(".tgju.org")) {
+                return path.endsWith("/ajax.json")
+            }
+
             if (host == "api.allorigins.win") {
                 return true
             }
