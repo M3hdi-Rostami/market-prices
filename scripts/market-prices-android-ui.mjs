@@ -40,6 +40,13 @@ export const androidPageBody = `<div class="app market-root">
     <div id="prices-panel" class="market-prices-panel">
       <div id="pricesOfflineBanner" class="market-offline-banner hidden" role="status" aria-live="polite"></div>
       <div id="marketTrendStrip" class="market-trend-strip hidden" aria-live="polite"></div>
+      <div id="pricePullRefresh" class="price-pull-refresh" aria-hidden="true">
+        <div class="price-pull-refresh-indicator" aria-hidden="true">
+          <svg class="price-pull-refresh-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+          </svg>
+        </div>
+      </div>
 
       <div id="loading" class="state state-loading hidden">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -61,7 +68,7 @@ export const androidPageBody = `<div class="app market-root">
 
       <div id="view-currency" class="market-view">
         <div id="currencyPricesPanel" class="currency-prices-panel">
-          <div id="currencyList" class="grid price-stack hidden"></div>
+          <div id="currencyList" class="grid price-stack price-scroll-surface hidden"></div>
         </div>
       </div>
 
@@ -71,10 +78,10 @@ export const androidPageBody = `<div class="app market-root">
           <button type="button" class="gold-subtab-btn" data-gold-subtab="calc" role="tab" aria-selected="false">ماشین حساب</button>
         </div>
         <div id="goldPricesPanel" class="gold-subpanel">
-          <div id="goldList" class="grid price-stack hidden"></div>
+          <div id="goldList" class="grid price-stack price-scroll-surface hidden"></div>
         </div>
         <div id="goldCalcPanel" class="gold-subpanel hidden">
-          <div id="goldCalcList" class="grid price-stack"></div>
+          <div id="goldCalcList" class="grid price-stack price-scroll-surface"></div>
         </div>
       </div>
     </div>
@@ -1211,6 +1218,7 @@ export const androidExtraStyles = `
     }
 
     .market-prices-panel {
+      position: relative;
       flex: 1;
       min-height: 0;
       display: flex;
@@ -1220,6 +1228,55 @@ export const androidExtraStyles = `
 
     .market-prices-panel.hidden {
       display: none !important;
+    }
+
+    .price-pull-refresh {
+      position: absolute;
+      top: 0;
+      left: 50%;
+      z-index: 8;
+      display: flex;
+      justify-content: center;
+      pointer-events: none;
+      opacity: 0;
+      transform: translateX(-50%) translateY(calc(var(--price-pull-progress, 0px) - 42px));
+      transition: opacity 0.18s ease;
+    }
+
+    .price-pull-refresh.is-visible {
+      opacity: 1;
+    }
+
+    .price-pull-refresh.is-refreshing {
+      opacity: 1;
+      transform: translateX(-50%) translateY(8px);
+      transition: transform 0.18s ease, opacity 0.18s ease;
+    }
+
+    .price-pull-refresh-indicator {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      border-radius: 999px;
+      background: color-mix(in srgb, var(--accent) 14%, var(--surface));
+      border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--border));
+      color: var(--accent);
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+    }
+
+    .price-pull-refresh-icon {
+      width: 18px;
+      height: 18px;
+    }
+
+    .price-pull-refresh.is-refreshing .price-pull-refresh-icon {
+      animation: spin 0.8s linear infinite;
+    }
+
+    .market-root .grid.price-scroll-surface {
+      will-change: transform;
     }
 
     .market-view {
@@ -8431,6 +8488,150 @@ export const androidStandaloneUiPatch = `
       else if (isPriceTab(activeMarketTab)) fetchPrices();
     }
 
+    function getActivePriceScrollEl() {
+      if (!isPriceTab(activeMarketTab)) return null;
+      if (activeMarketTab === "currency") return currencyListEl;
+      if (activeMarketTab === "gold") {
+        return activeGoldSubtab === "calc" ? goldCalcListEl : goldListEl;
+      }
+      return null;
+    }
+
+    function initPricePullToRefresh() {
+      const indicatorEl = document.getElementById("pricePullRefresh");
+      const indicatorIcon = indicatorEl ? indicatorEl.querySelector(".price-pull-refresh-icon") : null;
+      const scrollSurfaces = [currencyListEl, goldListEl, goldCalcListEl].filter(Boolean);
+      const pullThreshold = 68;
+      let touchStartY = 0;
+      let pullDistance = 0;
+      let pullActive = false;
+      let pullSurface = null;
+      let pullRefreshing = false;
+
+      function isPullAllowed() {
+        if (!isPriceTab(activeMarketTab)) return false;
+        if (pullRefreshing) return false;
+        if (navRefreshBtn && navRefreshBtn.disabled) return false;
+        return true;
+      }
+
+      function setPullProgress(distance, refreshing) {
+        const progress = Math.max(0, distance);
+        if (indicatorEl) {
+          indicatorEl.style.setProperty("--price-pull-progress", String(progress) + "px");
+          indicatorEl.classList.toggle("is-visible", progress > 4 || refreshing);
+          indicatorEl.classList.toggle("is-refreshing", !!refreshing);
+          indicatorEl.setAttribute("aria-hidden", progress > 4 || refreshing ? "false" : "true");
+        }
+        if (pullSurface && !refreshing) {
+          pullSurface.style.transform = progress > 0 ? "translateY(" + progress + "px)" : "";
+        }
+        if (indicatorIcon && !refreshing) {
+          indicatorIcon.style.transform = "rotate(" + Math.min(320, progress * 4) + "deg)";
+        }
+      }
+
+      function resetPull(animate) {
+        pullActive = false;
+        pullDistance = 0;
+        const surface = pullSurface;
+        pullSurface = null;
+        if (animate) {
+          scrollSurfaces.forEach(function (el) {
+            el.style.transition = "transform 0.22s ease";
+            el.style.transform = "";
+          });
+          window.setTimeout(function () {
+            scrollSurfaces.forEach(function (el) {
+              el.style.transition = "";
+            });
+            setPullProgress(0, false);
+          }, 220);
+        } else {
+          scrollSurfaces.forEach(function (el) {
+            el.style.transition = "";
+            el.style.transform = "";
+          });
+          setPullProgress(0, false);
+        }
+        if (surface && animate) {
+          surface.style.transition = "transform 0.22s ease";
+        }
+      }
+
+      function triggerPullRefresh(surface) {
+        if (!isPullAllowed()) {
+          resetPull(true);
+          return;
+        }
+        pullRefreshing = true;
+        pullSurface = surface;
+        surface.style.transition = "transform 0.18s ease";
+        surface.style.transform = "translateY(48px)";
+        setPullProgress(48, true);
+        Promise.resolve(fetchPrices())
+          .catch(function () {})
+          .finally(function () {
+            pullRefreshing = false;
+            resetPull(true);
+          });
+      }
+
+      scrollSurfaces.forEach(function (surface) {
+        surface.addEventListener(
+          "touchstart",
+          function (event) {
+            if (!isPullAllowed()) return;
+            if (getActivePriceScrollEl() !== surface) return;
+            if (surface.scrollTop > 1) return;
+            touchStartY = event.touches[0].clientY;
+            pullActive = true;
+            pullSurface = surface;
+          },
+          { passive: true },
+        );
+
+        surface.addEventListener(
+          "touchmove",
+          function (event) {
+            if (!pullActive || pullSurface !== surface || !isPullAllowed()) return;
+            const delta = event.touches[0].clientY - touchStartY;
+            if (surface.scrollTop > 1 || delta < 0) {
+              if (pullDistance > 0) resetPull(false);
+              return;
+            }
+            pullDistance = Math.min(delta * 0.5, 88);
+            setPullProgress(pullDistance, false);
+            if (pullDistance > 0) event.preventDefault();
+          },
+          { passive: false },
+        );
+
+        surface.addEventListener(
+          "touchend",
+          function () {
+            if (!pullActive || pullSurface !== surface) return;
+            const shouldRefresh = pullDistance >= pullThreshold;
+            pullActive = false;
+            if (shouldRefresh) {
+              triggerPullRefresh(surface);
+            } else {
+              resetPull(true);
+            }
+          },
+          { passive: true },
+        );
+
+        surface.addEventListener(
+          "touchcancel",
+          function () {
+            if (pullSurface === surface) resetPull(true);
+          },
+          { passive: true },
+        );
+      });
+    }
+
     initMoreTab();
     initHousingTab();
     initMyCarEstimateTab();
@@ -8741,6 +8942,8 @@ export const androidStandaloneUiPatch = `
       });
     });
     syncMoreSubtabUi();
+
+    initPricePullToRefresh();
 
     if (navRefreshBtn) {
       navRefreshBtn.addEventListener("click", handleMarketRefresh);
