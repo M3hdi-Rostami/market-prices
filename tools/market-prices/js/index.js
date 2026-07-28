@@ -1,5 +1,4 @@
-const PRICES_API_URL =
-  "https://call4.tgju.org/ajax.json?rev=rkXd7MtZswGDnAWc9uSNu3zdUdENM51sHxeFxJBABfGe356D9V4zWBkdoIC4";
+const MOJ3_PRICES_PAGE_URL = "https://moj3.ir/price/";
 const BAMA_PRICE_API_URL = "https://bama.ir/cad/api/price/hierarchy";
 const BAMA_PAGE_SIZE = 100;
 
@@ -32,6 +31,10 @@ const GOLD_ITEMS = [
   { key: "geram18", title: "طلای ۱۸ عیار", unit: "تومان", icon: "🥇", hero: true },
   { key: "ons", title: "انس جهانی طلا", unit: "دلار", icon: "🌍", global: true },
   { key: "sekee", title: "سکه", unit: "تومان", icon: "🪙" },
+  { key: "nim", title: "نیم سکه", unit: "تومان", icon: "🪙" },
+  { key: "rob", title: "ربع سکه", unit: "تومان", icon: "🪙" },
+  { key: "silver_925", title: "نقره ۹۲۵", unit: "تومان", icon: "🥈" },
+  { key: "ime_fund_ayar", title: "صندوق عیار", unit: "تومان", icon: "📈" },
   { key: "mesghal", title: "مثقال طلا", unit: "تومان", icon: "⚖️" },
 ];
 
@@ -45,6 +48,89 @@ const LAST_PRICES_STORAGE_KEY = "market-prices-last-current";
 const LAST_PRICES_FETCHED_AT_KEY = "market-prices-last-fetched-at";
 const LAST_CARS_STORAGE_KEY = "market-prices-last-cars";
 const LAST_CARS_FETCHED_AT_KEY = "market-prices-last-cars-fetched-at";
+
+const MOJ3_LABEL_SPECS = [
+  { label: "طلای 18 عیار", key: "geram18", global: false },
+  { label: "طلای 24 عیار", key: "geram24", global: false },
+  { label: "دلار", key: "price_dollar_rl", global: false },
+  { label: "سکه طرح جدید", key: "sekee", global: false },
+  { label: "سکه طرح قدیم", key: "sekeb", global: false },
+  { label: "نیم سکه", key: "nim", global: false },
+  { label: "ربع سکه", key: "rob", global: false },
+  { label: "نقره 925", key: "silver_925", global: false },
+  { label: "انس جهانی طلا", key: "ons", global: true },
+  { label: "انس جهانی نقره", key: "silver", global: true },
+  { label: "نفت برنت (BRENT)", key: "oil_brent", global: true },
+  { label: "تتر", key: "crypto-tether-irr", global: false },
+  { label: "درهم", key: "price_aed", global: false },
+  { label: "یورو", key: "price_eur", global: false },
+  { label: "ارزش ذاتی طلای 18 عیار", key: "gold_intrinsic_18", global: false },
+  { label: "ارزش ذاتی طلای 24 عیار", key: "gold_intrinsic_24", global: false },
+  { label: "عیار", key: "ime_fund_ayar", global: false },
+];
+
+function stripMoj3HtmlTags(value) {
+  return String(value || "").replace(/<[^>]+>/g, "").trim();
+}
+
+function normalizeMoj3Label(label) {
+  return String(label || "").replace(/\s+/g, " ").trim();
+}
+
+function toMoj3TgjuPriceString(tomanValue, isGlobal) {
+  const cleaned = String(tomanValue).replace(/,/g, "").trim();
+  const num = Number(cleaned);
+  if (!Number.isFinite(num)) return "";
+  if (isGlobal) {
+    if (cleaned.includes(".")) return cleaned;
+    return String(Math.round(num));
+  }
+  return String(Math.round(num * 10)).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
+
+function parseMoj3Change(cells, isGlobal) {
+  const pctRaw = stripMoj3HtmlTags(cells[2] || "");
+  const amountRaw = stripMoj3HtmlTags(cells[3] || "");
+  const dp = Math.abs(parseFloat(pctRaw.replace(/[^\d.-]/g, "")) || 0);
+  const dt = pctRaw.includes("-") ? "low" : pctRaw.includes("+") ? "high" : "";
+  let d = "";
+  if (amountRaw) {
+    const toman = Number(amountRaw.replace(/,/g, "").replace(/[^\d.-]/g, ""));
+    if (Number.isFinite(toman)) d = toMoj3TgjuPriceString(Math.abs(toman), isGlobal);
+  }
+  return { dp, dt, d };
+}
+
+function parseMoj3PriceHtml(html) {
+  const current = {};
+  const labelMap = new Map(MOJ3_LABEL_SPECS.map((spec) => [spec.label, spec]));
+  const rowRe = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
+  let match;
+
+  while ((match = rowRe.exec(html)) !== null) {
+    const cells = [...match[1].matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)].map((cell) =>
+      stripMoj3HtmlTags(cell[1]),
+    );
+    if (!cells.length) continue;
+
+    const label = normalizeMoj3Label(cells[0]);
+    const spec = labelMap.get(label);
+    if (!spec || current[spec.key]) continue;
+
+    const priceToman = cells[1];
+    if (!priceToman) continue;
+
+    const change = parseMoj3Change(cells, spec.global);
+    current[spec.key] = {
+      p: toMoj3TgjuPriceString(priceToman, spec.global),
+      dp: change.dp,
+      dt: change.dt,
+      ...(change.d ? { d: change.d } : {}),
+    };
+  }
+
+  return current;
+}
 
 function isTehranMarketHours() {
   try {
@@ -326,6 +412,58 @@ async function fetchBamaPricePage(url) {
     console.warn("Bama proxy fetch failed:", proxyError);
     return fetchBamaPricePageDirect(url);
   }
+}
+
+async function fetchMoj3HtmlViaAllOrigins(url) {
+  const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+  const response = await fetch(proxyUrl, { cache: "no-store" });
+  if (!response.ok) throw new Error(`Proxy HTTP ${response.status}`);
+  return response.text();
+}
+
+async function fetchMoj3HtmlFromBridge(url) {
+  const raw = await androidHttpGet(url);
+  if (!raw) throw new Error("پاسخ خالی بود");
+
+  const trimmed = raw.trim();
+  if (trimmed.startsWith("{")) {
+    const payload = JSON.parse(trimmed);
+    if (payload?.__error) {
+      throw new Error(payload.message || "خطا در دریافت قیمت");
+    }
+  }
+
+  return raw;
+}
+
+async function fetchMoj3PricesHtml() {
+  const url = MOJ3_PRICES_PAGE_URL;
+
+  if (isAndroidStandalone() && typeof AndroidApp.httpGet === "function") {
+    try {
+      return await fetchMoj3HtmlFromBridge(url);
+    } catch (bridgeError) {
+      console.warn("Moj3 bridge fetch failed:", bridgeError);
+    }
+  }
+
+  try {
+    const response = await fetch(url, { cache: "no-store" });
+    if (!response.ok) throw new Error("پاسخ سرور نامعتبر بود");
+    return response.text();
+  } catch (directError) {
+    console.warn("Moj3 direct fetch failed:", directError);
+    return fetchMoj3HtmlViaAllOrigins(url);
+  }
+}
+
+async function fetchMoj3PricesPayload() {
+  const html = await fetchMoj3PricesHtml();
+  const current = parseMoj3PriceHtml(html);
+  if (!current.geram18 && !current.price_dollar_rl) {
+    throw new Error("داده‌ای دریافت نشد");
+  }
+  return { current };
 }
 
 async function fetchBamaCarPricesLive() {
@@ -2474,6 +2612,12 @@ function initMarketPrices() {
   }
 
   function calculateRealGoldPrice(current) {
+    const intrinsic = current.gold_intrinsic_18;
+    if (intrinsic?.p) {
+      const price = toDisplayValue(intrinsic.p, false);
+      if (!Number.isNaN(price)) return price;
+    }
+
     const onsData = current.ons;
     const dollarData = current.price_dollar_rl;
     if (!onsData || !dollarData) return NaN;
@@ -2518,7 +2662,7 @@ function initMarketPrices() {
       <div class="text-xl shrink-0 w-8 text-center">✨</div>
       <div class="flex-1 min-w-0 relative pb-4">
         <div class="flex items-center justify-between gap-2">
-          <h3 class="font-bold text-sm text-[var(--mp-text)]">قیمت واقعی طلای ۱۸ عیار</h3>
+          <h3 class="font-bold text-sm text-[var(--mp-text)]">ارزش ذاتی طلای ۱۸ عیار</h3>
           <span class="text-[10px] text-[var(--mp-muted)]">${onsTime || dollarTime}</span>
         </div>
         <div class="flex items-baseline gap-1 mt-0.5">
@@ -3146,34 +3290,36 @@ function initMarketPrices() {
     const card = document.createElement("div");
     card.className = "price-hero-card price-card-full";
 
-    card.innerHTML = `
-      <div class="price-hero-card-inner">
-        <div class="price-hero-card-top">
-          <div class="price-hero-card-title-wrap">
-            <span class="price-hero-card-icon">${item.icon}</span>
-            <div>
-              <h3 class="price-hero-card-title">${item.title}</h3>
-              <p class="price-hero-card-subtitle">${item.unit}</p>
-            </div>
+    const body = document.createElement("div");
+    body.className = "price-hero-card-body";
+
+    body.innerHTML = `
+      <div class="price-hero-card-top">
+        <div class="price-hero-card-title-wrap">
+          <span class="price-hero-card-icon">${item.icon}</span>
+          <div>
+            <h3 class="price-hero-card-title">${item.title}</h3>
+            <p class="price-hero-card-subtitle">${item.unit}</p>
           </div>
-          <span class="price-hero-card-time">${data.t || ""}</span>
         </div>
-        <div class="price-hero-card-value-row">
-          <span class="price-hero-card-value">${formatPrice(data.p, isGlobal)}</span>
-          <span class="price-hero-card-change ${directionClass}">
-            ${getChangeArrow(data.dt)}
-            ${
-              !Number.isNaN(changePercent) && changePercent !== 0
-                ? `${Math.abs(changePercent).toLocaleString("fa-IR")}٪`
-                : hasChange
-                  ? formatPrice(Math.abs(change), isGlobal)
-                  : "۰"
-            }
-          </span>
-        </div>
+        <span class="price-hero-card-time">${data.t || ""}</span>
+      </div>
+      <div class="price-hero-card-value-row">
+        <span class="price-hero-card-value">${formatPrice(data.p, isGlobal)}</span>
+        <span class="price-hero-card-change ${directionClass}">
+          ${getChangeArrow(data.dt)}
+          ${
+            !Number.isNaN(changePercent) && changePercent !== 0
+              ? `${Math.abs(changePercent).toLocaleString("fa-IR")}٪`
+              : hasChange
+                ? formatPrice(Math.abs(change), isGlobal)
+                : "۰"
+          }
+        </span>
       </div>
     `;
 
+    card.appendChild(body);
     return card;
   }
 
@@ -3226,10 +3372,7 @@ function initMarketPrices() {
     }
 
     try {
-      const response = await fetch(PRICES_API_URL);
-      if (!response.ok) throw new Error("پاسخ سرور نامعتبر بود");
-
-      const data = await response.json();
+      const data = await fetchMoj3PricesPayload();
       if (!data.current) throw new Error("داده‌ای دریافت نشد");
 
       renderAllPrices(data.current, { silent });

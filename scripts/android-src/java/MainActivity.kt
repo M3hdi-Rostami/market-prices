@@ -732,6 +732,14 @@ class MainActivity : Activity() {
                 return path.startsWith("/cad/api/")
             }
 
+            if (host == "moj3.ir" || host.endsWith(".moj3.ir")) {
+                return path == "/" || path.startsWith("/price")
+            }
+
+            if (host == "api.allorigins.win") {
+                return true
+            }
+
             // Divar listing API (+ any future divar CDN/API hosts used by the bridge)
             if (host == "divar.ir" || host == "api.divar.ir" || host.endsWith(".divar.ir")) {
                 return true

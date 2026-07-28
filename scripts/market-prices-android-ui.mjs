@@ -3,6 +3,8 @@ import {
   DONATE_CARD_NUMBER,
   DONATE_CARD_QR_SVG,
 } from "./donate-support-data.mjs";
+import { DOLLAR_BILL_WATERMARK_URL } from "./dollar-watermark-data.mjs";
+import { GOLD_MEDAL_WATERMARK_URL } from "./gold-watermark-data.mjs";
 import { IRAN_BANK_BY_BIN, IRAN_BANK_UNKNOWN, loadIranBankLogoDataUris } from "./iran-banks-data.mjs";
 
 const DONATE_CARD_DISPLAY = DONATE_CARD_NUMBER.replace(/(\d{4})(?=\d)/g, "$1-");
@@ -58,7 +60,9 @@ export const androidPageBody = `<div class="app market-root">
       </div>
 
       <div id="view-currency" class="market-view">
-        <div id="currencyList" class="grid price-stack hidden"></div>
+        <div id="currencyPricesPanel" class="currency-prices-panel">
+          <div id="currencyList" class="grid price-stack hidden"></div>
+        </div>
       </div>
 
       <div id="view-gold" class="market-view hidden">
@@ -1061,9 +1065,30 @@ export const androidExtraStyles = `
     }
 
     .market-root .grid.price-stack {
-      grid-template-columns: 1fr;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      grid-auto-rows: auto;
+      align-items: stretch;
       gap: 10px;
       padding: 0 0 10px;
+    }
+
+    .market-root .grid.price-stack > .price-hero-card {
+      width: 100%;
+      min-width: 0;
+    }
+
+    #view-currency {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    .currency-prices-panel {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
     }
 
     .gold-subtabs {
@@ -2085,45 +2110,237 @@ export const androidExtraStyles = `
     .price-hero-card {
       grid-column: 1 / -1;
       position: relative;
+      display: flex;
+      flex-direction: column;
       overflow: visible;
-      border-radius: 22px;
-      border: none;
+      border-radius: 20px;
+      border: 1px solid color-mix(in srgb, var(--accent) 20%, var(--border));
       min-width: 0;
       width: 100%;
       max-width: 100%;
-      height: auto;
       box-sizing: border-box;
       background: linear-gradient(
-        135deg,
-        color-mix(in srgb, var(--accent) 55%, #0f172a) 0%,
-        color-mix(in srgb, var(--accent) 88%, #1e293b) 30%,
-        color-mix(in srgb, var(--accent-glow, var(--accent)) 82%, var(--accent)) 64%,
-        color-mix(in srgb, var(--accent-glow, var(--accent)) 45%, #fff7ed) 100%
+        155deg,
+        color-mix(in srgb, var(--accent) 16%, var(--surface)) 0%,
+        var(--surface) 46%,
+        color-mix(in srgb, var(--accent) 8%, var(--surface-2)) 100%
       );
-      box-shadow: 0 14px 32px color-mix(in srgb, var(--accent) 28%, transparent);
-      padding: 16px 14px 20px;
-      color: #fff;
+      box-shadow:
+        var(--card-shadow, 0 4px 18px rgba(0, 0, 0, 0.12)),
+        inset 0 1px 0 color-mix(in srgb, var(--accent) 10%, transparent);
+      padding: 16px 14px 18px;
+      color: var(--text);
     }
 
+    .price-hero-card::before,
     .price-hero-card::after {
       content: "";
       position: absolute;
-      inset: auto -20% -40% 40%;
-      height: 140%;
-      border-radius: 50%;
-      background: radial-gradient(circle, rgba(255, 255, 255, 0.18) 0%, transparent 68%);
       pointer-events: none;
+      border-radius: inherit;
       z-index: 0;
     }
 
-    .price-hero-card-top {
+    .price-hero-card::before {
+      inset: 0;
+    }
+
+    .price-hero-card::after {
+      top: -48px;
+      right: -32px;
+      width: 168px;
+      height: 168px;
+      border-radius: 50%;
+      background: radial-gradient(
+        circle,
+        color-mix(in srgb, var(--accent) 24%, transparent) 0%,
+        transparent 68%
+      );
+    }
+
+    .price-hero-card-body {
       position: relative;
       z-index: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      width: 100%;
+      min-width: 0;
+      flex: 1 1 auto;
+    }
+
+    /* Dollar — fixed green banknote style (theme-independent) */
+    .price-hero-card--dollar {
+      --dollar-green-deep: #0a3d2c;
+      --dollar-green-mid: #145c42;
+      --dollar-green-light: #1a7a55;
+      --dollar-green-edge: #0f523a;
+      --dollar-ink: #ffffff;
+      --dollar-ink-muted: rgba(255, 255, 255, 0.76);
+      border-color: rgba(186, 230, 200, 0.34);
+      background: linear-gradient(
+        155deg,
+        var(--dollar-green-deep) 0%,
+        var(--dollar-green-mid) 36%,
+        var(--dollar-green-light) 62%,
+        var(--dollar-green-edge) 100%
+      );
+      color: var(--dollar-ink);
+      box-shadow:
+        0 10px 28px rgba(8, 60, 40, 0.38),
+        inset 0 1px 0 rgba(255, 255, 255, 0.12),
+        inset 0 0 0 1px rgba(186, 230, 200, 0.14);
+    }
+
+    .price-hero-card--dollar::before {
+      background-image: url("${DOLLAR_BILL_WATERMARK_URL}");
+      background-repeat: no-repeat;
+      background-position: center center;
+      background-size: 155% auto;
+    }
+
+    .price-hero-card--dollar::after {
+      inset: 0;
+      width: auto;
+      height: auto;
+      border-radius: inherit;
+      background: radial-gradient(
+        ellipse 120% 90% at 50% 100%,
+        rgba(210, 240, 220, 0.1) 0%,
+        transparent 62%
+      );
+    }
+
+    .price-hero-card--dollar .price-hero-card-kicker,
+    .price-hero-card--dollar .price-hero-card-subtitle,
+    .price-hero-card--dollar .price-hero-card-time,
+    .price-hero-card--dollar .price-hero-share-hint {
+      color: var(--dollar-ink-muted);
+    }
+
+    .price-hero-card--dollar .price-hero-card-title,
+    .price-hero-card--dollar .price-hero-card-value {
+      color: var(--dollar-ink);
+    }
+
+    .price-hero-card--dollar .price-hero-card-icon {
+      background: rgba(255, 255, 255, 0.16);
+      color: var(--dollar-ink);
+      box-shadow: inset 0 0 0 1px rgba(210, 240, 220, 0.28);
+    }
+
+    .price-hero-card--dollar .price-hero-card-change.is-up,
+    .price-hero-card--dollar .price-hero-card-change.is-down,
+    .price-hero-card--dollar .price-hero-card-change.is-flat {
+      color: #ffffff;
+      background: rgba(255, 255, 255, 0.18);
+    }
+
+    .price-hero-card--dollar .price-hero-chart-wrap {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(210, 240, 220, 0.22);
+    }
+
+    .price-hero-card--dollar .price-hero-spark {
+      color: #ffffff;
+    }
+
+    .price-hero-card--dollar .price-hero-spark .rate-card-spark-dot {
+      stroke: rgba(15, 52, 40, 0.35);
+    }
+
+    .price-hero-card--dollar .price-hero-share-row .market-share-icon-btn {
+      background: rgba(255, 255, 255, 0.14);
+      color: #ffffff;
+      border-color: rgba(210, 240, 220, 0.32);
+    }
+
+    /* Gold — warm tint with trophy watermark */
+    .price-hero-card--gold {
+      border-color: color-mix(in srgb, #d4a017 40%, var(--border));
+      background: linear-gradient(
+        155deg,
+        color-mix(in srgb, #f0c14b 22%, var(--surface)) 0%,
+        var(--surface) 42%,
+        color-mix(in srgb, #c9971a 10%, var(--surface-2)) 100%
+      );
+      box-shadow:
+        var(--card-shadow, 0 4px 18px rgba(0, 0, 0, 0.12)),
+        0 10px 28px color-mix(in srgb, #d4a017 12%, transparent),
+        inset 0 1px 0 color-mix(in srgb, #ffe9a8 18%, transparent);
+    }
+
+    .price-hero-card--gold::before {
+      background-image: url("${GOLD_MEDAL_WATERMARK_URL}");
+      background-repeat: no-repeat;
+      background-position: center;
+      background-size: cover;
+    }
+
+    .price-hero-card--gold::after {
+      inset: 0;
+      width: auto;
+      height: auto;
+      border-radius: inherit;
+      background: radial-gradient(
+        ellipse 120% 90% at 50% 100%,
+        color-mix(in srgb, #f0c14b 14%, transparent) 0%,
+        transparent 62%
+      );
+    }
+
+    .price-hero-card--gold .price-hero-card-kicker,
+    .price-hero-card--gold .price-hero-card-subtitle,
+    .price-hero-card--gold .price-hero-card-time,
+    .price-hero-card--gold .price-hero-share-hint {
+      color: rgba(255, 255, 255, 0.76);
+    }
+
+    .price-hero-card--gold .price-hero-card-title {
+      color: color-mix(in srgb, #f6e27a 35%, var(--text));
+    }
+
+    .price-hero-card--gold .price-hero-card-value {
+      color: var(--text);
+    }
+
+    .price-hero-card--gold .price-hero-card-icon {
+      background: color-mix(in srgb, #f0c14b 18%, var(--surface-2));
+      color: color-mix(in srgb, #f6e27a 70%, var(--text));
+      box-shadow: inset 0 0 0 1px color-mix(in srgb, #d4a017 28%, var(--border));
+    }
+
+    .price-hero-card--gold .price-hero-card-change.is-up,
+    .price-hero-card--gold .price-hero-card-change.is-down,
+    .price-hero-card--gold .price-hero-card-change.is-flat {
+      color: #ffffff;
+      background: rgba(255, 255, 255, 0.18);
+    }
+
+    .price-hero-card--gold .price-hero-chart-wrap {
+      background: color-mix(in srgb, #d4a017 10%, var(--surface-2));
+      border: 1px solid color-mix(in srgb, #d4a017 16%, var(--border));
+    }
+
+    .price-hero-card--gold .price-hero-spark {
+      color: color-mix(in srgb, #f0c14b 75%, var(--text));
+    }
+
+    .price-hero-card--gold .price-hero-spark .rate-card-spark-dot {
+      stroke: var(--surface);
+    }
+
+    .price-hero-card--gold .price-hero-share-row .market-share-icon-btn {
+      background: rgba(255, 255, 255, 0.14);
+      color: #ffffff;
+      border-color: rgba(255, 255, 255, 0.28);
+    }
+
+    .price-hero-card-top {
       display: flex;
       align-items: flex-start;
       justify-content: space-between;
       gap: 8px;
-      margin-bottom: 10px;
       min-width: 0;
       flex-shrink: 0;
     }
@@ -2136,6 +2353,11 @@ export const androidExtraStyles = `
       flex: 1 1 auto;
     }
 
+    .price-hero-card-title-wrap > div {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+
     .price-hero-card-icon {
       width: 42px;
       height: 42px;
@@ -2143,51 +2365,48 @@ export const androidExtraStyles = `
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      background: rgba(255, 255, 255, 0.16);
+      background: color-mix(in srgb, var(--accent) 14%, var(--surface-2));
+      color: var(--accent);
       font-size: 22px;
       line-height: 1;
-      backdrop-filter: blur(6px);
       flex-shrink: 0;
+      box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 22%, var(--border));
     }
 
     .price-hero-card-kicker {
       margin: 0;
       font-size: 11px;
       font-weight: 600;
-      color: rgba(255, 255, 255, 0.78);
+      color: var(--muted);
     }
 
     .price-hero-card-title {
       margin: 2px 0 0;
       font-size: 15px;
       font-weight: 700;
-      color: #fff;
+      color: var(--text);
     }
 
     .price-hero-card-subtitle {
       margin: 2px 0 0;
       font-size: 11px;
-      color: rgba(255, 255, 255, 0.72);
+      color: var(--muted);
     }
 
     .price-hero-card-time {
       font-size: 10px;
-      color: rgba(255, 255, 255, 0.7);
+      color: var(--muted);
       flex-shrink: 0;
     }
 
     .price-hero-card-value-row {
-      position: relative;
-      z-index: 1;
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 10px;
-      margin-top: 8px;
       min-width: 0;
       flex-wrap: wrap;
       flex-shrink: 0;
-      overflow: visible;
     }
 
     .price-hero-card-value {
@@ -2198,7 +2417,7 @@ export const androidExtraStyles = `
       font-weight: 800;
       line-height: 1.5;
       font-variant-numeric: tabular-nums;
-      color: #fff;
+      color: var(--text);
       letter-spacing: -0.02em;
       overflow-wrap: anywhere;
       word-break: break-word;
@@ -2215,33 +2434,32 @@ export const androidExtraStyles = `
       border-radius: 999px;
       font-variant-numeric: tabular-nums;
       white-space: nowrap;
-      color: #fff;
-      background: rgba(255, 255, 255, 0.22);
-      backdrop-filter: blur(6px);
-      -webkit-backdrop-filter: blur(6px);
     }
 
-    .price-hero-card-change.is-up,
-    .price-hero-card-change.is-down,
+    .price-hero-card-change.is-up {
+      color: #00c853;
+      background: color-mix(in srgb, #00c853 14%, transparent);
+    }
+
+    .price-hero-card-change.is-down {
+      color: #ef4444;
+      background: color-mix(in srgb, #ef4444 14%, transparent);
+    }
+
     .price-hero-card-change.is-flat {
-      color: #fff;
-      background: rgba(255, 255, 255, 0.22);
+      color: var(--muted);
+      background: color-mix(in srgb, var(--muted) 12%, transparent);
     }
 
     .price-hero-share-row {
-      position: relative;
-      z-index: 1;
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 10px;
-      margin-top: 14px;
-      padding-top: 0;
-      border-top: none;
+      padding-top: 4px;
       min-width: 0;
       flex-wrap: wrap;
       flex-shrink: 0;
-      overflow: visible;
     }
 
     .price-hero-share-hint {
@@ -2250,7 +2468,7 @@ export const androidExtraStyles = `
       min-width: 0;
       font-size: 11px;
       font-weight: 600;
-      color: rgba(255, 255, 255, 0.78);
+      color: var(--muted);
     }
 
     .price-hero-share-row .market-share-icon-btn {
@@ -2259,10 +2477,10 @@ export const androidExtraStyles = `
       height: 40px;
       padding: 0 14px;
       border-radius: 12px;
-      border: none;
-      background: color-mix(in srgb, var(--accent) 72%, #0f172a);
-      color: #fff;
-      box-shadow: 0 8px 18px color-mix(in srgb, var(--accent) 35%, transparent);
+      border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border));
+      background: color-mix(in srgb, var(--accent) 14%, var(--surface));
+      color: var(--accent);
+      box-shadow: none;
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -2369,19 +2587,20 @@ export const androidExtraStyles = `
 
     .price-hero-chart-wrap {
       position: relative;
-      z-index: 1;
-      margin-top: 10px;
       height: 46px;
+      min-height: 46px;
       border-radius: 12px;
       overflow: hidden;
-      background: rgba(255, 255, 255, 0.1);
+      background: color-mix(in srgb, var(--accent) 8%, var(--surface-2));
+      border: 1px solid color-mix(in srgb, var(--accent) 12%, var(--border));
+      flex-shrink: 0;
     }
 
     .price-hero-spark {
       display: block;
       width: 100%;
       height: 46px;
-      color: #ffffff;
+      color: var(--accent);
     }
 
     .price-hero-spark .rate-card-spark-fill {
@@ -2393,7 +2612,7 @@ export const androidExtraStyles = `
     }
 
     .price-hero-spark .rate-card-spark-dot {
-      stroke: rgba(15, 23, 42, 0.25);
+      stroke: var(--surface);
       stroke-width: 1.6;
     }
 
@@ -4239,53 +4458,121 @@ export const androidExtraStyles = `
       border-color: var(--border);
     }
 
-    /* Keep hero vivid in light mode so white text stays readable */
-    [data-theme="light"] .price-hero-card {
-      background: linear-gradient(
-        135deg,
-        color-mix(in srgb, var(--accent) 62%, #0f172a) 0%,
-        color-mix(in srgb, var(--accent) 86%, #1e293b) 30%,
-        color-mix(in srgb, var(--accent-glow, var(--accent)) 78%, var(--accent)) 64%,
-        color-mix(in srgb, var(--accent-glow, var(--accent)) 42%, #fff7ed) 100%
-      );
-      border: none;
-      color: #fff;
-      box-shadow: 0 14px 28px color-mix(in srgb, var(--accent) 24%, transparent);
+    [data-theme="light"] .price-hero-card--dollar {
+      border-color: rgba(186, 230, 200, 0.34);
+      background: linear-gradient(155deg, #0a3d2c 0%, #145c42 36%, #1a7a55 62%, #0f523a 100%);
+      color: #ffffff;
+      box-shadow:
+        0 10px 28px rgba(8, 60, 40, 0.28),
+        inset 0 1px 0 rgba(255, 255, 255, 0.12),
+        inset 0 0 0 1px rgba(186, 230, 200, 0.14);
     }
 
-    [data-theme="light"] .price-hero-card-kicker,
-    [data-theme="light"] .price-hero-card-subtitle,
-    [data-theme="light"] .price-hero-card-time,
-    [data-theme="light"] .price-hero-share-hint {
-      color: rgba(255, 255, 255, 0.8);
+    [data-theme="light"] .price-hero-card--dollar .price-hero-card-kicker,
+    [data-theme="light"] .price-hero-card--dollar .price-hero-card-subtitle,
+    [data-theme="light"] .price-hero-card--dollar .price-hero-card-time,
+    [data-theme="light"] .price-hero-card--dollar .price-hero-share-hint {
+      color: rgba(255, 255, 255, 0.76);
     }
 
-    [data-theme="light"] .price-hero-card-title,
-    [data-theme="light"] .price-hero-card-value {
-      color: #fff;
+    [data-theme="light"] .price-hero-card--dollar .price-hero-card-title,
+    [data-theme="light"] .price-hero-card--dollar .price-hero-card-value {
+      color: #ffffff;
     }
 
-    [data-theme="light"] .price-hero-card-icon {
+    [data-theme="light"] .price-hero-card--dollar .price-hero-card-icon {
+      background: rgba(255, 255, 255, 0.16);
+      color: #ffffff;
+      box-shadow: inset 0 0 0 1px rgba(210, 240, 220, 0.28);
+    }
+
+    [data-theme="light"] .price-hero-card--dollar .price-hero-card-change.is-up,
+    [data-theme="light"] .price-hero-card--dollar .price-hero-card-change.is-down,
+    [data-theme="light"] .price-hero-card--dollar .price-hero-card-change.is-flat {
+      color: #ffffff;
       background: rgba(255, 255, 255, 0.18);
     }
 
-    [data-theme="light"] .price-hero-card-change.is-up,
-    [data-theme="light"] .price-hero-card-change.is-down,
-    [data-theme="light"] .price-hero-card-change.is-flat {
-      color: #fff;
-      background: rgba(255, 255, 255, 0.22);
+    [data-theme="light"] .price-hero-card--dollar .price-hero-chart-wrap {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(210, 240, 220, 0.22);
     }
 
-    [data-theme="light"] .price-hero-chart-wrap {
-      background: color-mix(in srgb, var(--accent) 10%, #ffffff);
+    [data-theme="light"] .price-hero-card--dollar .price-hero-spark {
+      color: #ffffff;
     }
 
-    [data-theme="light"] .price-hero-spark {
-      color: var(--accent);
+    [data-theme="light"] .price-hero-card--dollar .price-hero-spark .rate-card-spark-dot {
+      stroke: rgba(15, 52, 40, 0.35);
     }
 
-    [data-theme="light"] .price-hero-spark .rate-card-spark-dot {
-      stroke: #ffffff;
+    [data-theme="light"] .price-hero-card--dollar .price-hero-share-row .market-share-icon-btn {
+      background: rgba(255, 255, 255, 0.14);
+      color: #ffffff;
+      border-color: rgba(210, 240, 220, 0.32);
+    }
+
+    [data-theme="light"] .price-hero-card--gold {
+      background: linear-gradient(
+        155deg,
+        #5c4200 0%,
+        #8a6408 36%,
+        #b8860b 62%,
+        #6b4f0a 100%
+      );
+      border-color: color-mix(in srgb, #f5d76e 34%, var(--border));
+      color: #ffffff;
+      box-shadow:
+        0 10px 28px rgba(92, 66, 0, 0.28),
+        inset 0 1px 0 rgba(255, 255, 255, 0.12),
+        inset 0 0 0 1px rgba(245, 215, 110, 0.14);
+    }
+
+    [data-theme="light"] .price-hero-card--gold .price-hero-card-kicker,
+    [data-theme="light"] .price-hero-card--gold .price-hero-card-subtitle,
+    [data-theme="light"] .price-hero-card--gold .price-hero-card-time,
+    [data-theme="light"] .price-hero-card--gold .price-hero-share-hint {
+      color: rgba(255, 255, 255, 0.76);
+    }
+
+    [data-theme="light"] .price-hero-card--gold .price-hero-card-title {
+      color: #ffffff;
+    }
+
+    [data-theme="light"] .price-hero-card--gold .price-hero-card-value {
+      color: #ffffff;
+    }
+
+    [data-theme="light"] .price-hero-card--gold .price-hero-card-icon {
+      background: rgba(255, 255, 255, 0.16);
+      color: #ffffff;
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.28);
+    }
+
+    [data-theme="light"] .price-hero-card--gold .price-hero-card-change.is-up,
+    [data-theme="light"] .price-hero-card--gold .price-hero-card-change.is-down,
+    [data-theme="light"] .price-hero-card--gold .price-hero-card-change.is-flat {
+      color: #ffffff;
+      background: rgba(255, 255, 255, 0.18);
+    }
+
+    [data-theme="light"] .price-hero-card--gold .price-hero-chart-wrap {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.22);
+    }
+
+    [data-theme="light"] .price-hero-card--gold .price-hero-spark {
+      color: #ffffff;
+    }
+
+    [data-theme="light"] .price-hero-card--gold .price-hero-spark .rate-card-spark-dot {
+      stroke: rgba(92, 66, 0, 0.35);
+    }
+
+    [data-theme="light"] .price-hero-card--gold .price-hero-share-row .market-share-icon-btn {
+      background: rgba(255, 255, 255, 0.14);
+      color: #ffffff;
+      border-color: rgba(255, 255, 255, 0.28);
     }
 
     [data-theme="light"] .is-collapsible.cars-estimate-section {
@@ -4293,11 +4580,11 @@ export const androidExtraStyles = `
       border-color: var(--border);
     }
 
-        [data-theme="light"] .price-hero-share-row .market-share-icon-btn {
-      background: color-mix(in srgb, var(--accent) 70%, #0f172a);
-      color: #fff;
-      border: none;
-      box-shadow: 0 8px 18px color-mix(in srgb, var(--accent) 28%, transparent);
+    [data-theme="light"] .price-hero-share-row .market-share-icon-btn {
+      background: color-mix(in srgb, var(--accent) 12%, #ffffff);
+      color: var(--accent);
+      border-color: color-mix(in srgb, var(--accent) 28%, var(--border));
+      box-shadow: none;
     }
 
     [data-theme="light"] .gold-subtabs,
@@ -7454,33 +7741,85 @@ export const androidStandaloneUiPatch = `
       }
       const directionClass =
         direction === "high" ? "is-up" : direction === "low" ? "is-down" : "is-flat";
-      const el = document.createElement("div");
-      el.className = "price-hero-card";
-      el.innerHTML =
-        '<div class="price-hero-card-top"><div class="price-hero-card-title-wrap"><span class="price-hero-card-icon">' +
-        item.icon +
-        '</span><div><p class="price-hero-card-kicker">قیمت لحظه‌ای</p><h3 class="price-hero-card-title">' +
-        item.title +
-        '</h3><p class="price-hero-card-subtitle">' +
-        item.unit +
-        '</p></div></div><span class="price-hero-card-time">' +
-        (data.t || "") +
-        '</span></div><div class="price-hero-card-value-row"><span class="price-hero-card-value">' +
-        formatPrice(data.p, isGlobal) +
-        '</span><span class="price-hero-card-change ' +
-        directionClass +
-        '">' +
-        getChangeArrow(direction) +
-        " " +
-        (!Number.isNaN(changePercent) && changePercent !== 0
+      const themeClass =
+        item.key === "price_dollar_rl" || item.key === CURRENCY_HERO_KEY
+          ? " price-hero-card--dollar"
+          : item.key === "geram18" || item.key === GOLD_HERO_KEY
+            ? " price-hero-card--gold"
+            : "";
+      const changeLabel =
+        !Number.isNaN(changePercent) && changePercent !== 0
           ? Math.abs(changePercent).toLocaleString("fa-IR") + "٪"
           : hasChange
             ? formatPrice(Math.abs(change), isGlobal)
-            : "۰") +
-        '</span></div><div class="price-hero-chart-wrap">' +
-        buildRateSparkline(direction, item.key + String(data.p || ""), { wide: true, showMarker: true }) +
-        "</div>" +
-        buildHeroShareActionHtml();
+            : "۰";
+
+      const el = document.createElement("div");
+      el.className = "price-hero-card" + themeClass;
+
+      const body = document.createElement("div");
+      body.className = "price-hero-card-body";
+
+      const top = document.createElement("div");
+      top.className = "price-hero-card-top";
+
+      const titleWrap = document.createElement("div");
+      titleWrap.className = "price-hero-card-title-wrap";
+
+      const icon = document.createElement("span");
+      icon.className = "price-hero-card-icon";
+      icon.textContent = item.icon;
+
+      const meta = document.createElement("div");
+      const kicker = document.createElement("p");
+      kicker.className = "price-hero-card-kicker";
+      kicker.textContent = "قیمت لحظه‌ای";
+      const title = document.createElement("h3");
+      title.className = "price-hero-card-title";
+      title.textContent = item.title;
+      const subtitle = document.createElement("p");
+      subtitle.className = "price-hero-card-subtitle";
+      subtitle.textContent = item.unit;
+      meta.appendChild(kicker);
+      meta.appendChild(title);
+      meta.appendChild(subtitle);
+
+      titleWrap.appendChild(icon);
+      titleWrap.appendChild(meta);
+
+      const time = document.createElement("span");
+      time.className = "price-hero-card-time";
+      time.textContent = data.t || "";
+
+      top.appendChild(titleWrap);
+      top.appendChild(time);
+
+      const valueRow = document.createElement("div");
+      valueRow.className = "price-hero-card-value-row";
+
+      const value = document.createElement("span");
+      value.className = "price-hero-card-value";
+      value.textContent = formatPrice(data.p, isGlobal);
+
+      const changeEl = document.createElement("span");
+      changeEl.className = "price-hero-card-change " + directionClass;
+      changeEl.textContent = getChangeArrow(direction) + " " + changeLabel;
+
+      valueRow.appendChild(value);
+      valueRow.appendChild(changeEl);
+
+      const chartWrap = document.createElement("div");
+      chartWrap.className = "price-hero-chart-wrap";
+      chartWrap.innerHTML = buildRateSparkline(direction, item.key + String(data.p || ""), {
+        wide: true,
+        showMarker: true,
+      });
+
+      body.appendChild(top);
+      body.appendChild(valueRow);
+      body.appendChild(chartWrap);
+      body.insertAdjacentHTML("beforeend", buildHeroShareActionHtml());
+      el.appendChild(body);
       return el;
     }
 
@@ -8560,6 +8899,36 @@ export function patchStandaloneUiScript(baseScript) {
   );
 
   // Update fetchPrices hasVisibleList check for dual lists
+  script = script.replace(
+    `const response = await fetch(PRICES_API_URL);
+        if (!response.ok) throw new Error("پاسخ سرور نامعتبر بود");
+        const data = await response.json();
+        if (!data.current) throw new Error("داده‌ای دریافت نشد");`,
+    `const data = await fetchMoj3PricesPayload();
+        if (!data.current) throw new Error("داده‌ای دریافت نشد");
+        cacheMarketPrices(data.current);
+        hidePricesOfflineBanner();`,
+  );
+
+  script = script.replace(
+    `      } catch (error) {
+        console.error("Prices fetch error:", error);
+        if (silent) return;
+        showError("خطا در دریافت قیمت‌ها. اتصال اینترنت را بررسی کنید.");
+      }`,
+    `      } catch (error) {
+        console.error("Prices fetch error:", error);
+        if (silent) return;
+        const cached = loadCachedMarketPrices();
+        if (cached?.current) {
+          renderPrices(cached.current, { silent: true, offline: true });
+          showPricesOfflineBanner(cached.fetchedAt);
+          return;
+        }
+        showError("خطا در دریافت قیمت‌ها. اتصال اینترنت را بررسی کنید.");
+      }`,
+  );
+
   script = script.replace(
     'const hasVisibleList = !listEl.classList.contains("hidden") && listEl.childElementCount > 0;',
     `const hasVisibleList =

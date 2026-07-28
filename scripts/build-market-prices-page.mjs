@@ -288,6 +288,8 @@ const OBFUSCATOR_OPTIONS = {
     "^CURRENCY_HERO_KEY$",
     "^GOLD_HERO_KEY$",
     "^PRICES_API_URL$",
+    "^MOJ3_PRICES_PAGE_URL$",
+    "^fetchMoj3PricesPayload$",
     "^APP_UPDATE_CONFIG$",
     "^AndroidApp$",
     "^httpGet$",
