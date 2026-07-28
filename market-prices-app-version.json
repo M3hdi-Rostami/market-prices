@@ -1,8 +1,9 @@
 {
-  "version": "1.0.58",
-  "builtAt": "2026-07-28T12:59:15.704Z",
-  "apkVersionCode": 59,
-  "apkVersionName": "1.0.58",
+  "version": "1.0.59",
+  "builtAt": "2026-07-28T13:01:58.536Z",
+  "apkVersionCode": 60,
+  "apkVersionName": "1.0.59",
   "apkUrl": "https://raw.githubusercontent.com/M3hdi-Rostami/market-prices/main/market-prices.apk",
-  "apkSha256": "735458226dfe0f5a5e49d80c0a299851d8e01679fb90f32e3eb3fb3524575c16"
+  "apkSha256": "f5d74f97959bf5db3199d9e80ae05b2acd477f1bfd89a2cc44a2b29271b0dd7b",
+  "apkSizeBytes": 2218621
 }
