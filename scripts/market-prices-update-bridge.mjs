@@ -1,6 +1,7 @@
-export const androidUpdateBridgeScript = `(function () {
+export const androidHttpBridgeScript = `(function () {
     // Non-obfuscated Android HTTP bridge (must stay outside the obfuscated main script
     // so Kotlin can reliably call window.__onAndroidHttpGet).
+    // Must run before the main script: it fetches prices during its first execution.
     window.__androidHttpPending = window.__androidHttpPending || {};
 
     function decodeAndroidHttpBody(payload) {
@@ -134,7 +135,9 @@ export const androidUpdateBridgeScript = `(function () {
         }
       });
     };
+  })();`;
 
+export const androidUpdateBridgeScript = `(function () {
     const UPDATE_CHECK_INTERVAL_MS = 5 * 60 * 1000;
     let audioCtx = null;
     const UPDATE_SUCCESS_SOUND_KEY = "market-prices-play-update-success";

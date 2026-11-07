@@ -107,7 +107,7 @@ function inspectApkSignature(apkPath) {
     return null;
   }
 
-  const result = spawnSync(apksigner, ["verify", "--print-certs", apkPath], {
+  const result = spawnSync(apksigner, ["verify", "-v", "--print-certs", apkPath], {
     env: {
       ...process.env,
       PATH: `${path.join(javaHome, "bin")}${path.delimiter}${process.env.PATH ?? ""}`,
@@ -127,6 +127,14 @@ function inspectApkSignature(apkPath) {
   const mode = isDebug ? "debug (development only)" : "release";
   console.log(`  signing: ${mode}`);
   if (certLine) console.log(`  ${certLine.trim()}`);
+
+  const schemes = ["v1", "v2", "v3"].filter((scheme) =>
+    new RegExp(`Verified using ${scheme} scheme[^:]*: true`).test(output),
+  );
+  console.log(`  signature schemes: ${schemes.join(", ") || "none"}`);
+  if (!schemes.includes("v2") || !schemes.includes("v3")) {
+    console.log("  Warning: APK is missing v2/v3 signatures — installers and scanners may distrust it.");
+  }
 
   if (isDebug) {
     console.log("");

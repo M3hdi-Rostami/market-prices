@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import JavaScriptObfuscator from "javascript-obfuscator";
-import { androidUpdateBridgeScript, pageStyles as basePageStyles, standaloneUiScript as baseStandaloneUiScript } from "./market-prices-page-shell.mjs";
+import { androidHttpBridgeScript, androidUpdateBridgeScript, pageStyles as basePageStyles, standaloneUiScript as baseStandaloneUiScript } from "./market-prices-page-shell.mjs";
 import { updateSheetExtraStyles } from "./market-prices-update-bridge.mjs";
 import {
   androidExtraStyles,
@@ -464,6 +464,9 @@ ${pageStyles}
 </head>
 <body>
 ${pageBody}
+  <script>
+${androidHttpBridgeScript}
+  </script>
   <script>
 ${scriptBody}
   </script>

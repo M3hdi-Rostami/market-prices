@@ -39,6 +39,7 @@ const COIN_GOLD_RATIO_BUY_COIN = 9.5;
 const COIN_GOLD_RATIO_BUY_MELTED = 11.5;
 const COIN_GOLD_RATIO_NEAR_THRESHOLD = 0.5;
 const GOLD_WAGE_STORAGE_KEY = "market-prices-gold-wage";
+const GOLD_SELLER_STORAGE_KEY = "market-prices-gold-seller";
 const PRICE_ALERTS_STORAGE_KEY = "market-prices-alerts";
 const PREVIOUS_PRICES_STORAGE_KEY = "market-prices-previous";
 const DEFAULT_ALERT_THRESHOLD = 1;
@@ -643,6 +644,8 @@ function normalizeEstjtDigits(raw) {
     s = s.split(persian[i]).join(String(i));
     s = s.split(arabic[i]).join(String(i));
   }
+  // "۱۲۹۳۵٫۸۳" is a decimal; "۲۵٫۸۶۰٫۰۰۰" uses ٫ as a thousands separator.
+  s = s.replace(/٫(\d{1,2})$/, ".$1");
   s = s
     .replace(/٫/g, "")
     .replace(/,/g, "")
@@ -715,11 +718,15 @@ function estjtRowToTgjuEntry(row, key) {
   const { direction, changeToman, percent } = estjtChangeMeta(row.changeHtml);
 
   if (isGlobal) {
-    const pct = Number.isFinite(percent) ? percent : 0;
+    let pct = Number.isFinite(percent) ? percent : 0;
+    if (!Number.isFinite(percent) && changeToman) {
+      pct = (changeToman / priceNum) * 100;
+    }
     const signedPct =
       direction === "desc" ? -Math.abs(pct) : direction === "asc" ? Math.abs(pct) : pct;
+    const signedChange = direction === "desc" ? -Math.abs(changeToman) : Math.abs(changeToman);
     return isignalQuoteToTgjuEntry(
-      { close: priceNum, percentChange: signedPct, change: signedPct },
+      { close: priceNum, percentChange: signedPct, change: changeToman ? signedChange : signedPct },
       true,
     );
   }
@@ -3330,6 +3337,43 @@ function initMarketPrices() {
     localStorage.setItem(GOLD_WAGE_STORAGE_KEY, JSON.stringify(settings));
   }
 
+  function calculateGoldSellerBreakdown(totalPrice, pricePerGram, grams) {
+    if (
+      Number.isNaN(totalPrice) ||
+      totalPrice <= 0 ||
+      Number.isNaN(pricePerGram) ||
+      pricePerGram <= 0 ||
+      Number.isNaN(grams) ||
+      grams <= 0
+    ) {
+      return null;
+    }
+
+    const goldBase = pricePerGram * grams;
+    const wageAmount = totalPrice - goldBase;
+    const wagePercent = goldBase > 0 ? (wageAmount / goldBase) * 100 : NaN;
+
+    return { grams, goldBase, wageAmount, wagePercent };
+  }
+
+  function getDefaultGoldSellerSettings() {
+    return { totalPrice: "", grams: "1", weightUnit: "gram", expanded: false };
+  }
+
+  function getGoldSellerSettings() {
+    try {
+      const raw = localStorage.getItem(GOLD_SELLER_STORAGE_KEY);
+      if (!raw) return getDefaultGoldSellerSettings();
+      return { ...getDefaultGoldSellerSettings(), ...JSON.parse(raw) };
+    } catch {
+      return getDefaultGoldSellerSettings();
+    }
+  }
+
+  function saveGoldSellerSettings(settings) {
+    localStorage.setItem(GOLD_SELLER_STORAGE_KEY, JSON.stringify(settings));
+  }
+
   function calculateGoldWageBreakdown(pricePerGram, grams, wageMode, wageValue) {
     if (Number.isNaN(pricePerGram) || Number.isNaN(grams) || grams <= 0) return null;
 
@@ -3753,6 +3797,208 @@ function initMarketPrices() {
     updateWeightUnitButtons();
     updateModeButtons();
     updateGoldWageDisplay();
+    setExpanded(isExpanded);
+
+    return card;
+  }
+
+  function createGoldSellerCard(current) {
+    const settings = getGoldSellerSettings();
+    const pricePerGram = toDisplayValue(current.geram18?.p, false);
+    const goldTime = current.geram18?.t || "";
+    let isExpanded = settings.expanded === true;
+
+    const card = document.createElement("div");
+    card.className =
+      "price-card-full flex flex-col items-stretch self-start h-auto bg-gradient-to-l from-[var(--mp-surface-2)] to-[var(--mp-surface)] rounded-xl p-2.5 border border-[var(--mp-border)] min-w-0";
+
+    card.innerHTML = `
+      <button
+        type="button"
+        id="gold-seller-toggle"
+        class="w-full flex items-center justify-between gap-2 text-right"
+      >
+        <div class="flex items-center gap-2 min-w-0">
+          <span class="text-xl shrink-0">🏪</span>
+          <h3 class="font-bold text-sm text-[var(--mp-text)]">محاسبه طلا فروش ها</h3>
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+          <span class="text-[10px] text-[var(--mp-muted)]">${goldTime}</span>
+          <span id="gold-seller-chevron" class="text-[var(--mp-muted)] text-xs transition-transform duration-200">▼</span>
+        </div>
+      </button>
+
+      <div id="gold-seller-body" class="hidden mt-3 space-y-3 min-w-0">
+        <div class="grid grid-cols-[4.75rem_minmax(0,1fr)] gap-2 items-center">
+          <label class="shrink-0 text-[11px] text-[var(--mp-muted)] leading-tight" for="gold-seller-price">قیمت کل طلا</label>
+          <input
+            id="gold-seller-price"
+            type="text"
+            inputmode="numeric"
+            dir="ltr"
+            value="${settings.totalPrice ? formatWageAmountInput(settings.totalPrice) : ""}"
+            placeholder="۵,۵۰۰,۰۰۰"
+            class="min-w-0 flex-1 rounded-lg border border-[var(--mp-border-2)] bg-[var(--mp-bg)] px-2 py-2 text-sm text-[var(--mp-text)] placeholder:text-gray-500 focus:outline-none focus:border-[var(--mp-accent)] tabular-nums"
+          />
+        </div>
+
+        <div class="grid grid-cols-[4.75rem_minmax(0,1fr)] gap-2 items-center">
+          <label class="shrink-0 text-[11px] text-[var(--mp-muted)] leading-tight" for="gold-seller-grams">وزن طلا</label>
+          <div class="flex min-w-0 items-stretch gap-1.5">
+            <div class="flex shrink-0 self-stretch overflow-hidden rounded-lg border border-[var(--mp-border-2)] divide-x divide-x-reverse divide-[var(--mp-border-2)]" role="group" aria-label="واحد وزن">
+              <button type="button" data-weight-unit="gram"
+                class="gold-seller-weight-unit-btn flex h-full items-center justify-center px-2 text-[10px] font-semibold transition-colors whitespace-nowrap">
+                گرم
+              </button>
+              <button type="button" data-weight-unit="sot"
+                class="gold-seller-weight-unit-btn flex h-full items-center justify-center px-2 text-[10px] font-semibold transition-colors whitespace-nowrap">
+                صوت
+              </button>
+            </div>
+            <input
+              id="gold-seller-grams"
+              type="text"
+              inputmode="decimal"
+              dir="ltr"
+              value="${settings.grams}"
+              placeholder="1.600"
+              title="مثال: 1.600 یعنی ۱ گرم و ۶۰۰ سوت"
+              class="min-w-0 flex-1 rounded-lg border border-[var(--mp-border-2)] bg-[var(--mp-bg)] px-2 py-2 text-sm text-[var(--mp-text)] placeholder:text-gray-500 focus:outline-none focus:border-[var(--mp-accent)] tabular-nums"
+            />
+          </div>
+        </div>
+
+        <div class="rounded-lg border border-[var(--mp-border-2)] bg-[var(--mp-bg)]/60 p-3 space-y-2 text-xs min-w-0">
+          <div class="flex items-center justify-between gap-2 min-w-0">
+            <span class="text-[var(--mp-muted)] shrink-0">هر گرم (لحظه‌ای)</span>
+            <span id="gold-seller-price-per-gram" class="text-[var(--mp-text)] tabular-nums text-left min-w-0 truncate">—</span>
+          </div>
+          <div class="flex items-center justify-between gap-2 min-w-0">
+            <span class="text-[var(--mp-muted)] shrink-0">مقدار گرم طلا</span>
+            <span id="gold-seller-weight" class="text-[var(--mp-text)] tabular-nums text-left min-w-0 truncate">—</span>
+          </div>
+          <div class="flex items-center justify-between gap-2 min-w-0">
+            <span class="text-[var(--mp-muted)] shrink-0">خام</span>
+            <span id="gold-seller-base" class="text-[var(--mp-text)] tabular-nums text-left min-w-0 truncate">—</span>
+          </div>
+          <div class="flex items-center justify-between gap-2 min-w-0">
+            <span class="text-[var(--mp-muted)] shrink-0">درصد اجرت</span>
+            <span id="gold-seller-wage-percent" class="text-[var(--mp-warn)] tabular-nums text-left min-w-0 truncate">—</span>
+          </div>
+          <div class="flex items-center justify-between gap-2 min-w-0">
+            <span class="text-[var(--mp-muted)] shrink-0">مبلغ اجرت</span>
+            <span id="gold-seller-wage-amount" class="text-[var(--mp-warn)] tabular-nums text-left min-w-0 truncate">—</span>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const toggleBtn = card.querySelector("#gold-seller-toggle");
+    const bodyEl = card.querySelector("#gold-seller-body");
+    const chevronEl = card.querySelector("#gold-seller-chevron");
+    const priceInput = card.querySelector("#gold-seller-price");
+    const gramsInput = card.querySelector("#gold-seller-grams");
+    const weightUnitButtons = card.querySelectorAll(".gold-seller-weight-unit-btn");
+    let weightUnit = settings.weightUnit === "sot" ? "sot" : "gram";
+
+    function getCurrentSettings() {
+      return {
+        totalPrice: priceInput.value,
+        grams: gramsInput.value,
+        weightUnit,
+        expanded: isExpanded,
+      };
+    }
+
+    function setExpanded(expanded) {
+      isExpanded = expanded;
+      bodyEl.classList.toggle("hidden", !expanded);
+      chevronEl.classList.toggle("rotate-180", expanded);
+      saveGoldSellerSettings(getCurrentSettings());
+    }
+
+    function updateWeightUnitButtons() {
+      weightUnitButtons.forEach((button) => {
+        const active = button.dataset.weightUnit === weightUnit;
+        button.className = `gold-seller-weight-unit-btn flex h-full items-center justify-center px-2 text-[10px] font-semibold transition-colors whitespace-nowrap ${
+          active
+            ? "bg-[var(--mp-accent)]/15 text-[var(--mp-accent)]"
+            : "bg-[var(--mp-bg)] text-[var(--mp-muted)] hover:text-[var(--mp-text)]"
+        }`;
+      });
+      if (weightUnit === "sot") {
+        gramsInput.placeholder = "۹۰۰";
+        gramsInput.title = "مثلاً ۹ یعنی ۹ صوت";
+        gramsInput.inputMode = "numeric";
+      } else {
+        gramsInput.placeholder = "1.600";
+        gramsInput.title = "مثال: 1.600 یعنی ۱ گرم و ۶۰۰ سوت";
+        gramsInput.inputMode = "decimal";
+      }
+    }
+
+    function onPriceInput() {
+      priceInput.value = formatWageAmountInput(priceInput.value);
+      persistAndUpdate();
+    }
+
+    function updateGoldSellerDisplay() {
+      const totalPrice = parseLocalizedNumber(priceInput.value);
+      const grams = parseGoldWeightInput(gramsInput.value, weightUnit);
+      const hasPrice = priceInput.value.trim() !== "" && !Number.isNaN(totalPrice) && totalPrice > 0;
+      const hasGrams = gramsInput.value.trim() !== "" && !Number.isNaN(grams) && grams > 0;
+      const breakdown =
+        hasPrice && hasGrams ? calculateGoldSellerBreakdown(totalPrice, pricePerGram, grams) : null;
+      const goldBase =
+        hasGrams && !Number.isNaN(pricePerGram) ? pricePerGram * grams : NaN;
+
+      card.querySelector("#gold-seller-price-per-gram").textContent = `${formatTomans(pricePerGram)} تومان`;
+      card.querySelector("#gold-seller-weight").textContent = hasGrams ? formatGoldWeight(grams) : "—";
+      card.querySelector("#gold-seller-base").textContent = Number.isNaN(goldBase)
+        ? "—"
+        : `${formatTomans(goldBase)} تومان`;
+      card.querySelector("#gold-seller-wage-percent").textContent =
+        breakdown && !Number.isNaN(breakdown.wagePercent)
+          ? `${breakdown.wagePercent.toLocaleString("fa-IR", { maximumFractionDigits: 2 })}٪`
+          : "—";
+      card.querySelector("#gold-seller-wage-amount").textContent =
+        breakdown && !Number.isNaN(breakdown.wageAmount)
+          ? `${formatTomans(breakdown.wageAmount)} تومان`
+          : "—";
+    }
+
+    function persistAndUpdate() {
+      saveGoldSellerSettings(getCurrentSettings());
+      updateGoldSellerDisplay();
+    }
+
+    toggleBtn.addEventListener("click", () => {
+      setExpanded(!isExpanded);
+    });
+
+    priceInput.addEventListener("input", onPriceInput);
+    gramsInput.addEventListener("input", persistAndUpdate);
+
+    weightUnitButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        const nextUnit = button.dataset.weightUnit === "sot" ? "sot" : "gram";
+        if (nextUnit === weightUnit) {
+          gramsInput.focus();
+          return;
+        }
+        const currentGrams = parseGoldWeightInput(gramsInput.value, weightUnit);
+        weightUnit = nextUnit;
+        gramsInput.value = Number.isNaN(currentGrams)
+          ? ""
+          : formatWeightInputFromGrams(currentGrams, weightUnit);
+        updateWeightUnitButtons();
+        persistAndUpdate();
+        gramsInput.focus();
+      });
+    });
+
+    updateWeightUnitButtons();
+    updateGoldSellerDisplay();
     setExpanded(isExpanded);
 
     return card;

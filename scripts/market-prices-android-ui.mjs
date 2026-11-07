@@ -8001,6 +8001,7 @@ export const androidStandaloneUiPatch = `
       if (goldCalcListEl) {
         goldCalcListEl.appendChild(createCoinGoldCard(current));
         goldCalcListEl.appendChild(createGoldWageCard(current));
+        goldCalcListEl.appendChild(createGoldSellerCard(current));
       }
       updateMarketTrendStrip(current);
       syncGoldSubtabUi();
@@ -9041,7 +9042,9 @@ export const androidStandaloneUiPatch = `
     window.__resetMarketTabToGold = resetMarketTabToGold;
 
     document.addEventListener("visibilitychange", function () {
-      if (document.visibilityState === "visible") resetMarketTabToGold();
+      if (document.visibilityState !== "visible") return;
+      resetMarketTabToGold();
+      if (pricesLoaded) fetchPrices({ silent: true });
     });
     window.addEventListener("pageshow", function (event) {
       if (event.persisted) resetMarketTabToGold();
