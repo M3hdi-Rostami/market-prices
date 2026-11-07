@@ -83,7 +83,8 @@ class MainActivity : Activity() {
 
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                 val url = request?.url?.toString() ?: return false
-                if (shouldOpenExternally(url)) {
+                // Only intercept main-frame navigations; keep iframe embeds (e.g. Khodro45) in-place.
+                if (request.isForMainFrame && shouldOpenExternally(url)) {
                     startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
                     return true
                 }
@@ -123,7 +124,13 @@ class MainActivity : Activity() {
         return host == "t.me" ||
             host.endsWith(".t.me") ||
             host == "divar.ir" ||
-            host.endsWith(".divar.ir")
+            host.endsWith(".divar.ir") ||
+            host == "khodro45.com" ||
+            host.endsWith(".khodro45.com")
+    }
+
+    private fun canOpenViaBridge(url: String): Boolean {
+        return shouldOpenExternally(url)
     }
 
     private fun scheduleNativeUpdateCheckIfNeeded() {
@@ -185,6 +192,12 @@ class MainActivity : Activity() {
     override fun onResume() {
         super.onResume()
         activityRef = WeakReference(this)
+        if (::webView.isInitialized) {
+            webView.evaluateJavascript(
+                "(function(){try{if(window.__resetMarketTabToGold)window.__resetMarketTabToGold();}catch(e){}})();",
+                null,
+            )
+        }
         if (pendingInstallPermission && canInstallPackages()) {
             pendingInstallPermission = false
             val owner = pendingUpdateRepoOwner
@@ -537,7 +550,7 @@ class MainActivity : Activity() {
         fun openUrl(url: String) {
             runOnUiThread {
                 try {
-                    if (!shouldOpenExternally(url)) return@runOnUiThread
+                    if (!canOpenViaBridge(url)) return@runOnUiThread
                     startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
                 } catch (_: Exception) {
                     // Ignore invalid / blocked URLs from the WebView bridge.
@@ -732,8 +745,20 @@ class MainActivity : Activity() {
                 return path.startsWith("/cad/api/")
             }
 
-            if (host == "moj3.ir" || host.endsWith(".moj3.ir")) {
-                return path == "/" || path.startsWith("/price")
+            if (host == "khodro45.com" || host.endsWith(".khodro45.com")) {
+                return path.startsWith("/api/")
+            }
+
+            if (host == "signalpardazgroup.com" || host.endsWith(".signalpardazgroup.com")) {
+                return path.startsWith("/service/signalData")
+            }
+
+            if (host == "isignal.ir" || host.endsWith(".isignal.ir")) {
+                return path.endsWith("/_payload.json") || path.startsWith("/gold-currency/")
+            }
+
+            if (host == "estjt.ir" || host == "www.estjt.ir" || host.endsWith(".estjt.ir")) {
+                return path.startsWith("/wp-admin/admin-ajax.php") || path == "/" || path.startsWith("/price")
             }
 
             if (host == "call4.tgju.org" || host.endsWith(".tgju.org")) {
@@ -882,6 +907,14 @@ class MainActivity : Activity() {
             val accept = "application/json"
             val referer = when {
                 host == "divar.ir" || host == "api.divar.ir" || host.endsWith(".divar.ir") -> "https://divar.ir/"
+                host == "khodro45.com" || host.endsWith(".khodro45.com") ->
+                    "https://khodro45.com/carprice/wizard/"
+                host == "signalpardazgroup.com" || host.endsWith(".signalpardazgroup.com") ->
+                    "https://isignal.ir/gold-currency/"
+                host == "isignal.ir" || host.endsWith(".isignal.ir") ->
+                    "https://isignal.ir/gold-currency/"
+                host == "estjt.ir" || host == "www.estjt.ir" || host.endsWith(".estjt.ir") ->
+                    "https://www.estjt.ir/"
                 host == "bama.ir" || host.endsWith(".bama.ir") -> {
                     if (url.contains("/PriceCalculator/") || url.contains("/calculator")) {
                         "https://bama.ir/calculator"
@@ -906,8 +939,14 @@ class MainActivity : Activity() {
                 if (host == "bama.ir" || host.endsWith(".bama.ir")) {
                     setRequestProperty("Origin", "https://bama.ir")
                 }
+                if (host == "khodro45.com" || host.endsWith(".khodro45.com")) {
+                    setRequestProperty("Origin", "https://khodro45.com")
+                }
                 if (host == "divar.ir" || host == "api.divar.ir" || host.endsWith(".divar.ir")) {
                     setRequestProperty("Origin", "https://divar.ir")
+                }
+                if (host == "signalpardazgroup.com" || host.endsWith(".signalpardazgroup.com")) {
+                    setRequestProperty("Origin", "https://isignal.ir")
                 }
                 for ((key, value) in extraHeaders) {
                     if (key.isNotBlank() && value.isNotBlank()) {

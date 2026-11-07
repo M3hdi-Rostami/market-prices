@@ -1,4 +1,34 @@
-const MOJ3_PRICES_PAGE_URL = "https://moj3.ir/price/";
+const ESTJT_AJAX_URL = "https://www.estjt.ir/wp-admin/admin-ajax.php";
+const ESTJT_SITE_ORIGIN = "https://www.estjt.ir";
+const ESTJT_PRICE_POST_BODY = "action=new_price";
+
+const ISIGNAL_SIGNAL_DATA_URL = "https://signalpardazgroup.com/service/signalData@4.0.0/list";
+const ISIGNAL_SITE_ORIGIN = "https://isignal.ir";
+/** Currency/crypto/oil — gold & coin come from estjt.ir */
+const ISIGNAL_SIGNAL_DATA_FILTERS = [
+  { filterName: "freeCurrency", market: "currency" },
+  { filterName: "oil", market: "oil" },
+  {
+    filterName: "home_site_pwa",
+    processFn: [{ name: "normalizeForSite" }, { name: "sortMarket" }],
+  },
+];
+
+const ESTJT_ROW_NAME_TO_KEY = {
+  "انس طلا": "ons",
+  "مظنه تهران": "mesghal",
+  "طلا ۱۸ عیار": "geram18",
+  "طلای ۱۸ عیار": "geram18",
+  "طلا ۲۴ عیار": "geram24",
+  "طلای ۲۴ عیار": "geram24",
+  "سکه طرح جدید": "sekee",
+  "سکه طرح قدیم": "sekeb",
+  "نیم سکه": "nim",
+  "ربع سکه": "rob",
+  "سکه گرمی": "seke_gerami",
+};
+
+const ISIGNAL_SIGNAL_DATA_POST_BODY = JSON.stringify(ISIGNAL_SIGNAL_DATA_FILTERS);
 const TGJU_AJAX_URL = "https://call4.tgju.org/ajax.json";
 const BAMA_PRICE_API_URL = "https://bama.ir/cad/api/price/hierarchy";
 const BAMA_PAGE_SIZE = 100;
@@ -28,21 +58,23 @@ const CURRENCY_ITEMS = [
   { key: "price_try", title: "لیر", unit: "تومان", icon: "🇹🇷" },
 ];
 
+/** Same rows as estjt.ir homepage gold + coin tables (اتحادیه طلا تهران). Hero (۱۸ عیار) always first in UI. */
 const GOLD_ITEMS = [
-  { key: "geram18", title: "طلای ۱۸ عیار", unit: "تومان", icon: "🥇", hero: true },
-  { key: "ons", title: "انس جهانی طلا", unit: "دلار", icon: "🌍", global: true },
-  { key: "sekee", title: "سکه", unit: "تومان", icon: "🪙" },
+  { key: "geram18", title: "طلا ۱۸ عیار", unit: "تومان", icon: "🥇", hero: true },
+  { key: "ons", title: "انس طلا", unit: "دلار", icon: "🌍", global: true },
+  { key: "mesghal", title: "مظنه تهران", unit: "تومان", icon: "⚖️" },
+  { key: "geram24", title: "طلای ۲۴ عیار", unit: "تومان", icon: "🥇" },
+  { key: "sekee", title: "سکه طرح جدید", unit: "تومان", icon: "🪙" },
+  { key: "sekeb", title: "سکه طرح قدیم", unit: "تومان", icon: "🪙" },
   { key: "nim", title: "نیم سکه", unit: "تومان", icon: "🪙" },
   { key: "rob", title: "ربع سکه", unit: "تومان", icon: "🪙" },
-  { key: "silver_925", title: "نقره ۹۲۵", unit: "تومان", icon: "🥈" },
-  { key: "ime_fund_ayar", title: "صندوق عیار", unit: "تومان", icon: "📈" },
-  { key: "mesghal", title: "مثقال طلا", unit: "تومان", icon: "⚖️" },
+  { key: "seke_gerami", title: "سکه گرمی", unit: "تومان", icon: "🪙" },
 ];
 
 const ALERT_WATCH_ITEMS = [
   { key: CURRENCY_HERO_KEY, title: "دلار", settingsKey: "price_dollar_rl" },
   { key: GOLD_HERO_KEY, title: "طلای ۱۸ عیار", settingsKey: "geram18" },
-  { key: "sekee", title: "سکه", settingsKey: "sekee" },
+  { key: "sekee", title: "سکه طرح جدید", settingsKey: "sekee" },
 ];
 
 const LAST_PRICES_STORAGE_KEY = "market-prices-last-current";
@@ -50,37 +82,42 @@ const LAST_PRICES_FETCHED_AT_KEY = "market-prices-last-fetched-at";
 const LAST_CARS_STORAGE_KEY = "market-prices-last-cars";
 const LAST_CARS_FETCHED_AT_KEY = "market-prices-last-cars-fetched-at";
 
-const MOJ3_LABEL_SPECS = [
-  { label: "طلای 18 عیار", key: "geram18", global: false },
-  { label: "طلای 24 عیار", key: "geram24", global: false },
-  { label: "دلار", key: "price_dollar_rl", global: false },
-  { label: "سکه طرح جدید", key: "sekee", global: false },
-  { label: "سکه طرح قدیم", key: "sekeb", global: false },
-  { label: "نیم سکه", key: "nim", global: false },
-  { label: "ربع سکه", key: "rob", global: false },
-  { label: "نقره 925", key: "silver_925", global: false },
-  { label: "انس جهانی طلا", key: "ons", global: true },
-  { label: "انس جهانی نقره", key: "silver", global: true },
-  { label: "نفت برنت (BRENT)", key: "oil_brent", global: true },
-  { label: "تتر", key: "crypto-tether-irr", global: false },
-  { label: "درهم", key: "price_aed", global: false },
-  { label: "یورو", key: "price_eur", global: false },
-  { label: "ارزش ذاتی طلای 18 عیار", key: "gold_intrinsic_18", global: false, intrinsic: true },
-  { label: "ارزش ذاتی طلای 24 عیار", key: "gold_intrinsic_24", global: false, intrinsic: true },
-  { label: "عیار", key: "ime_fund_ayar", global: false, fund: true },
-];
+const ISIGNAL_UNIQUE_TO_KEY = {
+  geram18: "geram18",
+  geram24: "geram24",
+  mazanne: "mesghal",
+  geramisilver: "silver_925",
+  sekeemam: "sekee",
+  sekebaharazadi: "sekeb",
+  nim: "nim",
+  rob: "rob",
+  gold: "ons",
+  usdollar: "price_dollar_rl",
+  euro: "price_eur",
+  gbpound: "price_gbp",
+  uaederam: "price_aed",
+  bankiqd: "price_iqd",
+  turkeylira: "price_try",
+  tether: "crypto-tether-irr",
+  bitcoin: "crypto-bitcoin-irr",
+  "brent-oil": "oil_brent",
+};
+
+const ISIGNAL_GLOBAL_PRICE_KEYS = new Set(["ons", "oil_brent"]);
+
+/** Free-market rows inside API `freeCurrency.data` (not banknote/remittance/nima/sana). */
+const ISIGNAL_FREE_CURRENCY_NAME_TO_KEY = {
+  usDollar: "price_dollar_rl",
+  euro: "price_eur",
+  gbPound: "price_gbp",
+  uaeDeram: "price_aed",
+  bankIqd: "price_iqd",
+  turkeyLira: "price_try",
+};
 
 const MOJ3_FUND_TGJU_CHANGE_KEYS = {
   ime_fund_ayar: "ime_fund_ayar",
 };
-
-function stripMoj3HtmlTags(value) {
-  return String(value || "").replace(/<[^>]+>/g, "").trim();
-}
-
-function normalizeMoj3Label(label) {
-  return String(label || "").replace(/\s+/g, " ").trim();
-}
 
 function toMoj3TgjuPriceString(tomanValue, isGlobal) {
   const cleaned = String(tomanValue).replace(/,/g, "").trim();
@@ -116,58 +153,108 @@ function parseSignedPercent(pctRaw) {
   return { dp: num, dt };
 }
 
-function parseMoj3ChangeValues(pctRaw, amountRaw, isGlobal) {
-  const { dp, dt } = parseSignedPercent(pctRaw);
+function getIsignalListSectionItems(payload, sectionKey) {
+  const block = payload?.data?.[sectionKey];
+  if (Array.isArray(block)) return block;
+  if (block?.data && Array.isArray(block.data)) return block.data;
+  return [];
+}
+
+/** API list items use `name`; home_site_pwa tiles use `unique`. */
+function resolveIsignalMarketKey(item) {
+  const rawId = item?.unique ?? item?.name;
+  if (rawId == null || rawId === "") return null;
+  const id = String(rawId);
+  return ISIGNAL_UNIQUE_TO_KEY[id] ?? ISIGNAL_UNIQUE_TO_KEY[id.toLowerCase()] ?? null;
+}
+
+function isignalQuoteToTgjuEntry(quote, isGlobal) {
+  const rawPrice = quote?.close ?? quote?.value;
+  if (rawPrice == null || rawPrice === "") return null;
+
+  const priceNum = Number(String(rawPrice).replace(/,/g, ""));
+  if (!Number.isFinite(priceNum) || priceNum === 0) return null;
+
+  const p = isGlobal
+    ? toMoj3TgjuPriceString(priceNum, true)
+    : toMoj3TgjuPriceString(priceNum / 10, false);
+
+  const pct = Number(quote?.percentChange);
+  const dp = Number.isFinite(pct) ? pct : 0;
+  const dt = dp > 0 ? "high" : dp < 0 ? "low" : "";
+
   let d = "";
-  if (amountRaw) {
-    const normalized = String(amountRaw).replace(/[−–—]/g, "-").replace(/,/g, "");
-    const toman = Number(normalized.replace(/[^\d.-]/g, ""));
-    if (Number.isFinite(toman) && toman !== 0) {
-      d = toMoj3TgjuPriceString(toman, isGlobal);
+  if (quote?.change != null && quote.change !== "") {
+    const changeNum = Number(String(quote.change).replace(/,/g, ""));
+    if (Number.isFinite(changeNum) && changeNum !== 0) {
+      d = isGlobal
+        ? toMoj3TgjuPriceString(changeNum, true)
+        : toMoj3TgjuPriceString(changeNum / 10, false);
     }
   }
-  return { dp, dt, d };
+
+  return {
+    p,
+    dp,
+    dt,
+    ...(d ? { d } : {}),
+    ...(quote?.time ? { t: String(quote.time) } : {}),
+  };
 }
 
-function parseMoj3RowCells(rowHtml) {
-  return [...rowHtml.matchAll(/<td([^>]*)>([\s\S]*?)<\/td>/gi)].map((match) => {
-    const attrs = match[1] || "";
-    const labelMatch = attrs.match(/data-label="([^"]+)"/i);
-    return {
-      label: labelMatch ? labelMatch[1] : "",
-      text: stripMoj3HtmlTags(match[2]),
-    };
+function isignalCryptoToTgjuEntry(item) {
+  const rawPrice = item?.toomanPrice ?? item?.value;
+  if (rawPrice == null || rawPrice === "") return null;
+
+  const priceNum = Number(String(rawPrice).replace(/,/g, ""));
+  if (!Number.isFinite(priceNum) || priceNum === 0) return null;
+
+  const p = toMoj3TgjuPriceString(priceNum / 10, false);
+  const pct = Number(item?.percentChgTooman ?? item?.percentChange);
+  const dp = Number.isFinite(pct) ? pct : 0;
+  const dt = dp > 0 ? "high" : dp < 0 ? "low" : "";
+
+  let d = "";
+  const rawChange = item?.chgTooman ?? item?.change;
+  if (rawChange != null && rawChange !== "") {
+    const changeNum = Number(String(rawChange).replace(/,/g, ""));
+    if (Number.isFinite(changeNum) && changeNum !== 0) {
+      d = toMoj3TgjuPriceString(changeNum / 10, false);
+    }
+  }
+
+  return {
+    p,
+    dp,
+    dt,
+    ...(d ? { d } : {}),
+    ...(item?.time ? { t: String(item.time) } : {}),
+  };
+}
+
+function parseTgjuPriceNumber(value) {
+  if (value == null) return NaN;
+  return Number(String(value).replace(/,/g, ""));
+}
+
+function applyComputedGoldIntrinsic(current) {
+  const onsData = current.ons;
+  const dollarData = current.price_dollar_rl;
+  if (!onsData?.p || !dollarData?.p) return;
+
+  const ons = parseTgjuPriceNumber(onsData.p);
+  const dollar = parseTgjuPriceNumber(dollarData.p) / 10;
+  if (Number.isNaN(ons) || Number.isNaN(dollar)) return;
+
+  const intrinsic18 = (ons * dollar) / REAL_GOLD_DIVISOR;
+  const toEntry = (toman) => ({
+    p: toMoj3TgjuPriceString(toman, false),
+    dp: 0,
+    dt: "",
   });
-}
 
-function parseMoj3ChangeFromCells(cells, spec) {
-  if (spec.fund || spec.intrinsic) {
-    return { dp: 0, dt: "", d: "" };
-  }
-
-  const byLabel = {};
-  for (const cell of cells) {
-    if (cell.label) byLabel[cell.label] = cell.text;
-  }
-
-  const pctRaw = byLabel["Change (%)"] || "";
-  const amountRaw = byLabel["Change Amount"] || "";
-
-  if (pctRaw || amountRaw) {
-    return parseMoj3ChangeValues(pctRaw, amountRaw, spec.global);
-  }
-
-  const fallbackPct = cells[2];
-  if (fallbackPct?.label && fallbackPct.label.toLowerCase() === "bubble") {
-    return { dp: 0, dt: "", d: "" };
-  }
-
-  const fallbackAmount = cells[3];
-  if (fallbackAmount?.label && fallbackAmount.label.toLowerCase() === "bubble") {
-    return parseMoj3ChangeValues(fallbackPct?.text || "", "", spec.global);
-  }
-
-  return parseMoj3ChangeValues(fallbackPct?.text || "", fallbackAmount?.text || "", spec.global);
+  current.gold_intrinsic_18 = toEntry(intrinsic18);
+  current.gold_intrinsic_24 = toEntry(intrinsic18 * (24 / 18));
 }
 
 function signedDpFromTgjuItem(item) {
@@ -192,35 +279,6 @@ function applyTgjuFundChanges(current, tgjuCurrent) {
       dp,
       dt: dp > 0 ? "high" : dp < 0 ? "low" : "",
       ...(item.d ? { d: String(item.d) } : {}),
-    };
-  }
-
-  return current;
-}
-
-function parseMoj3PriceHtml(html) {
-  const current = {};
-  const labelMap = new Map(MOJ3_LABEL_SPECS.map((spec) => [spec.label, spec]));
-  const rowRe = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
-  let match;
-
-  while ((match = rowRe.exec(html)) !== null) {
-    const cells = parseMoj3RowCells(match[1]);
-    if (!cells.length) continue;
-
-    const label = normalizeMoj3Label(cells[0].text);
-    const spec = labelMap.get(label);
-    if (!spec || current[spec.key]) continue;
-
-    const priceToman = cells[1]?.text;
-    if (!priceToman) continue;
-
-    const change = parseMoj3ChangeFromCells(cells, spec);
-    current[spec.key] = {
-      p: toMoj3TgjuPriceString(priceToman, spec.global),
-      dp: change.dp,
-      dt: change.dt,
-      ...(change.d ? { d: change.d } : {}),
     };
   }
 
@@ -509,47 +567,307 @@ async function fetchBamaPricePage(url) {
   }
 }
 
-async function fetchMoj3HtmlViaAllOrigins(url) {
+const ISIGNAL_FETCH_HEADERS = {
+  Accept: "application/json",
+  Origin: ISIGNAL_SITE_ORIGIN,
+  Referer: `${ISIGNAL_SITE_ORIGIN}/`,
+};
+
+async function fetchIsignalTextViaAllOrigins(url) {
   const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
   const response = await fetch(proxyUrl, { cache: "no-store" });
   if (!response.ok) throw new Error(`Proxy HTTP ${response.status}`);
   return response.text();
 }
 
-async function fetchMoj3HtmlFromBridge(url) {
-  const raw = await androidHttpGet(url);
+function parseIsignalBridgeJson(raw) {
   if (!raw) throw new Error("پاسخ خالی بود");
-
-  const trimmed = raw.trim();
-  if (trimmed.startsWith("{")) {
-    const payload = JSON.parse(trimmed);
-    if (payload?.__error) {
-      throw new Error(payload.message || "خطا در دریافت قیمت");
-    }
+  const trimmed = String(raw).trim();
+  const payload = JSON.parse(trimmed);
+  if (payload?.__error) {
+    throw new Error(payload.message || "خطا در دریافت قیمت");
   }
-
-  return raw;
+  return payload;
 }
 
-async function fetchMoj3PricesHtml() {
-  const url = MOJ3_PRICES_PAGE_URL;
+async function fetchIsignalPostJson(url, body) {
+  const headers = {
+    ...ISIGNAL_FETCH_HEADERS,
+    "Content-Type": "application/json",
+  };
 
-  if (isAndroidStandalone() && typeof AndroidApp.httpGet === "function") {
-    try {
-      return await fetchMoj3HtmlFromBridge(url);
-    } catch (bridgeError) {
-      console.warn("Moj3 bridge fetch failed:", bridgeError);
+  const postDirect = async () => {
+    const response = await fetch(url, { method: "POST", headers, body, cache: "no-store" });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    return response.json();
+  };
+
+  if (isAndroidStandalone()) {
+    const raw = await androidHttpRequest({ method: "POST", url, headers, body });
+    return parseIsignalBridgeJson(raw);
+  }
+
+  return postDirect();
+}
+
+function applyIsignalFreeCurrencyQuotes(current, items) {
+  for (const item of items) {
+    const name = item?.name;
+    const key = name ? ISIGNAL_FREE_CURRENCY_NAME_TO_KEY[name] : null;
+    if (!key || current[key]) continue;
+    if (item?.subCategory && item.subCategory !== "free") continue;
+
+    const entry = isignalQuoteToTgjuEntry(item, ISIGNAL_GLOBAL_PRICE_KEYS.has(key));
+    if (entry) current[key] = entry;
+  }
+}
+
+function applyIsignalUniqueQuotes(current, items, { isGlobal = false, useCrypto = false } = {}) {
+  for (const item of items) {
+    const key = resolveIsignalMarketKey(item);
+    if (!key || current[key]) continue;
+
+    const entry = useCrypto
+      ? isignalCryptoToTgjuEntry(item)
+      : isignalQuoteToTgjuEntry(item, isGlobal || ISIGNAL_GLOBAL_PRICE_KEYS.has(key));
+    if (entry) current[key] = entry;
+  }
+}
+
+function normalizeEstjtDigits(raw) {
+  let s = String(raw ?? "").trim();
+  s = s.replace(/^\$\s*/, "");
+  const persian = "۰۱۲۳۴۵۶۷۸۹";
+  const arabic = "٠١٢٣٤٥٦٧٨٩";
+  for (let i = 0; i < 10; i += 1) {
+    s = s.split(persian[i]).join(String(i));
+    s = s.split(arabic[i]).join(String(i));
+  }
+  s = s
+    .replace(/٫/g, "")
+    .replace(/,/g, "")
+    .replace(/،/g, "")
+    .replace(/\s/g, "")
+    .replace(/٪|%/g, "");
+  if (s.includes(".") && !/^\d+\.\d+$/.test(s)) {
+    s = s.replace(/\./g, "");
+  }
+  return s;
+}
+
+function parseEstjtNumber(raw) {
+  const s = normalizeEstjtDigits(raw);
+  if (!s || s === "—" || s === "-") return NaN;
+  const num = Number(s);
+  return Number.isFinite(num) ? num : NaN;
+}
+
+function parseEstjtTableRows(html) {
+  if (!html) return [];
+  const rows = [];
+  const rowRe =
+    /<td class="name">([^<]+)<\/td>\s*<td class="price">([^<]+)<\/td>\s*<td class="change">([\s\S]*?)<\/td>/g;
+  let match = rowRe.exec(html);
+  while (match) {
+    rows.push({
+      name: match[1].replace(/\s+/g, " ").trim(),
+      price: match[2].trim(),
+      changeHtml: match[3],
+    });
+    match = rowRe.exec(html);
+  }
+  return rows;
+}
+
+function estjtChangeMeta(changeHtml) {
+  const directionMatch = changeHtml.match(/class="(asc|desc)"/);
+  const direction = directionMatch?.[1] || "";
+  const valueMatch = changeHtml.match(/class="(?:asc|desc)"[^>]*>\s*([^<]+)/);
+  const rawValue = valueMatch?.[1]?.trim() || "";
+  if (!rawValue || rawValue === "—") {
+    return { direction, changeToman: 0, percent: null };
+  }
+  const hasPercent = /٪|%/.test(rawValue) || /٪|%/.test(changeHtml);
+  const num = parseEstjtNumber(rawValue);
+  if (!Number.isFinite(num)) {
+    return { direction, changeToman: 0, percent: null };
+  }
+  if (hasPercent) {
+    let decimal = String(rawValue).trim();
+    const persian = "۰۱۲۳۴۵۶۷۸۹";
+    const arabic = "٠١٢٣٤٥٦٧٨٩";
+    for (let i = 0; i < 10; i += 1) {
+      decimal = decimal.split(persian[i]).join(String(i));
+      decimal = decimal.split(arabic[i]).join(String(i));
+    }
+    decimal = decimal.replace(/٫/g, ".").replace(/٪|%/g, "").trim();
+    const pct = parseFloat(decimal);
+    return { direction, changeToman: 0, percent: Number.isFinite(pct) ? pct : null };
+  }
+  return { direction, changeToman: num, percent: null };
+}
+
+function estjtRowToTgjuEntry(row, key) {
+  const isGlobal = key === "ons";
+  const priceNum = parseEstjtNumber(row.price);
+  if (!Number.isFinite(priceNum) || priceNum === 0) return null;
+
+  const { direction, changeToman, percent } = estjtChangeMeta(row.changeHtml);
+
+  if (isGlobal) {
+    const pct = Number.isFinite(percent) ? percent : 0;
+    const signedPct =
+      direction === "desc" ? -Math.abs(pct) : direction === "asc" ? Math.abs(pct) : pct;
+    return isignalQuoteToTgjuEntry(
+      { close: priceNum, percentChange: signedPct, change: signedPct },
+      true,
+    );
+  }
+
+  const p = toMoj3TgjuPriceString(priceNum, false);
+  let dp = Number.isFinite(percent) ? percent : 0;
+  if (!Number.isFinite(percent) && priceNum && changeToman) {
+    dp = (changeToman / priceNum) * 100;
+  }
+  if (direction === "desc" && dp > 0) dp = -dp;
+  if (direction === "asc" && dp < 0) dp = Math.abs(dp);
+
+  const dt = dp > 0 ? "high" : dp < 0 ? "low" : "";
+  let d = "";
+  if (changeToman) {
+    const sign = direction === "desc" || changeToman < 0 ? "-" : "";
+    d = sign + toMoj3TgjuPriceString(Math.abs(changeToman), false).replace(/^-/, "");
+  }
+
+  return {
+    p,
+    dp,
+    dt,
+    ...(d ? { d } : {}),
+  };
+}
+
+function applyEstjtTableHtml(current, tableHtml) {
+  for (const row of parseEstjtTableRows(tableHtml)) {
+    const key = ESTJT_ROW_NAME_TO_KEY[row.name];
+    if (!key || current[key]) continue;
+    const entry = estjtRowToTgjuEntry(row, key);
+    if (entry) current[key] = entry;
+  }
+}
+
+async function fetchEstjtPricePayload() {
+  const headers = {
+    Accept: "application/json, text/plain, */*",
+    "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+    Origin: ESTJT_SITE_ORIGIN,
+    Referer: `${ESTJT_SITE_ORIGIN}/`,
+  };
+
+  const postAjax = async () => {
+    const response = await fetch(ESTJT_AJAX_URL, {
+      method: "POST",
+      headers,
+      body: ESTJT_PRICE_POST_BODY,
+      cache: "no-store",
+    });
+    if (!response.ok) throw new Error(`ESTJT HTTP ${response.status}`);
+    return response.json();
+  };
+
+  if (isAndroidStandalone()) {
+    const raw = await androidHttpRequest({
+      method: "POST",
+      url: ESTJT_AJAX_URL,
+      headers,
+      body: ESTJT_PRICE_POST_BODY,
+    });
+    const payload = parseIsignalBridgeJson(raw);
+    if (payload?.gold || payload?.coin) return payload;
+    throw new Error("پاسخ اتحادیه طلا نامعتبر بود");
+  }
+
+  return postAjax();
+}
+
+async function applyEstjtGoldCoinPrices(current) {
+  const payload = await fetchEstjtPricePayload();
+  if (payload?.gold) applyEstjtTableHtml(current, payload.gold);
+  if (payload?.coin) applyEstjtTableHtml(current, payload.coin);
+
+  if (!current.geram18 && !current.sekee) {
+    throw new Error("قیمت طلا و سکه از اتحادیه دریافت نشد");
+  }
+}
+
+function applyIsignalHomeSitePwa(current, items) {
+  if (!Array.isArray(items)) return;
+
+  for (const item of items) {
+    const unique = item?.unique;
+    if (unique === "tether" && !current["crypto-tether-irr"]) {
+      const entry = isignalCryptoToTgjuEntry({
+        ...item,
+        toomanPrice: item.value,
+        percentChgTooman: item.percentChange,
+        chgTooman: item.change,
+      });
+      if (entry) current["crypto-tether-irr"] = entry;
+      continue;
+    }
+
+    if (unique === "brent-oil" && !current.oil_brent) {
+      const entry = isignalQuoteToTgjuEntry(
+        { ...item, close: item.value, change: item.change, percentChange: item.percentChange },
+        true,
+      );
+      if (entry) current.oil_brent = entry;
     }
   }
+}
 
-  try {
-    const response = await fetch(url, { cache: "no-store" });
-    if (!response.ok) throw new Error("پاسخ سرور نامعتبر بود");
-    return response.text();
-  } catch (directError) {
-    console.warn("Moj3 direct fetch failed:", directError);
-    return fetchMoj3HtmlViaAllOrigins(url);
+function applyIsignalPayloadToCurrent(current, payload) {
+  if (!payload) return;
+
+  applyIsignalFreeCurrencyQuotes(current, getIsignalListSectionItems(payload, "freeCurrency"));
+
+  for (const item of getIsignalListSectionItems(payload, "oil")) {
+    const name = String(item?.persianName || "");
+    if (!name.includes("برنت")) continue;
+    const entry = isignalQuoteToTgjuEntry(item, true);
+    if (entry) current.oil_brent = entry;
+    break;
   }
+
+  applyIsignalHomeSitePwa(current, payload?.data?.home_site_pwa);
+}
+
+async function buildIsignalPricesCurrent(onProgress) {
+  const current = {};
+  const notifyProgress = () => {
+    applyComputedGoldIntrinsic(current);
+    if (typeof onProgress === "function") onProgress(current);
+  };
+
+  const isignalTask = (async () => {
+    try {
+      const payload = await fetchIsignalPostJson(ISIGNAL_SIGNAL_DATA_URL, ISIGNAL_SIGNAL_DATA_POST_BODY);
+      applyIsignalPayloadToCurrent(current, payload);
+      notifyProgress();
+    } catch (error) {
+      console.warn("Isignal currency fetch failed:", error);
+    }
+  })();
+
+  const estjtTask = (async () => {
+    await applyEstjtGoldCoinPrices(current);
+    notifyProgress();
+  })();
+
+  await Promise.all([isignalTask, estjtTask]);
+
+  applyComputedGoldIntrinsic(current);
+  return current;
 }
 
 async function fetchTgjuAjaxPayload() {
@@ -570,7 +888,7 @@ async function fetchTgjuAjaxPayload() {
     return response.json();
   } catch (directError) {
     console.warn("TGJU direct fetch failed:", directError);
-    const html = await fetchMoj3HtmlViaAllOrigins(TGJU_AJAX_URL);
+    const html = await fetchIsignalTextViaAllOrigins(TGJU_AJAX_URL);
     return JSON.parse(html);
   }
 }
@@ -588,14 +906,25 @@ async function enrichMoj3FundChanges(current) {
   }
 }
 
-async function fetchMoj3PricesPayload() {
-  const html = await fetchMoj3PricesHtml();
-  const current = parseMoj3PriceHtml(html);
-  if (!current.geram18 && !current.price_dollar_rl) {
-    throw new Error("داده‌ای دریافت نشد");
+let activeMarketPricesFetch = null;
+
+async function fetchMoj3PricesPayload(options = {}) {
+  const onProgress = typeof options.onProgress === "function" ? options.onProgress : null;
+  if (activeMarketPricesFetch) return activeMarketPricesFetch;
+
+  activeMarketPricesFetch = (async () => {
+    const current = await buildIsignalPricesCurrent(onProgress);
+    if (!current.geram18 && !current.price_dollar_rl) {
+      throw new Error("داده‌ای دریافت نشد");
+    }
+    return { current };
+  })();
+
+  try {
+    return await activeMarketPricesFetch;
+  } finally {
+    activeMarketPricesFetch = null;
   }
-  await enrichMoj3FundChanges(current);
-  return { current };
 }
 
 async function fetchBamaCarPricesLive() {
@@ -633,10 +962,25 @@ async function fetchBamaCarPrices() {
 }
 
 const DIVAR_POST_API_BASE = "https://api.divar.ir/v8/posts-v2/web/";
-const BAMA_CALCULATOR_VEHICLES_API = "https://bama.ir/cad/api/PriceCalculator/vehicles";
-const BAMA_CALCULATOR_CALCULATE_API = "https://bama.ir/cad/api/PriceCalculator/calculate";
+const KHODRO45_API_BASE = "https://khodro45.com/api";
+const KHODRO45_BRANDS_API = `${KHODRO45_API_BASE}/v1/brands/all/`;
+const KHODRO45_MODELS_API = `${KHODRO45_API_BASE}/v1/models/`;
+const KHODRO45_TRIMS_API = `${KHODRO45_API_BASE}/v1/trims/`;
+const KHODRO45_YEARS_API = `${KHODRO45_API_BASE}/v1/years/`;
+const KHODRO45_TRIMYEARS_API = `${KHODRO45_API_BASE}/v1/trimyears/`;
+const KHODRO45_COLORS_API = `${KHODRO45_API_BASE}/v1/portfolio/colors/`;
+const KHODRO45_ESTIMATE_API = `${KHODRO45_API_BASE}/v1/carprice/public/estimated_price/`;
+const KHODRO45_API_HEADERS = {
+  Origin: "https://khodro45.com",
+  Referer: "https://khodro45.com/carprice/wizard/",
+};
+
+/** Kept for reserved-name compatibility — catalog/estimate use Khodro45. */
+const BAMA_CALCULATOR_VEHICLES_API = KHODRO45_BRANDS_API;
+const BAMA_CALCULATOR_CALCULATE_API = KHODRO45_ESTIMATE_API;
 
 let bamaCalculatorVehiclesCache = null;
+let khodro45ColorsCache = null;
 
 function pathGet(obj, keys, fallback = null) {
   let cur = obj;
@@ -657,7 +1001,7 @@ function toEnglishNumber(input) {
     .trim();
 }
 
-/** Divar year field is often like "۱۳۹۵ - ۲۰۱۶" — Bama wants Jalali 1395. */
+/** Divar year field is often like "۱۳۹۵ - ۲۰۱۶" — calculator wants Jalali 1395. */
 function extractCarYear(model) {
   const normalized = toEnglishNumber(model);
   const persianYear = normalized.match(/13\d{2}/);
@@ -769,49 +1113,6 @@ function findDivarAdPrice(payload) {
   return we > 0 ? Math.round(we) : 0;
 }
 
-function emptyBamaBodyParts() {
-  return {
-    mudguard_left_front: 0,
-    mudguard_left_rear: 0,
-    mudguard_right_front: 0,
-    mudguard_right_rear: 0,
-    door_right_front: 0,
-    door_right_rear: 0,
-    door_left_front: 0,
-    door_left_rear: 0,
-    hood: 0,
-    trunc: 0,
-    roof: 0,
-  };
-}
-
-/**
- * Map Divar body text to Bama calculator body_status.
- * Part codes: 0 سالم، 1 صافکاری، 2 رنگ، 3 تعویض
- */
-function mapBodyStatusForBama(bodyStatus) {
-  const value = String(bodyStatus || "");
-  const parts = emptyBamaBodyParts();
-
-  if (!value || value === "سالم و بی‌خط و خش" || value === "سالم") {
-    return { body_status: "Healthy", parts };
-  }
-  if (value === "دوررنگ" || value === "رنگ‌شدگی در 2 ناحیه") {
-    return { body_status: "Painted", parts };
-  }
-  if (value === "تمام‌رنگ" || value === "اوراقی" || value === "تصادفی") {
-    return { body_status: "Repainted", parts };
-  }
-
-  // Damaged / partial paint — mark N panels as painted when Divar reports N areas.
-  const areaMatch = value.match(/(\d+)\s*ناحیه/);
-  const areaCount = areaMatch ? Math.min(Number(areaMatch[1]) || 1, 5) : 1;
-  const panelKeys = ["hood", "door_right_front", "door_left_front", "mudguard_right_front", "mudguard_left_front"];
-  const partCode = value.includes("صافکاری") ? 1 : 2;
-  for (let i = 0; i < areaCount; i++) parts[panelKeys[i]] = partCode;
-  return { body_status: "Damaged", parts };
-}
-
 function normalizeMatchText(input) {
   return toEnglishNumber(String(input || ""))
     .replace(/ي/g, "ی")
@@ -823,66 +1124,14 @@ function normalizeMatchText(input) {
     .toLowerCase();
 }
 
-function flattenBamaVehicles(tree) {
-  const rows = [];
-  for (const brand of Array.isArray(tree) ? tree : []) {
-    for (const model of brand.models || []) {
-      const trims = Array.isArray(model.trims) && model.trims.length ? model.trims : [null];
-      for (const trim of trims) {
-        rows.push({ brand, model, trim });
-      }
-    }
-  }
-  return rows;
+function k45List(payload) {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.results)) return payload.results;
+  return [];
 }
 
-function scoreBamaVehicleRow(row, ad) {
-  const brandEn = normalizeMatchText(ad.brandModel);
-  const brandFa = normalizeMatchText(ad.brandModelFa);
-  const title = normalizeMatchText(ad.title);
-  const hay = `${brandEn} ${brandFa} ${title}`.trim();
-
-  const bEn = normalizeMatchText(row.brand.brand_name);
-  const bFa = normalizeMatchText(row.brand.brand_name_fa);
-  const mEn = normalizeMatchText(row.model.model_name);
-  const mFa = normalizeMatchText(row.model.model_name_fa);
-  const tEn = normalizeMatchText(row.trim?.trim_name);
-  const tFa = normalizeMatchText(row.trim?.trim_name_fa);
-
-  let score = 0;
-  if (bEn && hay.includes(bEn)) score += 60;
-  if (bFa && hay.includes(bFa)) score += 60;
-  if (mFa && hay.includes(mFa)) score += 40;
-  if (mEn && mEn.length > 1 && hay.includes(mEn)) score += 25;
-  if (tFa && hay.includes(tFa)) score += 30;
-  if (tEn && tEn.length > 1 && hay.includes(tEn)) score += 20;
-
-  // Divar "Dena basic 2" / معمولی تیپ → Bama dena / معمولی (1.7) without trim
-  if ((/\bbasic\b/.test(brandEn) || brandFa.includes("معمولی")) && (mEn === "1.7" || mFa.includes("معمولی"))) {
-    score += 35;
-  }
-  if ((brandFa.includes("پلاس") || brandEn.includes("plus")) && (mFa.includes("پلاس") || mEn.includes("plus"))) {
-    score += 35;
-  }
-  if (!row.trim && (brandFa.includes("معمولی") || /\bbasic\b/.test(brandEn))) score += 8;
-  if (row.trim && !tFa && !tEn) score -= 5;
-
-  return score;
-}
-
-function pickBamaVehicle(tree, ad) {
-  const rows = flattenBamaVehicles(tree);
-  let best = null;
-  let bestScore = 0;
-  for (const row of rows) {
-    const score = scoreBamaVehicleRow(row, ad);
-    if (score > bestScore) {
-      best = row;
-      bestScore = score;
-    }
-  }
-  if (!best || bestScore < 60) return null;
-  return best;
+async function k45Get(url) {
+  return fetchHttpJson(url, { headers: { ...KHODRO45_API_HEADERS } });
 }
 
 async function androidHttpJson(spec) {
@@ -985,18 +1234,111 @@ async function getDivarAdData(divarUrl) {
 
 async function getBamaCalculatorVehicles() {
   if (bamaCalculatorVehiclesCache) return bamaCalculatorVehiclesCache;
-  const payload = await fetchHttpJson(BAMA_CALCULATOR_VEHICLES_API, {
-    headers: {
-      Origin: "https://bama.ir",
-      Referer: "https://bama.ir/calculator",
-    },
-  });
-  const data = payload?.data;
-  if (!Array.isArray(data) || !data.length) {
+  const payload = await k45Get(KHODRO45_BRANDS_API);
+  const brands = k45List(payload);
+  if (!brands.length) {
     throw new Error("لیست مدل‌های خودرو برای تخمین دریافت نشد");
   }
-  bamaCalculatorVehiclesCache = data;
-  return data;
+  bamaCalculatorVehiclesCache = brands.map((brand) => ({
+    brand_id: brand.id,
+    brand_name: brand.title_en || brand.title || "",
+    brand_name_fa: brand.title || brand.title_en || "",
+    models: [],
+    _modelsLoaded: false,
+  }));
+  return bamaCalculatorVehiclesCache;
+}
+
+async function loadCalculatorBrandModels(brandId) {
+  const tree = await getBamaCalculatorVehicles();
+  const brand = tree.find((item) => Number(item.brand_id) === Number(brandId));
+  if (!brand) return [];
+  if (brand._modelsLoaded) return brand.models || [];
+  const payload = await k45Get(`${KHODRO45_MODELS_API}?brand_id=${encodeURIComponent(brandId)}`);
+  brand.models = k45List(payload).map((model) => ({
+    model_id: model.id,
+    model_name: model.title_en || model.title || "",
+    model_name_fa: model.title || model.title_en || "",
+    trims: [],
+    _trimsLoaded: false,
+  }));
+  brand._modelsLoaded = true;
+  return brand.models;
+}
+
+async function loadCalculatorModelTrims(brandId, modelId) {
+  await loadCalculatorBrandModels(brandId);
+  const matched = findBamaBrandModelTrim(await getBamaCalculatorVehicles(), brandId, modelId, null);
+  if (!matched?.model) return [];
+  if (matched.model._trimsLoaded) return matched.model.trims || [];
+  const payload = await k45Get(`${KHODRO45_TRIMS_API}?model_id=${encodeURIComponent(modelId)}`);
+  matched.model.trims = k45List(payload).map((trim) => ({
+    trim_id: trim.id,
+    trim_name: trim.title_en || trim.title || "",
+    trim_name_fa: trim.title || trim.title_en || "",
+  }));
+  matched.model._trimsLoaded = true;
+  return matched.model.trims;
+}
+
+async function getCalculatorTrimYears(trimId) {
+  if (!trimId) return [];
+  const payload = await k45Get(`${KHODRO45_YEARS_API}?trim_id=${encodeURIComponent(trimId)}`);
+  return k45List(payload)
+    .map((year) => ({
+      id: year.id,
+      title: String(year.title || "").trim(),
+    }))
+    .filter((year) => year.id && year.title)
+    .sort((a, b) => Number(b.title) - Number(a.title));
+}
+
+async function resolveKhodro45TrimYearId(trimId, jalaliYear) {
+  const years = await getCalculatorTrimYears(trimId);
+  const yearTitle = String(jalaliYear || "").trim();
+  const year =
+    years.find((item) => item.title === yearTitle) ||
+    years.find((item) => Number(item.title) === Number(yearTitle));
+  if (!year) {
+    throw new Error("سال ساخت برای این تیپ در خودرو۴۵ موجود نیست");
+  }
+  const payload = await k45Get(
+    `${KHODRO45_TRIMYEARS_API}?trim_id=${encodeURIComponent(trimId)}&year_id=${encodeURIComponent(year.id)}`,
+  );
+  const rows = k45List(payload);
+  if (!rows.length || !rows[0]?.id) {
+    throw new Error("ترکیب تیپ و سال برای تخمین پیدا نشد");
+  }
+  return {
+    trimyearId: rows[0].id,
+    optionTitle: rows[0]?.option?.title || "",
+    yearTitle: year.title,
+  };
+}
+
+async function getKhodro45Colors() {
+  if (khodro45ColorsCache) return khodro45ColorsCache;
+  try {
+    const payload = await k45Get(KHODRO45_COLORS_API);
+    khodro45ColorsCache = k45List(payload);
+  } catch {
+    khodro45ColorsCache = [];
+  }
+  return khodro45ColorsCache;
+}
+
+async function resolveKhodro45ColorId(colorText) {
+  const colors = await getKhodro45Colors();
+  const needle = normalizeMatchText(colorText);
+  if (needle && colors.length) {
+    const hit = colors.find((color) => {
+      const name = normalizeMatchText(color.name || color.title || "");
+      return name && (needle.includes(name) || name.includes(needle));
+    });
+    if (hit?.slug != null) return Number(hit.slug) || hit.slug;
+    if (hit?.id != null) return Number(hit.id) || hit.id;
+  }
+  return 1;
 }
 
 const BAMA_BODY_STATUS_OPTIONS = [
@@ -1021,61 +1363,112 @@ function findBamaBrandModelTrim(tree, brandId, modelId, trimId) {
   return { brand, model, trim, trims };
 }
 
-function bodyPartsForManualStatus(bodyStatus) {
-  const parts = emptyBamaBodyParts();
-  if (bodyStatus === "Damaged") {
-    parts.hood = 2;
-    parts.door_right_front = 2;
-  }
-  return parts;
+function scoreNameAgainstAd(nameEn, nameFa, ad) {
+  const brandEn = normalizeMatchText(ad.brandModel);
+  const brandFa = normalizeMatchText(ad.brandModelFa);
+  const title = normalizeMatchText(ad.title);
+  const hay = `${brandEn} ${brandFa} ${title}`.trim();
+  const en = normalizeMatchText(nameEn);
+  const fa = normalizeMatchText(nameFa);
+  let score = 0;
+  if (fa && hay.includes(fa)) score += 60;
+  if (en && en.length > 1 && hay.includes(en)) score += 40;
+  return score;
 }
 
-async function postBamaCalculate(requestBody) {
-  const payload = await fetchHttpJson(BAMA_CALCULATOR_CALCULATE_API, {
+async function pickKhodro45Vehicle(ad) {
+  const tree = await getBamaCalculatorVehicles();
+  let bestBrand = null;
+  let bestBrandScore = 0;
+  for (const brand of tree) {
+    const score = scoreNameAgainstAd(brand.brand_name, brand.brand_name_fa, ad);
+    if (score > bestBrandScore) {
+      bestBrandScore = score;
+      bestBrand = brand;
+    }
+  }
+  if (!bestBrand || bestBrandScore < 40) return null;
+
+  const models = await loadCalculatorBrandModels(bestBrand.brand_id);
+  let bestModel = null;
+  let bestModelScore = 0;
+  for (const model of models) {
+    let score = scoreNameAgainstAd(model.model_name, model.model_name_fa, ad);
+    if (
+      (/\bbasic\b/.test(normalizeMatchText(ad.brandModel)) ||
+        normalizeMatchText(ad.brandModelFa).includes("معمولی")) &&
+      normalizeMatchText(model.model_name_fa).includes("معمولی")
+    ) {
+      score += 20;
+    }
+    if (score > bestModelScore) {
+      bestModelScore = score;
+      bestModel = model;
+    }
+  }
+  if (!bestModel || bestModelScore < 20) return null;
+
+  const trims = await loadCalculatorModelTrims(bestBrand.brand_id, bestModel.model_id);
+  let bestTrim = null;
+  let bestTrimScore = -1;
+  for (const trim of trims) {
+    const score = scoreNameAgainstAd(trim.trim_name, trim.trim_name_fa, ad);
+    if (score > bestTrimScore) {
+      bestTrimScore = score;
+      bestTrim = trim;
+    }
+  }
+  if (!bestTrim && trims.length) bestTrim = trims[0];
+  if (!bestTrim) return null;
+
+  return { brand: bestBrand, model: bestModel, trim: bestTrim };
+}
+
+async function postKhodro45Estimate(requestBody) {
+  const payload = await fetchHttpJson(KHODRO45_ESTIMATE_API, {
     method: "POST",
     headers: {
-      Origin: "https://bama.ir",
-      Referer: "https://bama.ir/calculator",
+      ...KHODRO45_API_HEADERS,
       "Content-Type": "application/json",
     },
     body: JSON.stringify(requestBody),
   });
-  const data = payload?.data;
-  if (!data) {
-    const message =
-      (Array.isArray(payload?.errors) && payload.errors[0]) || "تخمین قیمت دریافت نشد";
-    throw new Error(String(message));
+  if (!payload || typeof payload !== "object") {
+    throw new Error("تخمین قیمت دریافت نشد");
   }
-  return data;
+  return payload;
 }
 
-function mapBamaCalculateToEstimate(data, extras = {}) {
-  const minPrice = Number(data.min_price) || 0;
-  const maxPrice = Number(data.max_price) || 0;
-  const suggestedPrice = Number(data.price) || 0;
+function mapKhodro45EstimateToResult(data, extras = {}) {
+  const k45 = data.k45_price || {};
+  const market = data.market_price || {};
+  const minPrice = Number(k45.min) || Number(market.min) || 0;
+  const maxPrice = Number(k45.max) || Number(market.max) || 0;
+  const suggestedPrice = Number(k45.price) || Number(market.price) || 0;
   if (!minPrice && !maxPrice && !suggestedPrice) {
-    throw new Error("تخمین قیمت دریافت نشد");
+    throw new Error("تخمین قیمت برای این خودرو در خودرو۴۵ موجود نیست");
   }
   const adPrice = Number(extras.adPrice) || 0;
   return {
     minPrice: minPrice || suggestedPrice,
     maxPrice: maxPrice || suggestedPrice,
-    suggestedPrice,
+    suggestedPrice: suggestedPrice || minPrice,
     verdict: verdictFromBama(adPrice, minPrice || suggestedPrice, maxPrice || suggestedPrice),
-    brandFa: data.brand || extras.brandFa || "",
-    modelFa: data.model || extras.modelFa || "",
-    trimFa: data.trim || extras.trimFa || "",
-    modelYear: data.model_year || Number(extras.modelYear) || 0,
-    mileage: data.mileage != null ? Number(data.mileage) : Number(extras.mileage) || 0,
-    color: extras.color || data.default_color || "",
-    imageUrl: data.image_url || extras.imageUrl || "",
-    tags: Array.isArray(data.tags) ? data.tags : [],
-    calculateId: data.id || "",
+    brandFa: extras.brandFa || "",
+    modelFa: extras.modelFa || "",
+    trimFa: extras.trimFa || "",
+    modelYear: Number(extras.modelYear) || 0,
+    mileage: Number(extras.mileage) || 0,
+    color: extras.color || "",
+    imageUrl: extras.imageUrl || "",
+    tags: [],
+    calculateId: "",
+    source: data.source || "K45",
   };
 }
 
 /**
- * Manual estimate from selected brand/model/trim IDs (Bama calculator).
+ * Manual estimate from selected brand/model/trim IDs (Khodro45 carprice APIs).
  * selection: { brandId, modelId, trimId?, modelYear, mileage, bodyStatus?, color?, adPrice? }
  */
 async function estimateBamaPriceFromSelection(selection) {
@@ -1090,31 +1483,38 @@ async function estimateBamaPriceFromSelection(selection) {
   }
   if (!Number.isFinite(mileage) || mileage < 0) throw new Error("کارکرد خودرو را وارد کنید");
 
-  const tree = await getBamaCalculatorVehicles();
-  const matched = findBamaBrandModelTrim(tree, brandId, modelId, selection?.trimId);
+  await loadCalculatorBrandModels(brandId);
+  const trims = await loadCalculatorModelTrims(brandId, modelId);
+  const matched = findBamaBrandModelTrim(
+    await getBamaCalculatorVehicles(),
+    brandId,
+    modelId,
+    selection?.trimId,
+  );
   if (!matched) throw new Error("مدل انتخاب‌شده برای تخمین معتبر نیست");
 
-  const bodyStatus = selection?.bodyStatus || "Healthy";
   const trimId =
     selection?.trimId == null || selection?.trimId === ""
       ? null
       : Number(selection.trimId);
-  if ((matched.trims || []).length > 0 && (trimId == null || !Number.isFinite(trimId))) {
+  if ((trims || []).length > 0 && (trimId == null || !Number.isFinite(trimId))) {
     throw new Error("تیپ خودرو را انتخاب کنید");
   }
+  if (trimId == null || !Number.isFinite(trimId)) {
+    throw new Error("تیپ خودرو برای تخمین خودرو۴۵ الزامی است");
+  }
 
-  const requestBody = {
-    brand_id: brandId,
-    model_id: modelId,
-    trim_id: trimId,
+  const { trimyearId } = await resolveKhodro45TrimYearId(trimId, modelYear);
+  const colorId = await resolveKhodro45ColorId(selection?.color || "");
+  const data = await postKhodro45Estimate({
+    color: colorId,
+    source: "carprice",
+    trimyear_id: trimyearId,
     mileage: Math.round(mileage),
-    model_year: modelYear,
-    body_status: bodyStatus,
-    ...bodyPartsForManualStatus(bodyStatus),
-  };
+    defects: [],
+  });
 
-  const data = await postBamaCalculate(requestBody);
-  return mapBamaCalculateToEstimate(data, {
+  return mapKhodro45EstimateToResult(data, {
     brandFa: matched.brand.brand_name_fa,
     modelFa: matched.model.model_name_fa,
     trimFa: matched.trim?.trim_name_fa || "",
@@ -1139,7 +1539,7 @@ function extractTipFromBrandModelFa(brandModelFa) {
 }
 
 /**
- * Same API as https://bama.ir/calculator — POST /cad/api/PriceCalculator/calculate
+ * Same public estimate API used by https://khodro45.com/carprice/wizard/
  */
 async function estimateBamaPrice(ad) {
   const year = extractCarYear(ad.model);
@@ -1148,26 +1548,23 @@ async function estimateBamaPrice(ad) {
     throw new Error("سال ساخت خودرو از آگهی استخراج نشد");
   }
 
-  const tree = await getBamaCalculatorVehicles();
-  const matched = pickBamaVehicle(tree, ad);
+  const matched = await pickKhodro45Vehicle(ad);
   if (!matched) {
     throw new Error("مدل این خودرو برای تخمین پیدا نشد");
   }
 
-  const { body_status, parts } = mapBodyStatusForBama(ad.bodyStatus);
-  const requestBody = {
-    brand_id: matched.brand.brand_id,
-    model_id: matched.model.model_id,
-    trim_id: matched.trim?.trim_id || null,
-    mileage,
-    model_year: Number(year),
-    body_status,
-    ...parts,
-  };
-
-  const data = await postBamaCalculate(requestBody);
   const tipFromAd = extractTipFromBrandModelFa(ad.brandModelFa);
-  const estimate = mapBamaCalculateToEstimate(data, {
+  const { trimyearId } = await resolveKhodro45TrimYearId(matched.trim.trim_id, year);
+  const colorId = await resolveKhodro45ColorId(ad.color || "");
+  const data = await postKhodro45Estimate({
+    color: colorId,
+    source: "carprice",
+    trimyear_id: trimyearId,
+    mileage,
+    defects: [],
+  });
+
+  const estimate = mapKhodro45EstimateToResult(data, {
     brandFa: matched.brand.brand_name_fa,
     modelFa: matched.model.model_name_fa,
     trimFa: tipFromAd || matched.trim?.trim_name_fa || "",
@@ -2339,7 +2736,7 @@ function initMarketPrices() {
   const divarEstimateStatusEl = container.querySelector("#divar-estimate-status");
   const divarEstimateResultEl = container.querySelector("#divar-estimate-result");
 
-  let activeMarketTab = "currency";
+  let activeMarketTab = "gold";
   let carRows = [];
   let carsLoaded = false;
   let pricesLoaded = false;
@@ -2674,10 +3071,7 @@ function initMarketPrices() {
   }
 
   function showLoading() {
-    loadingEl.classList.remove("hidden");
-    errorEl.classList.add("hidden");
-    currencyListEl.classList.add("hidden");
-    goldListEl.classList.add("hidden");
+    showPriceLists({ endRefreshBusy: false });
     setRefreshBusy(true);
   }
 
@@ -2690,7 +3084,8 @@ function initMarketPrices() {
     setRefreshBusy(false);
   }
 
-  function showPriceLists() {
+  function showPriceLists(options) {
+    const endRefreshBusy = !options || options.endRefreshBusy !== false;
     loadingEl.classList.add("hidden");
     errorEl.classList.add("hidden");
     if (activeMarketTab === "gold") {
@@ -2703,7 +3098,7 @@ function initMarketPrices() {
       currencyListEl.classList.remove("hidden");
       goldListEl.classList.remove("hidden");
     }
-    setRefreshBusy(false);
+    if (endRefreshBusy) setRefreshBusy(false);
   }
 
   function parseNumber(value) {
@@ -3456,7 +3851,8 @@ function initMarketPrices() {
   }
 
   function renderItemGroup(items, listEl, current) {
-    items.forEach((item) => {
+    const ordered = [...items.filter((item) => item.hero), ...items.filter((item) => !item.hero)];
+    ordered.forEach((item) => {
       const data = current[item.key];
       if (!data) return;
       if (item.hero) {
@@ -3475,9 +3871,6 @@ function initMarketPrices() {
   function renderGold(current) {
     goldListEl.innerHTML = "";
     renderItemGroup(GOLD_ITEMS, goldListEl, current);
-    goldListEl.appendChild(createRealGoldCard(current));
-    goldListEl.appendChild(createCoinGoldAdviceCard(current));
-    goldListEl.appendChild(createGoldWageCard(current));
   }
 
   function renderAllPrices(current, { silent = false } = {}) {
@@ -3490,21 +3883,26 @@ function initMarketPrices() {
     showPriceLists();
   }
 
+  function renderLivePriceProgress(current) {
+    latestMarketPrices = current;
+    renderCurrency(current);
+    renderGold(current);
+    pricesLoaded = true;
+    showPriceLists({ endRefreshBusy: false });
+  }
+
   async function fetchPrices({ silent = false } = {}) {
     if (!silent) {
-      const hasVisibleList =
-        pricesLoaded &&
-        ((activeMarketTab === "currency" && !currencyListEl.classList.contains("hidden")) ||
-          (activeMarketTab === "gold" && !goldListEl.classList.contains("hidden")));
-      if (hasVisibleList) {
-        setRefreshBusy(true);
-      } else if (isPriceTab(activeMarketTab) || !pricesLoaded) {
-        showLoading();
-      }
+      showLoading();
     }
 
     try {
-      const data = await fetchMoj3PricesPayload();
+      const data = await fetchMoj3PricesPayload({
+        onProgress: (current) => {
+          if (silent) return;
+          renderLivePriceProgress(current);
+        },
+      });
       if (!data.current) throw new Error("داده‌ای دریافت نشد");
 
       renderAllPrices(data.current, { silent });
@@ -3513,6 +3911,15 @@ function initMarketPrices() {
     } catch (error) {
       console.error("Prices fetch error:", error);
       if (silent) return;
+      const message = String(error?.message || "");
+      const showExplicitError =
+        message.includes("قدیمی") ||
+        message.includes("پل اندروید") ||
+        message.includes("داده‌ای دریافت نشد");
+      if (showExplicitError) {
+        showError(`ارز و طلا · ${message}`);
+        return;
+      }
       const cached = loadCachedMarketPrices();
       if (cached?.current) {
         renderAllPrices(cached.current, { silent: true, offline: true });
@@ -3612,6 +4019,10 @@ function initMarketPrices() {
       }
       showCarsError("خودرو صفر · خطا در دریافت قیمت خودرو. اتصال اینترنت را بررسی کنید.");
     }
+  }
+
+  function resetMarketTabToGold() {
+    switchMarketTab("gold");
   }
 
   function switchMarketTab(tab) {
@@ -3718,5 +4129,13 @@ function initMarketPrices() {
     }
   }, 60000);
 
-  fetchPrices();
+  window.__resetMarketTabToGold = resetMarketTabToGold;
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") resetMarketTabToGold();
+  });
+  window.addEventListener("pageshow", (event) => {
+    if (event.persisted) resetMarketTabToGold();
+  });
+
+  switchMarketTab("gold");
 }

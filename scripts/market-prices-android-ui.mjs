@@ -66,13 +66,7 @@ export const androidPageBody = `<div class="app market-root">
         <button id="retryBtn" type="button" class="btn-retry">تلاش مجدد</button>
       </div>
 
-      <div id="view-currency" class="market-view">
-        <div id="currencyPricesPanel" class="currency-prices-panel">
-          <div id="currencyList" class="grid price-stack price-scroll-surface hidden"></div>
-        </div>
-      </div>
-
-      <div id="view-gold" class="market-view hidden">
+      <div id="view-gold" class="market-view">
         <div class="gold-subtabs" role="tablist" aria-label="بخش طلا">
           <button type="button" class="gold-subtab-btn is-active" data-gold-subtab="prices" role="tab" aria-selected="true">قیمت‌ها</button>
           <button type="button" class="gold-subtab-btn" data-gold-subtab="calc" role="tab" aria-selected="false">محاسبات طلا</button>
@@ -82,6 +76,12 @@ export const androidPageBody = `<div class="app market-root">
         </div>
         <div id="goldCalcPanel" class="gold-subpanel hidden">
           <div id="goldCalcList" class="grid price-stack price-scroll-surface"></div>
+        </div>
+      </div>
+
+      <div id="view-currency" class="market-view hidden">
+        <div id="currencyPricesPanel" class="currency-prices-panel">
+          <div id="currencyList" class="grid price-stack price-scroll-surface hidden"></div>
         </div>
       </div>
     </div>
@@ -633,17 +633,17 @@ export const androidPageBody = `<div class="app market-root">
     <div id="priceToast" class="market-price-toast hidden" role="status" aria-live="polite"></div>
 
     <nav class="market-bottom-nav market-bottom-nav-quad" aria-label="منوی قیمت‌ها">
-      <button type="button" class="market-nav-btn is-active" data-market-tab="currency">
-        <svg class="market-nav-svg" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
-          <path stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-        </svg>
-        <span class="market-nav-label">ارز</span>
-      </button>
-      <button type="button" class="market-nav-btn" data-market-tab="gold">
+      <button type="button" class="market-nav-btn is-active" data-market-tab="gold">
         <svg class="market-nav-svg" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
           <path stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/>
         </svg>
         <span class="market-nav-label">طلا</span>
+      </button>
+      <button type="button" class="market-nav-btn" data-market-tab="currency">
+        <svg class="market-nav-svg" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        <span class="market-nav-label">ارز</span>
       </button>
       <div class="market-nav-fab-wrap">
         <button type="button" id="marketNavRefresh" class="market-nav-fab" aria-label="بروزرسانی قیمت‌ها" title="بروزرسانی">
@@ -5400,7 +5400,7 @@ export const androidStandaloneUiPatch = `
     const myHousingSearchesEmptyEl = document.getElementById("myHousingSearchesEmpty");
     const housingDealButtons = document.querySelectorAll("[data-housing-deal]");
 
-    let activeMarketTab = "currency";
+    let activeMarketTab = "gold";
     let activeGoldSubtab = "prices";
     try {
       const savedGoldSubtab = localStorage.getItem("market-prices-gold-subtab");
@@ -5771,72 +5771,145 @@ export const androidStandaloneUiPatch = `
     }
 
     function populateMyCarModels(selectedModelId) {
-      if (!myCarModelEl) return;
+      if (!myCarModelEl) return Promise.resolve();
       const brandId = myCarBrandEl ? myCarBrandEl.value : "";
       if (!brandId || !bamaVehiclesTree) {
         myCarModelEl.innerHTML = '<option value="">ابتدا برند را انتخاب کنید</option>';
         myCarModelEl.disabled = true;
         populateMyCarTrims();
-        return;
+        return Promise.resolve();
       }
-      const brand = bamaVehiclesTree.find(function (item) {
-        return String(item.brand_id) === String(brandId);
-      });
-      const models = ((brand && brand.models) || []).slice().sort(function (a, b) {
-        return String(a.model_name_fa || "").localeCompare(String(b.model_name_fa || ""), "fa");
-      });
-      myCarModelEl.innerHTML =
-        '<option value="">انتخاب مدل</option>' +
-        models
-          .map(function (model) {
-            return (
-              '<option value="' +
-              model.model_id +
-              '">' +
-              escapeHtml(model.model_name_fa || model.model_name || "") +
-              "</option>"
-            );
-          })
-          .join("");
-      myCarModelEl.disabled = false;
-      if (selectedModelId) myCarModelEl.value = String(selectedModelId);
-      populateMyCarTrims();
+      myCarModelEl.disabled = true;
+      myCarModelEl.innerHTML = '<option value="">در حال بارگذاری...</option>';
+      const loader =
+        typeof loadCalculatorBrandModels === "function"
+          ? loadCalculatorBrandModels(brandId)
+          : Promise.resolve([]);
+      return Promise.resolve(loader)
+        .then(function () {
+          const brand = bamaVehiclesTree.find(function (item) {
+            return String(item.brand_id) === String(brandId);
+          });
+          const models = ((brand && brand.models) || []).slice().sort(function (a, b) {
+            return String(a.model_name_fa || "").localeCompare(String(b.model_name_fa || ""), "fa");
+          });
+          myCarModelEl.innerHTML =
+            '<option value="">انتخاب مدل</option>' +
+            models
+              .map(function (model) {
+                return (
+                  '<option value="' +
+                  model.model_id +
+                  '">' +
+                  escapeHtml(model.model_name_fa || model.model_name || "") +
+                  "</option>"
+                );
+              })
+              .join("");
+          myCarModelEl.disabled = false;
+          if (selectedModelId) myCarModelEl.value = String(selectedModelId);
+          return populateMyCarTrims();
+        })
+        .catch(function (err) {
+          console.error("Khodro45 models load error:", err);
+          myCarModelEl.innerHTML = '<option value="">خطا در دریافت مدل‌ها</option>';
+          myCarModelEl.disabled = true;
+          populateMyCarTrims();
+          setMyCarStatus((err && err.message) || "دریافت مدل‌ها ممکن نشد", true);
+        });
     }
 
     function populateMyCarTrims(selectedTrimId) {
-      if (!myCarTrimEl) return;
+      if (!myCarTrimEl) return Promise.resolve();
       const brandId = myCarBrandEl ? myCarBrandEl.value : "";
       const modelId = myCarModelEl ? myCarModelEl.value : "";
       if (!brandId || !modelId || !bamaVehiclesTree) {
         myCarTrimEl.innerHTML = '<option value="">در صورت نیاز</option>';
         myCarTrimEl.disabled = true;
-        return;
+        populateMyCarYears();
+        return Promise.resolve();
       }
-      const matched =
-        typeof findBamaBrandModelTrim === "function"
-          ? findBamaBrandModelTrim(bamaVehiclesTree, brandId, modelId, null)
-          : null;
-      const trims = (matched && matched.trims) || [];
-      if (!trims.length) {
-        myCarTrimEl.innerHTML = '<option value="">بدون تیپ</option>';
-        myCarTrimEl.disabled = true;
-        return;
+      myCarTrimEl.disabled = true;
+      myCarTrimEl.innerHTML = '<option value="">در حال بارگذاری...</option>';
+      const loader =
+        typeof loadCalculatorModelTrims === "function"
+          ? loadCalculatorModelTrims(brandId, modelId)
+          : Promise.resolve([]);
+      return Promise.resolve(loader)
+        .then(function (trims) {
+          const list = Array.isArray(trims) ? trims : [];
+          if (!list.length) {
+            myCarTrimEl.innerHTML = '<option value="">بدون تیپ</option>';
+            myCarTrimEl.disabled = true;
+            populateMyCarYears();
+            return;
+          }
+          myCarTrimEl.innerHTML =
+            '<option value="">انتخاب تیپ</option>' +
+            list
+              .map(function (trim) {
+                return (
+                  '<option value="' +
+                  trim.trim_id +
+                  '">' +
+                  escapeHtml(trim.trim_name_fa || trim.trim_name || "") +
+                  "</option>"
+                );
+              })
+              .join("");
+          myCarTrimEl.disabled = false;
+          if (selectedTrimId != null && selectedTrimId !== "") myCarTrimEl.value = String(selectedTrimId);
+          return populateMyCarYears();
+        })
+        .catch(function (err) {
+          console.error("Khodro45 trims load error:", err);
+          myCarTrimEl.innerHTML = '<option value="">خطا در دریافت تیپ‌ها</option>';
+          myCarTrimEl.disabled = true;
+          populateMyCarYears();
+          setMyCarStatus((err && err.message) || "دریافت تیپ‌ها ممکن نشد", true);
+        });
+    }
+
+    function populateMyCarYears(selectedYear) {
+      if (!myCarYearEl) return Promise.resolve();
+      const trimId = myCarTrimEl && !myCarTrimEl.disabled ? myCarTrimEl.value : "";
+      if (!trimId || typeof getCalculatorTrimYears !== "function") {
+        fillMyCarYearOptions();
+        if (selectedYear) myCarYearEl.value = String(selectedYear);
+        return Promise.resolve();
       }
-      myCarTrimEl.innerHTML =
-        '<option value="">انتخاب تیپ</option>' +
-        trims
-          .map(function (trim) {
-            return (
-              '<option value="' +
-              trim.trim_id +
-              '">' +
-              escapeHtml(trim.trim_name_fa || trim.trim_name || "") +
-              "</option>"
-            );
-          })
-          .join("");
-      myCarTrimEl.disabled = false;
-      if (selectedTrimId != null && selectedTrimId !== "") myCarTrimEl.value = String(selectedTrimId);
+      myCarYearEl.disabled = true;
+      myCarYearEl.innerHTML = '<option value="">در حال بارگذاری...</option>';
+      return Promise.resolve(getCalculatorTrimYears(trimId))
+        .then(function (years) {
+          const list = Array.isArray(years) ? years : [];
+          if (!list.length) {
+            myCarYearEl.innerHTML = '<option value="">سال موجود نیست</option>';
+            myCarYearEl.disabled = true;
+            return;
+          }
+          myCarYearEl.innerHTML = list
+            .map(function (year) {
+              return (
+                '<option value="' +
+                escapeHtml(year.title) +
+                '">' +
+                escapeHtml(year.title) +
+                "</option>"
+              );
+            })
+            .join("");
+          myCarYearEl.disabled = false;
+          const preferred = selectedYear != null ? String(selectedYear) : "";
+          if (preferred && list.some(function (y) { return String(y.title) === preferred; })) {
+            myCarYearEl.value = preferred;
+          }
+        })
+        .catch(function (err) {
+          console.error("Khodro45 years load error:", err);
+          fillMyCarYearOptions();
+          setMyCarStatus((err && err.message) || "دریافت سال‌ها ممکن نشد", true);
+        });
     }
 
     function readMyCarFormSelection() {
@@ -5882,9 +5955,21 @@ export const androidStandaloneUiPatch = `
       selectedCarId = car.id;
       if (myCarNicknameEl) myCarNicknameEl.value = car.nickname || "";
       if (myCarBrandEl) myCarBrandEl.value = String(car.brandId || "");
-      populateMyCarModels(car.modelId);
-      populateMyCarTrims(car.trimId);
-      if (myCarYearEl && car.modelYear) myCarYearEl.value = String(car.modelYear);
+      populateMyCarModels(car.modelId)
+        .then(function () {
+          if (myCarModelEl && car.modelId) myCarModelEl.value = String(car.modelId);
+          return populateMyCarTrims(car.trimId);
+        })
+        .then(function () {
+          if (myCarTrimEl && car.trimId != null && car.trimId !== "") {
+            myCarTrimEl.value = String(car.trimId);
+          }
+          return populateMyCarYears(car.modelYear);
+        })
+        .then(function () {
+          if (myCarYearEl && car.modelYear) myCarYearEl.value = String(car.modelYear);
+        })
+        .catch(function () {});
       if (myCarMileageEl) {
         myCarMileageEl.value =
           car.mileage != null ? formatHousingMoneyInput(Number(car.mileage)) : "";
@@ -5985,7 +6070,7 @@ export const androidStandaloneUiPatch = `
           return tree;
         })
         .catch(function (err) {
-          console.error("Bama vehicles load error:", err);
+          console.error("Khodro45 vehicles load error:", err);
           setMyCarStatus((err && err.message) || "دریافت فهرست خودروها ممکن نشد", true);
           throw err;
         });
@@ -7765,7 +7850,8 @@ export const androidStandaloneUiPatch = `
       setMoreSubtab("donate");
     }
 
-    function showPriceLists() {
+    function showPriceLists(options) {
+      const endRefreshBusy = !options || options.endRefreshBusy !== false;
       loadingEl.classList.add("hidden");
       errorEl.classList.add("hidden");
       if (activeMarketTab === "gold") {
@@ -7780,7 +7866,7 @@ export const androidStandaloneUiPatch = `
         currencyListEl.classList.remove("hidden");
         syncGoldSubtabUi();
       }
-      setRefreshBusy(false);
+      if (endRefreshBusy) setRefreshBusy(false);
     }
 
     function createHeroCard(item, data) {
@@ -7882,7 +7968,9 @@ export const androidStandaloneUiPatch = `
 
     function renderItemGroup(items, listEl, current) {
       let sectionAdded = false;
-      items.forEach(function (item) {
+      const heroes = items.filter(function (item) { return item.hero; });
+      const rest = items.filter(function (item) { return !item.hero; });
+      heroes.concat(rest).forEach(function (item) {
         const data = current[item.key];
         if (!data) return;
         if (item.hero) {
@@ -8701,6 +8789,11 @@ export const androidStandaloneUiPatch = `
         populateMyCarTrims();
       });
     }
+    if (myCarTrimEl) {
+      myCarTrimEl.addEventListener("change", function () {
+        populateMyCarYears();
+      });
+    }
     if (myCarEstimateFormEl) {
       myCarEstimateFormEl.addEventListener("submit", function (event) {
         event.preventDefault();
@@ -8942,6 +9035,18 @@ export const androidStandaloneUiPatch = `
     });
     syncMoreSubtabUi();
 
+    function resetMarketTabToGold() {
+      switchMarketTab("gold");
+    }
+    window.__resetMarketTabToGold = resetMarketTabToGold;
+
+    document.addEventListener("visibilitychange", function () {
+      if (document.visibilityState === "visible") resetMarketTabToGold();
+    });
+    window.addEventListener("pageshow", function (event) {
+      if (event.persisted) resetMarketTabToGold();
+    });
+
     initPricePullToRefresh();
 
     if (navRefreshBtn) {
@@ -9040,12 +9145,13 @@ export function patchStandaloneUiScript(baseScript) {
     }`,
     `function renderPrices(current, options) {
       const silent = options && options.silent === true;
+      const offline = options && options.offline === true;
       latestMarketPrices = current;
       renderCurrency(current);
       renderGold(current);
       checkPriceAlerts(current, { silent: silent });
       pricesLoaded = true;
-      showPriceLists();
+      showPriceLists({ endRefreshBusy: !(silent && !offline) });
     }`,
   );
 
@@ -9053,12 +9159,11 @@ export function patchStandaloneUiScript(baseScript) {
   script = script.replace(
     "function showLoading() {\n      loadingEl.classList.remove(\"hidden\");\n      errorEl.classList.add(\"hidden\");\n      listEl.classList.add(\"hidden\");\n      refreshIcon.classList.add(\"spin\");\n      refreshBtn.disabled = true;\n    }",
     `function showLoading() {
-      loadingEl.classList.remove("hidden");
-      errorEl.classList.add("hidden");
-      if (currencyListEl) currencyListEl.classList.add("hidden");
-      if (goldListEl) goldListEl.classList.add("hidden");
-      if (goldPricesPanelEl) goldPricesPanelEl.classList.add("hidden");
-      if (goldCalcPanelEl) goldCalcPanelEl.classList.add("hidden");
+      if (typeof showPriceLists === "function") showPriceLists({ endRefreshBusy: false });
+      else {
+        loadingEl.classList.add("hidden");
+        errorEl.classList.add("hidden");
+      }
       setRefreshBusy(true);
     }`,
   );
@@ -9093,9 +9198,7 @@ export function patchStandaloneUiScript(baseScript) {
   // silent refresh busy state
   script = script.replace(
     "if (hasVisibleList) {\n          refreshIcon.classList.add(\"spin\");\n          refreshBtn.disabled = true;\n        } else {\n          showLoading();\n        }",
-    `if (hasVisibleList) {
-          setRefreshBusy(true);
-        } else {
+    `if (!silent) {
           showLoading();
         }`,
   );
@@ -9106,7 +9209,12 @@ export function patchStandaloneUiScript(baseScript) {
         if (!response.ok) throw new Error("پاسخ سرور نامعتبر بود");
         const data = await response.json();
         if (!data.current) throw new Error("داده‌ای دریافت نشد");`,
-    `const data = await fetchMoj3PricesPayload();
+    `const data = await fetchMoj3PricesPayload({
+          onProgress: function (partial) {
+            if (silent || !partial) return;
+            renderPrices(partial, { silent: true });
+          },
+        });
         if (!data.current) throw new Error("داده‌ای دریافت نشد");
         cacheMarketPrices(data.current);
         hidePricesOfflineBanner();`,
@@ -9155,7 +9263,7 @@ export function patchStandaloneUiScript(baseScript) {
     refreshTimer = setInterval(function () {
       if (isPriceTab(activeMarketTab)) fetchPrices({ silent: true });
     }, 60000);
-    fetchPrices();`,
+    switchMarketTab("gold");`,
   );
 
   return script;

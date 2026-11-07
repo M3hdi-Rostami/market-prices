@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.MarketPrices" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:colorPrimary">#3b82f6</item>
+        <item name="android:colorPrimaryDark">#111621</item>
+        <item name="android:statusBarColor">#111621</item>
+        <item name="android:navigationBarColor">#111621</item>
+        <item name="android:windowBackground">#111621</item>
+    </style>
+</resources>
